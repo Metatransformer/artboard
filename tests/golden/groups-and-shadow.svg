@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 560" width="900" height="560" role="img">
+  <title>Groups and Shadow</title>
+  <defs>
+    <filter id="sh-0" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="8" dy="14" stdDeviation="11" flood-color="#1e293b"/>
+    </filter>
+    <filter id="sh-1" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="4" dy="6" stdDeviation="3" flood-color="#2b6cff"/>
+    </filter>
+    <marker id="mk-2" viewBox="0 0 10 10" refX="0" refY="5" markerWidth="5" markerHeight="5" markerUnits="strokeWidth" orient="auto">
+      <path d="M10,0 L0,5 L10,10 Z" fill="#111827" style="fill:context-stroke"/>
+    </marker>
+    <marker id="mk-3" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="5" markerHeight="5" markerUnits="strokeWidth" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#111827" style="fill:context-stroke"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="900" height="560" fill="#f7f7f8"/>
+  <g>
+    <rect x="40" y="40" width="150" height="110" rx="10" ry="10" fill="#2b6cff" aria-hidden="true"/>
+    <g opacity="0.85">
+      <ellipse cx="210" cy="180" rx="60" ry="60" fill="#ff9f1c" aria-hidden="true"/>
+    </g>
+    <text x="40" y="170" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="26" font-weight="700" text-anchor="start" fill="#111827" xml:space="preserve">
+      <tspan x="40" y="190.54">grouped</tspan>
+    </text>
+  </g>
+  <g opacity="0.45">
+    <g>
+      <rect x="330" y="40" width="150" height="110" rx="10" ry="10" fill="#16a34a" aria-hidden="true"/>
+      <ellipse cx="500" cy="180" rx="60" ry="60" fill="#c026d3" aria-hidden="true"/>
+    </g>
+  </g>
+  <g transform="rotate(-12 740 140)">
+    <g>
+      <g transform="rotate(8 695 105)">
+        <rect x="620" y="60" width="150" height="90" rx="6" ry="6" fill="#0f766e" aria-hidden="true"/>
+      </g>
+      <g transform="rotate(6 775 180)">
+        <g>
+          <rect x="690" y="130" width="90" height="60" fill="#ef4444" aria-hidden="true"/>
+          <g transform="translate(805 200) scale(-1 1) translate(-805 -200)">
+            <rect x="760" y="170" width="90" height="60" rx="30" ry="30" fill="#f5a623" aria-hidden="true"/>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+  <g filter="url(#sh-0)">
+    <rect x="40" y="320" width="220" height="160" rx="18" ry="18" fill="#ffffff" aria-hidden="true"/>
+  </g>
+  <g filter="url(#sh-1)">
+    <text x="300" y="340" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="40" font-weight="800" text-anchor="start" fill="#111827" xml:space="preserve">
+      <tspan x="300" y="371.6">Legacy</tspan>
+      <tspan x="300" y="419.6">shadow</tspan>
+    </text>
+  </g>
+  <line x1="630" y1="400" x2="850" y2="400" stroke-linecap="round" stroke="#111827" stroke-width="6" marker-start="url(#mk-2)" marker-end="url(#mk-3)" aria-hidden="true"/>
+</svg>

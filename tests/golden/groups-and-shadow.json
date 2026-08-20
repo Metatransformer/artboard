@@ -1,0 +1,56 @@
+{
+  "id": "groups-and-shadow",
+  "name": "Groups and Shadow",
+  "artboards": [
+    {
+      "id": "ab-1",
+      "name": "Groups and Shadow",
+      "width": 900,
+      "height": 560,
+      "background": { "kind": "solid", "color": "#f7f7f8" },
+      "nodes": [
+        { "id": "g-plain", "kind": "group", "x": 40, "y": 40, "width": 240, "height": 200,
+          "children": [
+            { "id": "gp-a", "kind": "rect", "x": 40, "y": 40, "width": 150, "height": 110, "radius": 10,
+              "fill": { "kind": "solid", "color": "#2b6cff" } },
+            { "id": "gp-b", "kind": "ellipse", "x": 150, "y": 120, "width": 120, "height": 120,
+              "fill": { "kind": "solid", "color": "#ff9f1c" }, "opacity": 0.85 },
+            { "id": "gp-c", "kind": "text", "x": 40, "y": 170, "width": 200, "height": 40,
+              "text": "grouped", "fontSize": 26, "fontWeight": 700, "color": "#111827" }
+          ] },
+
+        { "id": "g-faded", "kind": "group", "x": 330, "y": 40, "width": 240, "height": 200, "opacity": 0.45,
+          "children": [
+            { "id": "gf-a", "kind": "rect", "x": 330, "y": 40, "width": 150, "height": 110, "radius": 10,
+              "fill": { "kind": "solid", "color": "#16a34a" } },
+            { "id": "gf-b", "kind": "ellipse", "x": 440, "y": 120, "width": 120, "height": 120,
+              "fill": { "kind": "solid", "color": "#c026d3" } }
+          ] },
+
+        { "id": "g-rot", "kind": "group", "x": 620, "y": 40, "width": 240, "height": 200, "rotation": -12,
+          "children": [
+            { "id": "gr-a", "kind": "rect", "x": 620, "y": 60, "width": 150, "height": 90, "radius": 6,
+              "fill": { "kind": "solid", "color": "#0f766e" }, "rotation": 8 },
+            { "id": "gr-nested", "kind": "group", "x": 690, "y": 130, "width": 170, "height": 100, "rotation": 6,
+              "children": [
+                { "id": "gn-a", "kind": "rect", "x": 690, "y": 130, "width": 90, "height": 60,
+                  "fill": { "kind": "solid", "color": "#ef4444" } },
+                { "id": "gn-b", "kind": "rect", "x": 760, "y": 170, "width": 90, "height": 60, "radius": 30,
+                  "fill": { "kind": "solid", "color": "#f5a623" }, "flipX": true }
+              ] }
+          ] },
+
+        { "id": "shadowed", "kind": "rect", "x": 40, "y": 320, "width": 220, "height": 160, "radius": 18,
+          "fill": { "kind": "solid", "color": "#ffffff" },
+          "shadow": { "x": 8, "y": 14, "blur": 22, "color": "#1e293b", "opacity": 0.45 } },
+
+        { "id": "shadowtext", "kind": "text", "x": 300, "y": 340, "width": 300, "height": 120,
+          "text": "Legacy shadow", "fontSize": 40, "fontWeight": 800, "color": "#111827",
+          "shadow": { "x": 4, "y": 6, "blur": 6, "color": "#2b6cff", "opacity": 0.6 } },
+
+        { "id": "startarrow", "kind": "line", "x": 630, "y": 400, "width": 220, "height": 0,
+          "stroke": { "color": "#111827", "width": 6, "cap": "butt", "markerStart": "arrow", "markerEnd": "arrow" } }
+      ]
+    }
+  ]
+}
