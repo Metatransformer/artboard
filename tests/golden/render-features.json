@@ -1,0 +1,49 @@
+{
+  "id": "render-features",
+  "name": "Renderer Features",
+  "artboards": [
+    {
+      "id": "ab-1",
+      "name": "Renderer Features",
+      "width": 900,
+      "height": 600,
+      "background": { "kind": "none" },
+      "nodes": [
+        { "id": "radial", "kind": "ellipse", "x": 40, "y": 40, "width": 240, "height": 240,
+          "fill": { "kind": "gradient", "type": "radial", "cx": 0.35, "cy": 0.3, "r": 0.62,
+            "stops": [ { "offset": 0, "color": "#fff3c4" }, { "offset": 0.55, "color": "#f5a623" }, { "offset": 1, "color": "#8c2f00" } ] } },
+
+        { "id": "linear", "kind": "rect", "x": 320, "y": 40, "width": 240, "height": 240, "radius": 24,
+          "fill": { "kind": "gradient", "type": "linear", "angle": 35,
+            "stops": [ { "offset": 0, "color": "#2b6cff" }, { "offset": 1, "color": "#00d4a0" } ] } },
+
+        { "id": "nofill", "kind": "rect", "x": 600, "y": 200, "width": 260, "height": 90, "radius": 12,
+          "fill": { "kind": "none" },
+          "stroke": { "color": "#111827", "width": 3, "dash": [10, 6], "join": "round" } },
+
+        { "id": "arrow", "kind": "line", "x": 40, "y": 330, "width": 240, "height": 0,
+          "stroke": { "color": "#111827", "width": 6, "cap": "round", "markerStart": "dot", "markerEnd": "arrow" } },
+        { "id": "bars", "kind": "line", "x": 40, "y": 390, "width": 240, "height": 0,
+          "stroke": { "color": "#c026d3", "width": 5, "dash": [14, 8], "cap": "butt", "markerStart": "bar", "markerEnd": "bar" } },
+        { "id": "tilted", "kind": "line", "x": 40, "y": 460, "width": 240, "height": 0, "rotation": 18,
+          "stroke": { "color": "#0f766e", "width": 4, "cap": "square", "markerEnd": "arrow" } },
+
+        { "id": "flipx", "kind": "path", "x": 320, "y": 330, "width": 110, "height": 190, "viewBox": [24, 24],
+          "d": "M2 2 L22 12 L2 22 L8 12 Z", "fill": { "kind": "solid", "color": "#ef4444" }, "flipX": true },
+        { "id": "flipy", "kind": "path", "x": 450, "y": 330, "width": 110, "height": 190, "viewBox": [24, 24],
+          "d": "M2 2 L22 12 L2 22 L8 12 Z", "fill": { "kind": "solid", "color": "#3b82f6" }, "flipY": true },
+        { "id": "flipboth", "kind": "path", "x": 580, "y": 330, "width": 110, "height": 190, "viewBox": [24, 24],
+          "d": "M2 2 L22 12 L2 22 L8 12 Z", "fill": { "kind": "solid", "color": "#16a34a" },
+          "flipX": true, "flipY": true, "rotation": 20 },
+
+        { "id": "gradtext", "kind": "text", "x": 600, "y": 50, "width": 260, "height": 130,
+          "text": "Gradient text", "fontSize": 42, "fontWeight": 800, "lineHeight": 1.15,
+          "fill": { "kind": "gradient", "type": "linear", "angle": 90,
+            "stops": [ { "offset": 0, "color": "#ff2d95" }, { "offset": 1, "color": "#7c3aed" } ] } },
+
+        { "id": "namedswatch", "kind": "rect", "x": 720, "y": 470, "width": 140, "height": 60, "radius": 8,
+          "fill": { "kind": "solid", "color": "#111827" }, "alt": "A named swatch" }
+      ]
+    }
+  ]
+}
