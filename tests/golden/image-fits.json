@@ -1,0 +1,132 @@
+{
+  "id": "image-fits",
+  "name": "Image Fits",
+  "schemaVersion": 1,
+  "assets": {
+    "band": {
+      "id": "band",
+      "mime": "image/png",
+      "width": 40,
+      "height": 80,
+      "data": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAABQCAIAAADk7aCWAAAAVklEQVR42u3NMRHAIBAAMCxUAyMakIELDGEAX4hgLjJ++NxlTzm9hyhisVgsFovFieK7awixWCwWi8XiTHGbfwixWCwWi8XiTPG3RgixWCwWi8XiRPEDyM7AwEWJbg4AAAAASUVORK5CYII="
+    }
+  },
+  "artboards": [
+    {
+      "id": "ab-1",
+      "name": "Image Fits",
+      "width": 900,
+      "height": 460,
+      "background": {
+        "kind": "solid",
+        "color": "#f4f4f5"
+      },
+      "nodes": [
+        {
+          "id": "fit-cover",
+          "kind": "image",
+          "x": 40,
+          "y": 60,
+          "width": 160,
+          "height": 160,
+          "assetId": "band",
+          "fit": "cover",
+          "alt": "cover"
+        },
+        {
+          "id": "fit-contain",
+          "kind": "image",
+          "x": 240,
+          "y": 60,
+          "width": 160,
+          "height": 160,
+          "assetId": "band",
+          "fit": "contain",
+          "alt": "contain"
+        },
+        {
+          "id": "fit-fill",
+          "kind": "image",
+          "x": 440,
+          "y": 60,
+          "width": 160,
+          "height": 160,
+          "assetId": "band",
+          "fit": "fill",
+          "alt": "fill"
+        },
+        {
+          "id": "framed-radius",
+          "kind": "image",
+          "x": 640,
+          "y": 60,
+          "width": 160,
+          "height": 160,
+          "assetId": "band",
+          "fit": "cover",
+          "radius": 28
+        },
+        {
+          "id": "framed-ellipse",
+          "kind": "image",
+          "x": 40,
+          "y": 250,
+          "width": 160,
+          "height": 160,
+          "assetId": "band",
+          "fit": "cover",
+          "frame": "ellipse"
+        },
+        {
+          "id": "framed-path",
+          "kind": "image",
+          "x": 240,
+          "y": 250,
+          "width": 160,
+          "height": 160,
+          "assetId": "band",
+          "fit": "contain",
+          "frame": "path",
+          "frameD": "M12 2 L22 9 L18 22 L6 22 L2 9 Z",
+          "frameBox": [
+            24,
+            24
+          ]
+        },
+        {
+          "id": "flipped",
+          "kind": "image",
+          "x": 440,
+          "y": 250,
+          "width": 160,
+          "height": 160,
+          "assetId": "band",
+          "fit": "cover",
+          "flipY": true,
+          "rotation": 8
+        },
+        {
+          "id": "wide-cover",
+          "kind": "image",
+          "x": 640,
+          "y": 250,
+          "width": 200,
+          "height": 100,
+          "assetId": "band",
+          "fit": "cover"
+        },
+        {
+          "id": "caption",
+          "kind": "text",
+          "x": 40,
+          "y": 16,
+          "width": 820,
+          "height": 32,
+          "text": "cover / contain / fill / radius",
+          "fontSize": 20,
+          "color": "#3f3f46"
+        }
+      ]
+    }
+  ]
+}

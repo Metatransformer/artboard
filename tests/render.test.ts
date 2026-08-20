@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { readdirSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { loadDocument, type Document } from '@artboard/schema';
 import { renderToString, renderArtboard, serialize, type SceneNode } from '@artboard/render-svg';
 import { checkXml } from './helpers';
@@ -791,5 +793,33 @@ describe('render: accessibility', () => {
     ])).svg;
     expect(svg).toContain('<title>A &lt;b&gt;bold&lt;/b&gt; &amp; odd name</title>');
     expect(checkXml(svg).ok).toBe(true);
+  });
+});
+
+describe('render: the golden oracle covers images at all', () => {
+  // The objectFit bug -- contain and fill rendering identically to cover --
+  // survived a fully green oracle because not one of the 24 fixtures contained
+  // an image node. An oracle with no coverage of a path does not fail on that
+  // path, it lies about it. This guard is here so that gap cannot reopen
+  // quietly: if the image fixture is deleted, this goes red, not silent.
+  const dir = fileURLToPath(new URL('./golden/', import.meta.url));
+  const fixtures = readdirSync(dir).filter(f => f.endsWith('.json'))
+    .map(f => JSON.parse(readFileSync(dir + f, 'utf8')));
+  const nodesOf = (d: any): any[] =>
+    d.artboards.flatMap((ab: any) => ab.nodes.flatMap(function walk(n: any): any[] {
+      return [n, ...(n.children ?? []).flatMap(walk)];
+    }));
+  const images = fixtures.flatMap(nodesOf).filter(n => n.kind === 'image');
+
+  it('has at least one baselined image node', () => {
+    expect(images.length).toBeGreaterThan(0);
+  });
+
+  it('baselines all three object fits', () => {
+    expect(new Set(images.map(n => n.fit ?? 'cover'))).toEqual(new Set(['cover', 'contain', 'fill']));
+  });
+
+  it('baselines a non-rectangular frame', () => {
+    expect(images.some(n => n.frame === 'ellipse' || n.frame === 'path')).toBe(true);
   });
 });
