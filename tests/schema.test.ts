@@ -264,8 +264,8 @@ describe('schema: round trip', () => {
 });
 
 describe('schema: known bugs', () => {
-  // BUG: loadDocument returns `diagnostics: [...doc.diagnostics, ...fresh]`
-  // (packages/schema/src/index.ts:192). Since diagnostics are part of the saved
+  // BUG: `loadDocument` returns `diagnostics: [...doc.diagnostics, ...diagnostics]`
+  // in its final `return`. Since diagnostics are part of the saved
   // Document, every open/save cycle re-appends the same findings and the array
   // grows without bound. Fix: return only the freshly computed diagnostics.
   it.fails('does not accumulate diagnostics across repeated save/load cycles', () => {

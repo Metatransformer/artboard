@@ -21,7 +21,13 @@ const grabAll = (re) => {
   return m;
 };
 
-const fontsLink = src.match(/<link href="https:\/\/fonts\.googleapis\.com[^>]*>/)?.[0] ?? '';
+// Fonts used to come from the Google Fonts CDN. They are bundled now, and the
+// single-file build inlines them as data URIs inside the stylesheet — so there
+// is nothing to link, and nothing to preconnect to. Assert that, rather than
+// silently shipping a page with no type if the CSS ever stops inlining.
+if (/https:\/\/fonts\.(googleapis|gstatic)\.com/.test(src)) {
+  throw new Error('build-demo: the demo still references the Google Fonts CDN; fonts must be bundled and inlined');
+}
 const styles = grabAll(/<style[^>]*>([\s\S]*?)<\/style>/g);
 const scripts = grabAll(/<script type="module"[^>]*>([\s\S]*?)<\/script>/g);
 
@@ -40,9 +46,6 @@ html,body{height:100%;margin:0;background:#0f1117}
 
 const page = [
   '<title>Artboard Studio</title>',
-  '<link rel="preconnect" href="https://fonts.googleapis.com">',
-  '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
-  fontsLink,
   '<style>\n' + css + '\n</style>',
   '<div id="root"></div>',
   ...scripts.map((s) => '<script type="module">\n' + escapeJs(s) + '\n</script>'),
@@ -51,6 +54,12 @@ const page = [
 const stray = [...page].filter((c) => c.charCodeAt(0) > 127).length;
 if (stray) throw new Error(`build-demo: ${stray} non-ASCII characters survived escaping`);
 
+const faces = (css.match(/@font-face/g) ?? []).length;
+const inlined = (css.match(/data:font\/woff2/g) ?? []).length;
+if (faces === 0 || inlined < faces) {
+  throw new Error(`build-demo: ${inlined} of ${faces} @font-face rules are inlined; the demo would render with system fonts`);
+}
+
 const out = resolve(root, 'apps/studio/dist-demo/artboard-demo.html');
 writeFileSync(out, page, 'ascii');
-console.log(`build-demo: wrote ${out} (${(page.length / 1024).toFixed(0)} kB, pure ASCII)`);
+console.log(`build-demo: wrote ${out} (${(page.length / 1024).toFixed(0)} kB, pure ASCII, ${inlined} fonts inlined)`);

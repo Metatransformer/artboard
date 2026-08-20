@@ -108,7 +108,10 @@ export function iconNodeStyle(color = '#111111'): Record<string, unknown> {
   return {
     viewBox: [...ICON_VIEWBOX],
     fill: { kind: 'none' },
-    stroke: { color, width: ICON_STROKE_WIDTH, dash: [] },
+    // Round caps and joins are not decoration: Lucide draws small dots as
+    // near-zero-length segments (`circle-alert`'s exclamation dot is
+    // `M12 16 L12.01 16`), and a butt cap renders those as nothing at all.
+    stroke: { color, width: ICON_STROKE_WIDTH, dash: [], cap: 'round', join: 'round' },
   };
 }
 

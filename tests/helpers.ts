@@ -1,4 +1,4 @@
-import { loadDocument, type Document } from '@artboard/schema';
+import { buildNode, loadDocument, type Document } from '@artboard/schema';
 
 /** Deterministic PRNG (mulberry32). Same seed → same stream, so failures reproduce. */
 export function mulberry32(seed: number): () => number {
@@ -28,13 +28,13 @@ export function baseDoc(): Document {
         height: 600,
         background: { kind: 'solid', color: '#ffffff' },
         nodes: [
-          { id: 'r1', kind: 'rect', x: 10, y: 20, width: 100, height: 50, radius: 4 },
-          { id: 'e1', kind: 'ellipse', x: 200, y: 40, width: 80, height: 80 },
-          { id: 't1', kind: 'text', x: 30, y: 300, width: 300, height: 120, text: 'Hello world', fontSize: 24 },
-          {
+          buildNode({ id: 'r1', kind: 'rect', x: 10, y: 20, width: 100, height: 50, radius: 4 }),
+          buildNode({ id: 'e1', kind: 'ellipse', x: 200, y: 40, width: 80, height: 80 }),
+          buildNode({ id: 't1', kind: 'text', x: 30, y: 300, width: 300, height: 120, text: 'Hello world', fontSize: 24 }),
+          buildNode({
             id: 'g1', kind: 'group', x: 0, y: 0, width: 400, height: 400,
-            children: [{ id: 'r2', kind: 'rect', x: 5, y: 5, width: 20, height: 20 }],
-          },
+            children: [buildNode({ id: 'r2', kind: 'rect', x: 5, y: 5, width: 20, height: 20 })],
+          }),
         ],
       },
     ],

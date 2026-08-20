@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { RectNode, EllipseNode, TextNode, loadDocument, findNode, type Document, type Node } from '@artboard/schema';
+import { buildNode, loadDocument, findNode, type Document, type Node } from '@artboard/schema';
 import {
   apply, invert, commit, undo, redo, emptyHistory, StaleCommandError, MAX_HISTORY,
   type Command, type History,
@@ -16,13 +16,13 @@ const freshDoc = (): Document => loadDocument({
     id: AB, name: 'Page 1', width: 800, height: 600,
     background: { kind: 'solid', color: '#ffffff' },
     nodes: [
-      { id: 'r1', kind: 'rect', x: 10, y: 20, width: 100, height: 50, radius: 4 },
-      { id: 'e1', kind: 'ellipse', x: 200, y: 40, width: 80, height: 80 },
-      { id: 't1', kind: 'text', x: 30, y: 300, width: 300, height: 120, text: 'Hello', fontSize: 24 },
-      { id: 'r3', kind: 'rect', x: 400, y: 400, width: 60, height: 60 },
-      { id: 'g1', kind: 'group', x: 0, y: 0, width: 400, height: 400, children: [
-        { id: 'r2', kind: 'rect', x: 5, y: 5, width: 20, height: 20 },
-      ]},
+      buildNode({ id: 'r1', kind: 'rect', x: 10, y: 20, width: 100, height: 50, radius: 4 }),
+      buildNode({ id: 'e1', kind: 'ellipse', x: 200, y: 40, width: 80, height: 80 }),
+      buildNode({ id: 't1', kind: 'text', x: 30, y: 300, width: 300, height: 120, text: 'Hello', fontSize: 24 }),
+      buildNode({ id: 'r3', kind: 'rect', x: 400, y: 400, width: 60, height: 60 }),
+      buildNode({ id: 'g1', kind: 'group', x: 0, y: 0, width: 400, height: 400, children: [
+        buildNode({ id: 'r2', kind: 'rect', x: 5, y: 5, width: 20, height: 20 }),
+      ]}),
     ],
   }],
 }).doc;
@@ -37,9 +37,9 @@ function randomNode(rng: () => number): Node {
   const id = `gen_${nodeSeq++}`;
   const base = { id, x: int(rng, -50, 500), y: int(rng, -50, 500), width: int(rng, 1, 300), height: int(rng, 1, 300) };
   switch (pick(rng, ['rect', 'ellipse', 'text'] as const)) {
-    case 'rect': return RectNode.parse({ ...base, kind: 'rect', radius: int(rng, 0, 20) }) as Node;
-    case 'ellipse': return EllipseNode.parse({ ...base, kind: 'ellipse' }) as Node;
-    default: return TextNode.parse({ ...base, kind: 'text', text: `t${int(rng, 0, 999)}`, fontSize: int(rng, 8, 96) }) as Node;
+    case 'rect': return buildNode({ ...base, kind: 'rect', radius: int(rng, 0, 20) });
+    case 'ellipse': return buildNode({ ...base, kind: 'ellipse' });
+    default: return buildNode({ ...base, kind: 'text', text: `t${int(rng, 0, 999)}`, fontSize: int(rng, 8, 96) });
   }
 }
 
@@ -70,12 +70,39 @@ const allNodes = (doc: Document): Node[] => {
   return out;
 };
 
-type Kind = 'addNode' | 'removeNode' | 'updateNode' | 'reorder' | 'setArtboard';
+type Kind = 'addNode' | 'removeNode' | 'updateNode' | 'reorder' | 'setArtboard' | 'group' | 'ungroup';
+
+const groupsIn = (doc: Document): Node[] =>
+  (doc.artboards[0]!.nodes as Node[]).filter(n => (n as any).kind === 'group');
+
+/** Whether a command of this type can be built against `doc` at all. */
+function canMake(kind: Kind, doc: Document): boolean {
+  const top = doc.artboards[0]!.nodes as Node[];
+  if (kind === 'ungroup') return groupsIn(doc).length > 0;
+  if (kind === 'group') return top.length >= 2;
+  if (kind === 'removeNode' || kind === 'reorder') return top.length > 0;
+  return true;
+}
+
+let groupSeq = 0;
 
 /** Build a command of the requested type that is valid against `doc` right now. */
 function makeCommand(kind: Kind, rng: () => number, doc: Document): Command {
   const top = doc.artboards[0]!.nodes as Node[];
   switch (kind) {
+    case 'group': {
+      // a distinct, possibly non-contiguous selection of top-level nodes
+      const pool = top.map(n => n.id);
+      const count = int(rng, 1, Math.min(3, pool.length));
+      const nodeIds: string[] = [];
+      while (nodeIds.length < count) {
+        const id = pick(rng, pool);
+        if (!nodeIds.includes(id)) nodeIds.push(id);
+      }
+      return { type: 'group', artboardId: AB, nodeIds, groupId: `grp_${groupSeq++}` };
+    }
+    case 'ungroup':
+      return { type: 'ungroup', artboardId: AB, groupId: pick(rng, groupsIn(doc)).id };
     case 'addNode':
       return { type: 'addNode', artboardId: AB, node: randomNode(rng), index: int(rng, 0, top.length) };
     case 'removeNode':
@@ -103,7 +130,13 @@ function makeCommand(kind: Kind, rng: () => number, doc: Document): Command {
   }
 }
 
-const KINDS: Kind[] = ['addNode', 'removeNode', 'updateNode', 'reorder', 'setArtboard'];
+const KINDS: Kind[] = ['addNode', 'removeNode', 'updateNode', 'reorder', 'setArtboard', 'group', 'ungroup'];
+
+/** A random command of any type that is currently buildable. */
+function anyCommand(rng: () => number, doc: Document): Command {
+  const usable = KINDS.filter(k => canMake(k, doc));
+  return makeCommand(pick(rng, usable), rng, doc);
+}
 
 /* ── the key invariant ───────────────────────────────────────────────────── */
 
@@ -115,6 +148,7 @@ describe('commands: apply ∘ invert is the identity', () => {
 
       for (let i = 0; i < 100; i++) {
         const before = freshDoc();
+        expect(canMake(kind, before), `${kind} must be buildable from the fixture`).toBe(true);
         const cmd = makeCommand(kind, rng, before);
         const undoCmd = invert(before, cmd);            // captured against the PRE-apply doc
         const after = apply(before, cmd);
@@ -136,7 +170,7 @@ describe('commands: apply ∘ invert is the identity', () => {
       const drift = makeCommand(pick(rng, ['updateNode', 'reorder', 'setArtboard'] as const), rng, doc);
       doc = apply(doc, drift);
 
-      const cmd = makeCommand(pick(rng, KINDS), rng, doc);
+      const cmd = anyCommand(rng, doc);
       const undoCmd = invert(doc, cmd);
       const restored = apply(apply(doc, cmd), undoCmd);
 
@@ -146,23 +180,51 @@ describe('commands: apply ∘ invert is the identity', () => {
 
   it('round-trips a batch of mixed commands as one unit', () => {
     const rng = mulberry32(1234);
-    for (let i = 0; i < 25; i++) {
+
+    for (let i = 0; i < 50; i++) {
       const before = freshDoc();
       // build the batch incrementally so each member is valid against the doc it sees
       const commands: Command[] = [];
       let staged = before;
       for (let k = 0; k < 4; k++) {
-        const c = makeCommand(pick(rng, KINDS), rng, staged);
+        const c = anyCommand(rng, staged);
         commands.push(c);
         staged = apply(staged, c);
       }
       const batch: Command = { type: 'batch', label: 'mixed', commands };
-      // invert() maps every member against the ORIGINAL doc, so it can only be
-      // exercised as a unit for batches whose members are independent
-      const independent: Command = { type: 'batch', label: 'independent', commands: [commands[0]!] };
-      expect(apply(apply(before, independent), invert(before, independent))).toStrictEqual(before);
-      expect(apply(before, batch)).toStrictEqual(staged);
+
+      expect(apply(before, batch), `i=${i} forward`).toStrictEqual(staged);
+      expect(apply(apply(before, batch), invert(before, batch)), `i=${i} round trip`).toStrictEqual(before);
     }
+  });
+
+  it('inverts each batch member against the state that member actually saw', () => {
+    // Deleting two non-adjacent nodes in one gesture: if every inverse were
+    // captured against the starting document, the second re-insert would land
+    // at a stale index and the z-order would come back wrong.
+    const before = freshDoc();
+    const batch: Command = { type: 'batch', label: 'delete two', commands: [
+      { type: 'removeNode', artboardId: AB, nodeId: 'r1' },
+      { type: 'removeNode', artboardId: AB, nodeId: 't1' },
+    ]};
+
+    const after = apply(before, batch);
+    expect(topIds(after)).toEqual(['e1', 'r3', 'g1']);
+    expect(topIds(apply(after, invert(before, batch)))).toEqual(topIds(before));
+    expect(apply(after, invert(before, batch))).toStrictEqual(before);
+  });
+
+  it('undoes a batch in reverse order', () => {
+    const before = freshDoc();
+    const batch: Command = { type: 'batch', label: 'move then delete', commands: [
+      { type: 'reorder', artboardId: AB, nodeId: 'r1', to: 3 },
+      { type: 'removeNode', artboardId: AB, nodeId: 'e1' },
+    ]};
+    const undoCmd = invert(before, batch) as Extract<Command, { type: 'batch' }>;
+
+    expect(undoCmd.commands[0]!.type).toBe('addNode');    // last change undone first
+    expect(undoCmd.commands[1]!.type).toBe('reorder');
+    expect(apply(apply(before, batch), undoCmd)).toStrictEqual(before);
   });
 
   it('applies commands immutably: the input document is never mutated', () => {
@@ -170,7 +232,7 @@ describe('commands: apply ∘ invert is the identity', () => {
     for (let i = 0; i < 25; i++) {
       const doc = freshDoc();
       const snapshot = clone(doc);
-      apply(doc, makeCommand(pick(rng, KINDS), rng, doc));
+      apply(doc, anyCommand(rng, doc));
       expect(doc).toStrictEqual(snapshot);
     }
   });
@@ -179,7 +241,7 @@ describe('commands: apply ∘ invert is the identity', () => {
 describe('commands: per-type semantics', () => {
   it('addNode inserts at the requested index and invert removes it again', () => {
     const doc = freshDoc();
-    const node = RectNode.parse({ id: 'new', kind: 'rect', x: 0, y: 0, width: 5, height: 5 }) as Node;
+    const node = buildNode({ id: 'new', kind: 'rect', x: 0, y: 0, width: 5, height: 5 });
     const cmd: Command = { type: 'addNode', artboardId: AB, node, index: 2 };
 
     const added = apply(doc, cmd);
@@ -189,7 +251,7 @@ describe('commands: per-type semantics', () => {
 
   it('addNode without an index appends', () => {
     const doc = freshDoc();
-    const node = RectNode.parse({ id: 'new', kind: 'rect', x: 0, y: 0, width: 5, height: 5 }) as Node;
+    const node = buildNode({ id: 'new', kind: 'rect', x: 0, y: 0, width: 5, height: 5 });
     expect(topIds(apply(doc, { type: 'addNode', artboardId: AB, node })).at(-1)).toBe('new');
   });
 
@@ -263,7 +325,7 @@ describe('commands: undo / redo', () => {
     let doc = start;
     let history: History = emptyHistory();
     for (let i = 0; i < 10; i++) {
-      ({ doc, history } = commit(doc, history, makeCommand(pick(rng, KINDS), rng, doc)));
+      ({ doc, history } = commit(doc, history, anyCommand(rng, doc)));
     }
     const end = doc;
     expect(history.past).toHaveLength(10);
@@ -290,7 +352,7 @@ describe('commands: undo / redo', () => {
       let history: History = emptyHistory();
 
       for (let i = 0; i < 20; i++) {
-        ({ doc, history } = commit(doc, history, makeCommand(pick(rng, KINDS), rng, doc)));
+        ({ doc, history } = commit(doc, history, anyCommand(rng, doc)));
       }
       const end = doc;
 
@@ -421,9 +483,125 @@ describe('commands: the seeded PRNG itself', () => {
   });
 });
 
+describe('commands: group / ungroup', () => {
+  it('wraps a contiguous selection where the topmost member sat', () => {
+    const doc = freshDoc();                        // r1 e1 t1 r3 g1
+    const grouped = apply(doc, { type: 'group', artboardId: AB, nodeIds: ['e1', 't1'], groupId: 'G' });
+
+    expect(topIds(grouped)).toEqual(['r1', 'G', 'r3', 'g1']);
+    const g = findNode(grouped, 'G') as any;
+    expect(g.kind).toBe('group');
+    expect(g.children.map((c: Node) => c.id)).toEqual(['e1', 't1']);
+  });
+
+  it('keeps members in document order regardless of the order they were named', () => {
+    const doc = freshDoc();
+    const g = findNode(apply(doc, { type: 'group', artboardId: AB, nodeIds: ['r3', 'r1', 'e1'], groupId: 'G' }), 'G') as any;
+    expect(g.children.map((c: Node) => c.id)).toEqual(['r1', 'e1', 'r3']);
+  });
+
+  it('sizes the group to the union of its members’ rotated bounds', () => {
+    const doc = loadDocument({ id: 'd', artboards: [{ id: AB, width: 500, height: 500, nodes: [
+      buildNode({ id: 'a', kind: 'rect', x: 0, y: 0, width: 100, height: 100 }),
+      buildNode({ id: 'b', kind: 'rect', x: 200, y: 150, width: 50, height: 50 }),
+    ]}]}).doc;
+    const g = findNode(apply(doc, { type: 'group', artboardId: AB, nodeIds: ['a', 'b'], groupId: 'G' }), 'G') as any;
+
+    expect(g).toMatchObject({ x: 0, y: 0, width: 250, height: 200 });
+  });
+
+  it('restores a non-contiguous selection to its exact original slots on undo', () => {
+    const doc = freshDoc();                        // r1 e1 t1 r3 g1
+    const cmd: Command = { type: 'group', artboardId: AB, nodeIds: ['r1', 't1'], groupId: 'G' };
+    const grouped = apply(doc, cmd);
+
+    expect(topIds(grouped)).toEqual(['e1', 'G', 'r3', 'g1']);
+    expect(apply(grouped, invert(doc, cmd))).toStrictEqual(doc);
+  });
+
+  it('ungroups in place, splicing the children where the group sat', () => {
+    const doc = freshDoc();
+    const flat = apply(doc, { type: 'ungroup', artboardId: AB, groupId: 'g1' });
+    expect(topIds(flat)).toEqual(['r1', 'e1', 't1', 'r3', 'r2']);
+  });
+
+  it('restores a group verbatim on undo, keeping its own name and opacity', () => {
+    const doc = loadDocument({ id: 'd', artboards: [{ id: AB, width: 500, height: 500, nodes: [
+      buildNode({ id: 'G', kind: 'group', x: 0, y: 0, width: 100, height: 100, name: 'Logo lockup', opacity: 0.6,
+        children: [buildNode({ id: 'c1', kind: 'rect', x: 0, y: 0, width: 10, height: 10 })] }),
+    ]}]}).doc;
+    const cmd: Command = { type: 'ungroup', artboardId: AB, groupId: 'G' };
+
+    const restored = apply(apply(doc, cmd), invert(doc, cmd));
+    expect(restored).toStrictEqual(doc);
+    expect((findNode(restored, 'G') as any).name).toBe('Logo lockup');
+    expect((findNode(restored, 'G') as any).opacity).toBe(0.6);
+  });
+
+  it('rejects a grouping that names a missing node, a duplicate, or nothing at all', () => {
+    const doc = freshDoc();
+    expect(() => apply(doc, { type: 'group', artboardId: AB, nodeIds: ['ghost'], groupId: 'G' })).toThrow(StaleCommandError);
+    expect(() => apply(doc, { type: 'group', artboardId: AB, nodeIds: ['r1', 'r1'], groupId: 'G' })).toThrow(StaleCommandError);
+    expect(() => apply(doc, { type: 'group', artboardId: AB, nodeIds: [], groupId: 'G' })).toThrow(StaleCommandError);
+  });
+
+  it('rejects ungrouping something that is not a group', () => {
+    const doc = freshDoc();
+    expect(() => apply(doc, { type: 'ungroup', artboardId: AB, groupId: 'r1' })).toThrow(StaleCommandError);
+    expect(() => apply(doc, { type: 'ungroup', artboardId: AB, groupId: 'ghost' })).toThrow(StaleCommandError);
+    expect(() => invert(doc, { type: 'ungroup', artboardId: AB, groupId: 'r1' })).toThrow(StaleCommandError);
+  });
+
+  it('rejects an undo capture whose slots do not line up with the children', () => {
+    // a two-child group, so a one-slot capture is genuinely the wrong length
+    const doc = loadDocument({ id: 'd', artboards: [{ id: AB, width: 500, height: 500, nodes: [
+      buildNode({ id: 'keep', kind: 'rect', x: 0, y: 0, width: 10, height: 10 }),
+      buildNode({ id: 'G', kind: 'group', x: 0, y: 0, width: 100, height: 100, children: [
+        buildNode({ id: 'c1', kind: 'rect', x: 0, y: 0, width: 10, height: 10 }),
+        buildNode({ id: 'c2', kind: 'rect', x: 20, y: 20, width: 10, height: 10 }),
+      ]}),
+    ]}]}).doc;
+
+    const bad: number[][] = [
+      [0],          // wrong length
+      [0, 1, 2],    // wrong length
+      [0, 0],       // duplicate slot
+      [0, 99],      // out of range
+      [1.5, 2],     // not an integer
+      [-1, 0],      // negative
+    ];
+    for (const indices of bad) {
+      expect(() => apply(doc, { type: 'ungroup', artboardId: AB, groupId: 'G', indices }),
+        JSON.stringify(indices)).toThrow(StaleCommandError);
+    }
+
+    // and the well-formed capture is accepted
+    expect(topIds(apply(doc, { type: 'ungroup', artboardId: AB, groupId: 'G', indices: [0, 2] })))
+      .toEqual(['c1', 'keep', 'c2']);
+  });
+
+  it('survives group → ungroup → undo → undo through the history stack', () => {
+    let doc = freshDoc();
+    const start = doc;
+    let history: History = emptyHistory();
+
+    ({ doc, history } = commit(doc, history, { type: 'group', artboardId: AB, nodeIds: ['r1', 'e1'], groupId: 'G' }));
+    ({ doc, history } = commit(doc, history, { type: 'ungroup', artboardId: AB, groupId: 'G' }));
+    const end = doc;
+
+    ({ doc, history } = undo(doc, history));
+    ({ doc, history } = undo(doc, history));
+    expect(doc).toStrictEqual(start);
+
+    ({ doc, history } = redo(doc, history));
+    ({ doc, history } = redo(doc, history));
+    expect(doc).toStrictEqual(end);
+  });
+});
+
 describe('commands: known bugs', () => {
-  // BUG: invert() for 'reorder' (packages/commands/src/index.ts:89) uses
-  // findIndex without checking the -1 result, so a missing node yields a
+  // BUG: `invert()`'s `case 'reorder'` uses findIndex without checking the
+  // -1 result, so a missing node yields a
   // reorder to index -1 instead of the StaleCommandError every sibling case
   // throws. The failure is deferred to apply(), one step further from the cause.
   // Fix: `if (from < 0) throw new StaleCommandError(cmd.nodeId);`
@@ -433,8 +611,8 @@ describe('commands: known bugs', () => {
       .toThrow(StaleCommandError);                 // actual: returns { to: -1 }
   });
 
-  // BUG: invert() for 'updateNode' (packages/commands/src/index.ts:83) copies
-  // `node[k]` for every patch key, so a key the node never had comes back as an
+  // BUG: `invert()`'s `case 'updateNode'` copies `node[k]` for every patch
+  // key, so a key the node never had comes back as an
   // explicit `undefined`. Undo then re-adds the key rather than removing it.
   // Fix: only capture (and later re-apply) keys where `k in node`.
   it.fails('updateNode invert removes a key the node never had, rather than setting it undefined', () => {
@@ -443,5 +621,35 @@ describe('commands: known bugs', () => {
     const restored = apply(apply(doc, cmd), invert(doc, cmd));
 
     expect('phantom' in (findNode(restored, 'r1') as any)).toBe(false);   // actual: true, = undefined
+  });
+});
+
+describe('commands: known bugs (continued)', () => {
+  // BUG: `makeGroup` hand-writes the group node field by field, and has
+  // fallen behind NodeBase — it never sets `alt`,
+  // `flipX` or `flipY`. A grouped document therefore does not survive a save +
+  // reload unchanged: the reload defaults those three in and the node differs.
+  // This is exactly what buildNode() exists to prevent.
+  // Fix: `return buildNode({ id, name: 'Group', kind: 'group', x: minX, ... })`.
+  it.fails('produces a schema-complete group node', () => {
+    const doc = loadDocument({ id: 'd', artboards: [{ id: AB, width: 500, height: 500, nodes: [
+      buildNode({ id: 'a', kind: 'rect', x: 0, y: 0, width: 10, height: 10 }),
+      buildNode({ id: 'b', kind: 'rect', x: 50, y: 50, width: 10, height: 10 }),
+    ]}]}).doc;
+    const grouped = apply(doc, { type: 'group', artboardId: AB, nodeIds: ['a', 'b'], groupId: 'G' });
+
+    // actual: alt, flipX and flipY are all absent
+    expect(findNode(grouped, 'G')).toMatchObject({ alt: '', flipX: false, flipY: false });
+  });
+
+  it.fails('lets a grouped document survive a save/load cycle unchanged', () => {
+    const doc = loadDocument({ id: 'd', artboards: [{ id: AB, width: 500, height: 500, nodes: [
+      buildNode({ id: 'a', kind: 'rect', x: 0, y: 0, width: 10, height: 10 }),
+      buildNode({ id: 'b', kind: 'rect', x: 50, y: 50, width: 10, height: 10 }),
+    ]}]}).doc;
+    const grouped = apply(doc, { type: 'group', artboardId: AB, nodeIds: ['a', 'b'], groupId: 'G' });
+    const reloaded = loadDocument(JSON.parse(JSON.stringify(grouped))).doc;
+
+    expect(reloaded.artboards).toStrictEqual(grouped.artboards);
   });
 });

@@ -401,9 +401,8 @@ describe('render: known bugs', () => {
     { assets: { a: { id: 'a', mime: 'image/png', width: 100, height: 200, data: 'data:,x' } } },
   )).svg.match(/<image[^>]*>/)![0];
 
-  // BUG: the renderer derives its scale from the crop WIDTH alone
-  // (packages/render-svg/src/index.ts:125 `const scale = n.width / crop.width`).
-  // objectFit returns the full source rect for both 'contain' and 'fill', so both
+  // BUG: `renderNode`'s `case 'image'` derives its scale from the crop WIDTH
+  // alone (`const scale = n.width / crop.width`). `objectFit` returns the full source rect for both 'contain' and 'fill', so both
   // fits render at the source aspect ratio scaled to the box width — 'contain'
   // never letterboxes and 'fill' never stretches. Only 'cover' behaves as named.
   // Fix: scale by min(dw/cw, dh/ch) for contain, and by each axis for fill.

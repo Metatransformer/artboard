@@ -174,7 +174,7 @@ function Elements() {
       </div>
 
       <h4>Icons</h4>
-      <IconLibrary insert={i => insertPath(i.name, i.d, iconNodeStyle(), ICON_SCALE)} />
+      <IconLibrary insert={i => insertPath(i.name, i.d, { ...iconNodeStyle(), alt: i.name }, ICON_SCALE)} />
 
       <h4>Lines &amp; dividers</h4>
       <div className="stack">
@@ -212,11 +212,13 @@ function IconLibrary({ insert }: { insert: (icon: Icon) => void }) {
       {list.length === 0 ? <div className="hint">Nothing matches that search.</div> : (
         <div className="egrid dense">
           {list.map(i => (
-            <button key={i.id} className="ecard icon" title={i.name} onClick={() => insert(i)}>
-              {/* Painted exactly as the document renderer will paint it - no
-                  stroke-linecap the renderer cannot express, so the preview
-                  never promises a rounder icon than the canvas delivers. */}
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d={i.d} /></svg>
+            <button key={i.id} className="ecard" title={i.name} onClick={() => insert(i)}>
+              {/* Painted exactly as the canvas will paint it: same viewBox,
+                  same width, same round cap and join that `iconNodeStyle()`
+                  puts on the inserted node. The preview must not promise a
+                  rounder icon than the document renderer delivers. */}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                   strokeLinecap="round" strokeLinejoin="round"><path d={i.d} /></svg>
             </button>
           ))}
         </div>

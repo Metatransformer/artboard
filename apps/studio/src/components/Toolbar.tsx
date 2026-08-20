@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { parseDocument } from '@artboard/schema';
 import { PRESET_SIZES } from '@artboard/templates';
 import { useEditor, blankDocument } from '../state/store';
-import { exportRaster, exportSvg, saveFile, ExportBudgetExceededError } from '../lib/export';
+import { ExportDialog } from './ExportDialog';
 
 const TOOLS = [
   { id: 'select', label: 'Select', key: 'V', icon: 'M4 3l14 7-6 1.5L10 18z' },
@@ -16,8 +16,8 @@ const TOOLS = [
 export function Toolbar({ tool, setTool, onPresent, onShortcuts }:
   { tool: string; setTool: (t: string) => void; onPresent: () => void; onShortcuts: () => void }) {
   const { state, dispatch, run, artboard } = useEditor();
-  const [busy, setBusy] = useState<string | null>(null);
-  const [open, setOpen] = useState<'resize' | 'export' | null>(null);
+  const [open, setOpen] = useState<'resize' | null>(null);
+  const [exporting, setExporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const barRef = useRef<HTMLElement>(null);
 
@@ -29,38 +29,6 @@ export function Toolbar({ tool, setTool, onPresent, onShortcuts }:
     window.addEventListener('keydown', esc);
     return () => { window.removeEventListener('pointerdown', away); window.removeEventListener('keydown', esc); };
   }, [open]);
-
-  const safeName = (state.doc.name || 'design').replace(/[^\w-]+/g, '-').toLowerCase();
-
-  const doExport = async (kind: 'png' | 'jpg' | 'svg' | 'json') => {
-    setOpen(null);
-    setBusy(kind);
-    try {
-      const r =
-        kind === 'svg'
-          ? await saveFile(exportSvg(state.doc, state.activeArtboard), `${safeName}.svg`, 'image/svg+xml')
-          : kind === 'json'
-          ? await saveFile(JSON.stringify(state.doc, null, 2), `${safeName}.artboard.json`, 'application/json')
-          : await saveFile(
-              await exportRaster(state.doc, state.activeArtboard, 2, kind === 'png' ? 'image/png' : 'image/jpeg'),
-              `${safeName}.${kind}`,
-              kind === 'png' ? 'image/png' : 'image/jpeg',
-            );
-      dispatch({
-        type: 'toast',
-        toast: r.status === 'declined'
-          ? { level: 'info', message: 'Export cancelled' }
-          : { level: 'info', message: r.note ?? `Exported ${kind.toUpperCase()}` },
-      });
-    } catch (e) {
-      const msg = e instanceof ExportBudgetExceededError ? e.message
-        : e instanceof Error ? `${e.name}: ${e.message}` : 'Export failed';
-      dispatch({ type: 'toast', toast: { level: 'error', message: msg } });
-    } finally {
-      setBusy(null);
-      setTimeout(() => dispatch({ type: 'toast', toast: null }), 5000);
-    }
-  };
 
   const openFile = async (f: File) => {
     try {
@@ -151,24 +119,8 @@ export function Toolbar({ tool, setTool, onPresent, onShortcuts }:
              onChange={e => { const f = e.target.files?.[0]; if (f) openFile(f); e.target.value = ''; }} />
       <button className="btn" onClick={() => fileRef.current?.click()}>Open</button>
 
-      <div className="pop">
-        <button className="btn btn-primary" disabled={!!busy} aria-expanded={open === 'export'}
-                onClick={() => setOpen(open === 'export' ? null : 'export')}>{busy ? 'Exporting...' : 'Export'}</button>
-        {open === 'export' && (
-          <div className="pop-menu right" style={{ minWidth: 224 }}>
-            {[
-              ['png', 'PNG', '2x raster'],
-              ['jpg', 'JPG', '2x raster'],
-              ['svg', 'SVG', 'vector, infinite'],
-              ['json', '.artboard.json', 'the open format'],
-            ].map(([k, label, sub]) => (
-              <button key={k} className="sizerow" onClick={() => doExport(k as any)}>
-                <span>{label}</span><small>{sub}</small>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      <button className="btn btn-primary" aria-haspopup="dialog" onClick={() => setExporting(true)}>Export</button>
+      {exporting && <ExportDialog onClose={() => setExporting(false)} />}
 
       {state.readOnly && <span className="ro">read-only</span>}
       {state.toast && <div className={`toast toast-${state.toast.level}`}>{state.toast.message}</div>}
