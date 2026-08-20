@@ -16,9 +16,10 @@
  * WHAT IT APPROXIMATES, and why
  *   - Glyphs come from the PDF base-14 faces (Helvetica / Times / Courier).
  *     Artboard ships font *metrics*, not font *binaries*, so there is nothing
- *     to embed. Every glyph is positioned individually from those metrics, so
- *     lines break and align exactly where the SVG puts them; only the letter
- *     shapes are substitutes. Text stays real, selectable text.
+ *     to embed. Each word is placed at the x the design's own metrics give it
+ *     and then fitted to that width, so lines break and align exactly where the
+ *     SVG puts them; only the letter shapes are substitutes. See `drawLine`.
+ *     Text stays real, selectable text.
  *   - SVG filters other than a drop shadow (blur, glow, neon, colour matrices)
  *     have no PDF equivalent and are dropped; the element is drawn unfiltered.
  *     `notes` says so, loudly, when it happens.
@@ -373,6 +374,139 @@ function advances(text: string, family: string, weight: number, size: number, tr
     const em = table ? (table.advances[ch] ?? table.fallbackWidth) : 0.5;
     return em * size + (i < chars.length - 1 ? tracking : 0);
   });
+}
+
+/**
+ * Adobe base-14 advance widths, in 1/1000 em, indexed by WinAnsi code - 32.
+ *
+ * The writer needs both halves of the substitution: where the design's font puts
+ * a word (that is `advances()` above) and how wide the substitute face will
+ * actually set it. Without the second half, placing whole words by absolute x
+ * collides whenever the substitute runs wider than the design face by about a
+ * space width, and the space between two words disappears.
+ *
+ * Fourteen faces need six tables: the oblique and italic cuts carry their roman
+ * widths, and every Courier is a flat 600. The values were read out of the
+ * system faces and check against the published AFM metrics, which is what a
+ * reader uses for a base-14 font it is not handed a /Widths array for. The gaps
+ * are the unassigned WinAnsi codes, which `winAnsi()` cannot produce.
+ */
+const W_HELVETICA: readonly number[] = [
+  278, 278, 355, 556, 556, 889, 667, 191, 333, 333, 389, 584, 278, 333, 278, 278,
+  556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 278, 278, 584, 584, 584, 556,
+  1015, 667, 667, 722, 722, 667, 611, 778, 722, 278, 500, 667, 556, 833, 722, 778,
+  667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611, 278, 278, 278, 469, 556,
+  333, 556, 556, 500, 556, 556, 278, 556, 556, 222, 222, 500, 222, 833, 556, 556,
+  556, 556, 333, 500, 278, 556, 500, 722, 500, 500, 500, 334, 260, 334, 584, 0,
+  744, 0, 222, 556, 333, 1000, 556, 556, 333, 1000, 667, 333, 1000, 0, 611, 0,
+  0, 222, 222, 333, 333, 350, 556, 1000, 333, 1000, 500, 333, 944, 0, 500, 667,
+  278, 333, 556, 556, 556, 556, 260, 556, 333, 737, 370, 556, 584, 333, 737, 333,
+  400, 549, 333, 333, 333, 576, 537, 278, 333, 333, 365, 556, 834, 834, 834, 611,
+  667, 667, 667, 667, 667, 667, 1000, 722, 667, 667, 667, 667, 278, 278, 278, 278,
+  722, 722, 778, 778, 778, 778, 778, 584, 778, 722, 722, 722, 722, 667, 667, 611,
+  556, 556, 556, 556, 556, 556, 889, 500, 556, 556, 556, 556, 278, 278, 278, 278,
+  556, 556, 556, 556, 556, 556, 556, 549, 611, 556, 556, 556, 556, 500, 556, 500,
+];
+
+const W_HELVETICA_BOLD: readonly number[] = [
+  278, 333, 474, 556, 556, 889, 722, 238, 333, 333, 389, 584, 278, 333, 278, 278,
+  556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 333, 333, 584, 584, 584, 611,
+  975, 722, 722, 722, 722, 667, 611, 778, 722, 278, 556, 722, 611, 833, 722, 778,
+  667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611, 333, 278, 333, 584, 556,
+  333, 556, 611, 556, 611, 556, 333, 611, 611, 278, 278, 556, 278, 889, 611, 611,
+  611, 611, 389, 556, 333, 611, 556, 778, 556, 556, 500, 389, 280, 389, 584, 0,
+  744, 0, 278, 556, 500, 1000, 556, 556, 333, 1000, 667, 333, 1000, 0, 611, 0,
+  0, 278, 278, 500, 500, 350, 556, 1000, 333, 1000, 556, 333, 944, 0, 500, 667,
+  278, 333, 556, 556, 556, 556, 280, 556, 333, 737, 370, 556, 584, 333, 737, 333,
+  400, 549, 333, 333, 333, 576, 556, 278, 333, 333, 365, 556, 834, 834, 834, 611,
+  722, 722, 722, 722, 722, 722, 1000, 722, 667, 667, 667, 667, 278, 278, 278, 278,
+  722, 722, 778, 778, 778, 778, 778, 584, 778, 722, 722, 722, 722, 667, 667, 611,
+  556, 556, 556, 556, 556, 556, 889, 556, 556, 556, 556, 556, 278, 278, 278, 278,
+  611, 611, 611, 611, 611, 611, 611, 549, 611, 611, 611, 611, 611, 556, 611, 556,
+];
+
+const W_TIMES: readonly number[] = [
+  250, 333, 408, 500, 500, 833, 778, 180, 333, 333, 500, 564, 250, 333, 250, 278,
+  500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 278, 278, 564, 564, 564, 444,
+  921, 722, 667, 667, 722, 611, 556, 722, 722, 333, 389, 722, 611, 889, 722, 722,
+  556, 722, 667, 556, 611, 722, 722, 944, 722, 722, 611, 333, 278, 333, 469, 500,
+  333, 444, 500, 444, 500, 444, 333, 500, 500, 278, 278, 500, 278, 778, 500, 500,
+  500, 500, 333, 389, 278, 500, 500, 722, 500, 500, 444, 480, 200, 480, 541, 0,
+  744, 0, 333, 500, 444, 1000, 500, 500, 333, 1000, 556, 333, 889, 0, 611, 0,
+  0, 333, 333, 444, 444, 350, 500, 1000, 333, 980, 389, 333, 722, 0, 444, 722,
+  250, 333, 500, 500, 500, 500, 200, 500, 333, 760, 276, 500, 564, 333, 760, 333,
+  400, 549, 300, 300, 333, 576, 453, 250, 333, 300, 310, 500, 750, 750, 750, 444,
+  722, 722, 722, 722, 722, 722, 889, 667, 611, 611, 611, 611, 333, 333, 333, 333,
+  722, 722, 722, 722, 722, 722, 722, 564, 722, 722, 722, 722, 722, 722, 556, 500,
+  444, 444, 444, 444, 444, 444, 667, 444, 444, 444, 444, 444, 278, 278, 278, 278,
+  500, 500, 500, 500, 500, 500, 500, 549, 500, 500, 500, 500, 500, 500, 500, 500,
+];
+
+const W_TIMES_BOLD: readonly number[] = [
+  250, 333, 555, 500, 500, 1000, 833, 278, 333, 333, 500, 570, 250, 333, 250, 278,
+  500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 333, 333, 570, 570, 570, 500,
+  930, 722, 667, 722, 722, 667, 611, 778, 778, 389, 500, 778, 667, 944, 722, 778,
+  611, 778, 722, 556, 667, 722, 722, 1000, 722, 722, 667, 333, 278, 333, 581, 500,
+  333, 500, 556, 444, 556, 444, 333, 500, 556, 278, 333, 556, 278, 833, 556, 500,
+  556, 556, 444, 389, 333, 556, 500, 722, 500, 500, 444, 394, 220, 394, 520, 0,
+  744, 0, 333, 500, 500, 1000, 500, 500, 333, 1000, 556, 333, 1000, 0, 667, 0,
+  0, 333, 333, 500, 500, 350, 500, 1000, 333, 1000, 389, 333, 722, 0, 444, 722,
+  250, 333, 500, 500, 500, 500, 220, 500, 333, 747, 300, 500, 570, 333, 747, 333,
+  400, 549, 300, 300, 333, 576, 540, 250, 333, 300, 330, 500, 750, 750, 750, 500,
+  722, 722, 722, 722, 722, 722, 1000, 722, 667, 667, 667, 667, 389, 389, 389, 389,
+  722, 722, 778, 778, 778, 778, 778, 570, 778, 722, 722, 722, 722, 722, 611, 556,
+  500, 500, 500, 500, 500, 500, 722, 444, 444, 444, 444, 444, 278, 278, 278, 278,
+  500, 556, 500, 500, 500, 500, 500, 549, 500, 556, 556, 556, 556, 500, 556, 500,
+];
+
+const W_TIMES_ITALIC: readonly number[] = [
+  250, 333, 420, 500, 500, 833, 778, 214, 333, 333, 500, 675, 250, 333, 250, 278,
+  500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 333, 333, 675, 675, 675, 500,
+  920, 611, 611, 667, 722, 611, 611, 722, 722, 333, 444, 667, 556, 833, 667, 722,
+  611, 722, 611, 500, 556, 722, 611, 833, 611, 556, 556, 389, 278, 389, 422, 500,
+  333, 500, 500, 444, 500, 444, 278, 500, 500, 278, 278, 444, 278, 722, 500, 500,
+  500, 500, 389, 389, 278, 500, 444, 667, 444, 444, 389, 400, 275, 400, 541, 0,
+  744, 0, 333, 500, 556, 889, 500, 500, 333, 1000, 500, 333, 944, 0, 556, 0,
+  0, 333, 333, 556, 556, 350, 500, 889, 333, 980, 389, 333, 667, 0, 389, 556,
+  250, 389, 500, 500, 500, 500, 275, 500, 333, 760, 276, 500, 675, 333, 760, 333,
+  400, 549, 300, 300, 333, 576, 523, 250, 333, 300, 310, 500, 750, 750, 750, 500,
+  611, 611, 611, 611, 611, 611, 889, 667, 611, 611, 611, 611, 333, 333, 333, 333,
+  722, 667, 722, 722, 722, 722, 722, 675, 722, 722, 722, 722, 722, 556, 611, 500,
+  500, 500, 500, 500, 500, 500, 667, 444, 444, 444, 444, 444, 278, 278, 278, 278,
+  500, 500, 500, 500, 500, 500, 500, 549, 500, 500, 500, 500, 500, 444, 500, 444,
+];
+
+const W_TIMES_BOLD_ITALIC: readonly number[] = [
+  250, 389, 555, 500, 500, 833, 778, 278, 333, 333, 500, 570, 250, 333, 250, 278,
+  500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 333, 333, 570, 570, 570, 500,
+  832, 667, 667, 667, 722, 667, 667, 722, 778, 389, 500, 667, 611, 889, 722, 722,
+  611, 722, 667, 556, 611, 722, 667, 889, 667, 611, 611, 333, 278, 333, 570, 500,
+  333, 500, 500, 444, 500, 444, 333, 500, 556, 278, 278, 500, 278, 778, 556, 500,
+  500, 500, 389, 389, 278, 556, 444, 667, 500, 444, 389, 348, 220, 348, 570, 0,
+  744, 0, 333, 500, 500, 1000, 500, 500, 333, 1000, 556, 333, 944, 0, 611, 0,
+  0, 333, 333, 500, 500, 350, 500, 1000, 333, 1000, 389, 333, 722, 0, 389, 611,
+  250, 389, 500, 500, 500, 500, 220, 500, 333, 747, 266, 500, 606, 333, 747, 333,
+  400, 549, 300, 300, 333, 576, 500, 250, 333, 300, 300, 500, 750, 750, 750, 500,
+  667, 667, 667, 667, 667, 667, 944, 667, 667, 667, 667, 667, 389, 389, 389, 389,
+  722, 722, 722, 722, 722, 722, 722, 570, 722, 722, 722, 722, 722, 611, 611, 500,
+  500, 500, 500, 500, 500, 500, 722, 444, 444, 444, 444, 485, 278, 278, 278, 395,
+  500, 556, 500, 500, 500, 500, 500, 549, 500, 556, 556, 556, 556, 444, 500, 444,
+];
+
+const COURIER_WIDTH = 600;
+
+const BASE14_WIDTHS: Record<string, readonly number[]> = {
+  'Helvetica': W_HELVETICA, 'Helvetica-Oblique': W_HELVETICA,
+  'Helvetica-Bold': W_HELVETICA_BOLD, 'Helvetica-BoldOblique': W_HELVETICA_BOLD,
+  'Times-Roman': W_TIMES, 'Times-Italic': W_TIMES_ITALIC,
+  'Times-Bold': W_TIMES_BOLD, 'Times-BoldItalic': W_TIMES_BOLD_ITALIC,
+};
+
+/** How wide the substitute face sets one WinAnsi code, in px at `size`. */
+function base14Width(face: string, code: number, size: number): number {
+  const table = BASE14_WIDTHS[face];
+  const w = table === undefined ? COURIER_WIDTH : (table[code - 32] ?? 500);
+  return (w * size) / 1000;
 }
 
 /* WinAnsi codes for the punctuation Artboard can produce above ASCII. */
@@ -877,12 +1011,24 @@ function fontName(p: Painter, style: TextStyle): string {
 }
 
 /**
- * One line of text, glyph by glyph.
+ * One line of text.
  *
- * Each glyph gets its own text matrix at the x the engine's metrics put it at.
- * That is more verbose than one `Tj` per line, and it is the whole point: it
- * makes the PDF line occupy exactly the SVG line's box despite the substitute
- * face, instead of drifting further out of place with every character.
+ * Words are placed, not glyphs: each word starts at exactly the x the engine's
+ * metrics put it at, and the substitute face sets its own letters inside the
+ * word. That keeps the line's boxes and breaks identical to the SVG while the
+ * typography still reads as typography — forcing every individual glyph into
+ * place instead leaves visible gaps inside words wherever Helvetica and the
+ * design face disagree.
+ *
+ * Each word is then fitted to the exact width the engine gave it, because a
+ * substitute face that runs wider would otherwise swallow the space after the
+ * word - Helvetica-Bold sets "PRODUCT" 0.3pt short of the box Space Grotesk
+ * gives it, and the space that should follow disappears. The correction is
+ * split: up to 5% of horizontal scaling (`Tz`), the rest as even letter-spacing
+ * (`Tc`). Doing all of it either way is what looks wrong.
+ *
+ * Only one case still needs per-glyph placement, and takes it: text riding a
+ * path, where every glyph has its own rotation.
  */
 function drawLine(p: Painter, style: TextStyle, text: string, x: number, y: number, place?: (offset: number) => [number, number, number]): void {
   if (text === '') return;
@@ -895,22 +1041,72 @@ function drawLine(p: Painter, style: TextStyle, text: string, x: number, y: numb
   if (style.color.a < 1) p.ops.push(`/${gstate(p, `/ca ${f(style.color.a)}`)} gs`);
   p.ops.push('BT', `/${fontName(p, style)} ${f(style.size)} Tf`);
 
-  let cursor = 0;
-  chars.forEach((ch, i) => {
+  // Only text on a path needs glyph-by-glyph placement.
+  const perGlyph = place !== undefined;
+  const face = base14(style.family, style.weight, style.italic);
+  if (perGlyph && style.tracking !== 0) p.ops.push(`${f(style.tracking)} Tc`);
+  const encoded: Array<string | null> = chars.map(ch => {
     const code = winAnsi(ch);
-    const advance = widths[i] as number;
-    if (code === null) {
-      if (ch.trim() !== '') p.notes.add('Some characters are outside the PDF base-14 encoding and were dropped.');
-      cursor += advance;
-      return;
-    }
-    const [gx, gy, angle] = place ? place(cursor + advance / 2) : [start + cursor, y, 0];
-    const cos = Math.cos(angle), sin = Math.sin(angle);
-    const ox = place ? -advance / 2 : 0;
-    p.ops.push(`${f(cos)} ${f(sin)} ${f(sin)} ${f(-cos)} ${f(gx + ox * cos)} ${f(gy + ox * sin)} Tm`);
-    p.ops.push(`${pdfString(String.fromCharCode(code))} Tj`);
-    cursor += advance;
+    if (code === null && ch.trim() !== '') p.notes.add('Some characters are outside the PDF base-14 encoding and were dropped.');
+    return code === null ? null : String.fromCharCode(code);
   });
+
+  let scale = 100, spacing = 0;
+  const emit = (from: number, to: number): void => {
+    const run = encoded.slice(from, to).filter((c): c is string => c !== null).join('');
+    if (run === '') return;
+    let cursor = 0;
+    for (let i = 0; i < from; i++) cursor += widths[i] as number;
+
+    // Fit the word to the box the engine measured, or the substitute face runs
+    // wide and eats the space after it. `advances` leaves the gap off the last
+    // glyph of the line, so the last word gets it back here.
+    let target = to === chars.length ? style.tracking : 0;
+    for (let i = from; i < to; i++) target += widths[i] as number;
+    let glyphs = 0;
+    for (const glyph of run) glyphs += base14Width(face, glyph.charCodeAt(0), style.size);
+
+    // Split the correction. Up to 5% goes to horizontal scaling, which is
+    // invisible; the rest is spread evenly between the glyphs as spacing, which
+    // is what a typesetter would do and never distorts a letterform. Doing all
+    // of it either way is what looks wrong - all-scaling fattens a two-letter
+    // word by a fifth, all-spacing puts the whole error into one or two gaps.
+    // A one-glyph word has no gaps to spread anything into, so there scaling is
+    // the only channel and it gets the whole correction rather than overflowing
+    // into the next word.
+    const natural = glyphs + run.length * style.tracking;
+    const floor = run.length === 1 ? 25 : 95;
+    const fit = natural > 0 ? Math.min(Math.max((100 * target) / natural, floor), 105) : 100;
+    const space = ((target * 100) / fit - glyphs) / run.length;
+
+    if (f(fit) !== f(scale)) { p.ops.push(`${f(fit)} Tz`); scale = fit; }
+    if (f(space) !== f(spacing)) { p.ops.push(`${f(space)} Tc`); spacing = space; }
+    p.ops.push(`1 0 0 -1 ${f(start + cursor)} ${f(y)} Tm`, `${pdfString(run)} Tj`);
+  };
+
+  if (perGlyph) {
+    let cursor = 0;
+    chars.forEach((ch, i) => {
+      const advance = widths[i] as number;
+      const glyph = encoded[i];
+      if (glyph !== null && glyph !== undefined) {
+        const [gx, gy, angle] = place(cursor + advance / 2);
+        const cos = Math.cos(angle), sin = Math.sin(angle);
+        const ox = -advance / 2;   // place() reports the glyph centre; draw from its left edge
+        p.ops.push(`${f(cos)} ${f(sin)} ${f(sin)} ${f(-cos)} ${f(gx + ox * cos)} ${f(gy + ox * sin)} Tm`);
+        p.ops.push(`${pdfString(glyph)} Tj`);
+      }
+      cursor += advance;
+    });
+  } else {
+    let wordStart = -1;
+    chars.forEach((ch, i) => {
+      const isSpace = ch === ' ' || ch === '\t';
+      if (!isSpace && wordStart < 0) wordStart = i;
+      if (isSpace && wordStart >= 0) { emit(wordStart, i); wordStart = -1; }
+    });
+    if (wordStart >= 0) emit(wordStart, chars.length);
+  }
 
   p.ops.push('ET', 'Q');
 }

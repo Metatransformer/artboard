@@ -268,6 +268,14 @@ async function cmdExport(argv: Argv): Promise<number> {
     writeBytes(target, toBytes(only.data));
     written.push(target);
   } else {
+    // Several pages, no --zip: --out names the directory they land in. An --out
+    // that looks like a file is a mistake worth catching, not a directory to
+    // make - unless it already exists as a directory, in which case there is
+    // nothing to guess and `releases/v1.2` is a perfectly good name.
+    const known = existsSync(out ?? '.') && statSync(out ?? '.').isDirectory();
+    if (out !== undefined && !known && /\.[a-z0-9]+$/i.test(out)) {
+      throw new UsageError(`This export is ${files.length} files, so --out names a directory. Drop the extension from "${out}", or add --zip to write one archive there.`);
+    }
     const dir = resolve(process.cwd(), out ?? '.');
     for (const f of files) {
       const target = join(dir, f.name);
