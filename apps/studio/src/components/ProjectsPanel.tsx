@@ -564,14 +564,15 @@ interface CardProps {
 
 function ProjectCard(props: CardProps) {
   const { p, now, isCurrent, folders, byId, renaming, draft, setDraft } = props;
-  const ratio = p.width > 0 && p.height > 0 ? p.height / p.width : 1;
 
   return (
     <li className={`pj-card ${isCurrent ? 'on' : ''}`}>
       <button className="pj-open" onClick={props.onOpen} title={`Open ${p.name}`} aria-label={`Open ${p.name}`}>
+        {/* The serializer's root <svg> carries a viewBox, so a fixed tile letterboxes
+            every proportion into one tidy grid instead of a ragged one. */}
         {p.thumbnail
-          ? <span className="thumb pj-thumb" style={{ paddingBottom: `${ratio * 100}%` }} dangerouslySetInnerHTML={{ __html: p.thumbnail }} />
-          : <span className="thumb pj-thumb pj-nothumb" style={{ paddingBottom: `${ratio * 100}%` }}><em>No preview</em></span>}
+          ? <span className="thumb pj-thumb" dangerouslySetInnerHTML={{ __html: p.thumbnail }} />
+          : <span className="thumb pj-thumb pj-nothumb"><em>No preview</em></span>}
       </button>
 
       {renaming ? (
@@ -595,7 +596,12 @@ function ProjectCard(props: CardProps) {
       ) : (
         <div className="pj-cardmeta">
           <span className="pj-cardname" title={p.name}>{p.name}{isCurrent ? ' (open)' : ''}</span>
-          <span className="pj-sub">{Math.round(p.width)} × {Math.round(p.height)} · edited {relative(p.updatedAt, now)}</span>
+          {/* Two chunks that wrap as wholes, so a narrow card never breaks
+              "edited just now" across a line. */}
+          <span className="pj-sub">
+            <span>{Math.round(p.width)} × {Math.round(p.height)}</span>
+            <span>edited {relative(p.updatedAt, now)}</span>
+          </span>
         </div>
       )}
 

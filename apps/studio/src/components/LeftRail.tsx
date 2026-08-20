@@ -4,6 +4,8 @@ import { renderArtboard, serialize } from '@artboard/render-svg';
 import { TEMPLATES, CATEGORIES } from '@artboard/templates';
 import { useEditor, documentFromTemplate } from '../state/store';
 import { makeNode } from './Canvas';
+import { BrandPanel } from './BrandPanel';
+import { ProjectsPanel } from './ProjectsPanel';
 
 /**
  * The left rail holds CONTENT SOURCES only - things you bring *into* the
@@ -11,9 +13,10 @@ import { makeNode } from './Canvas';
  * browse one library at a time. Document state (layers) and selection
  * properties live in the right dock, so they stay visible while you browse.
  */
-type Section = 'design' | 'elements' | 'text' | 'uploads' | 'brand';
+type Section = 'projects' | 'design' | 'elements' | 'text' | 'uploads' | 'brand';
 
 const RAIL: Array<{ id: Section; label: string; icon: React.ReactNode }> = [
+  { id: 'projects', label: 'Projects', icon: <path d="M3 7.5A1.5 1.5 0 014.5 6h4l2 2.5h9A1.5 1.5 0 0121 10v8a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 18z" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round" /> },
   { id: 'design', label: 'Design', icon: <><rect x="3" y="3" width="7.5" height="7.5" rx="1.5" /><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5" /><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5" /><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5" /></> },
   { id: 'elements', label: 'Elements', icon: <><circle cx="8" cy="8" r="5" /><rect x="11.5" y="11.5" width="9.5" height="9.5" rx="1.6" /></> },
   { id: 'text', label: 'Text', icon: <path d="M4 6.5V4h16v2.5M12 4v16M8.5 20h7" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" /> },
@@ -41,7 +44,7 @@ export function LeftRail() {
       </nav>
 
       {open && (
-        <aside className="drawer" aria-label={`${open} library`}>
+        <aside className={`drawer drawer-${open}`} aria-label={`${open} library`}>
           <header className="drawer-head">
             <h2>{RAIL.find(r => r.id === open)!.label}</h2>
             <button className="tool sm" title="Close panel" aria-label="Close panel" onClick={() => setOpen(null)}>
@@ -49,11 +52,12 @@ export function LeftRail() {
             </button>
           </header>
           <div className="drawer-body">
+            {open === 'projects' && <ProjectsPanel />}
             {open === 'design' && <Designs />}
             {open === 'elements' && <Elements />}
             {open === 'text' && <TextLibrary />}
             {open === 'uploads' && <Uploads />}
-            {open === 'brand' && <Brand />}
+            {open === 'brand' && <BrandPanel />}
           </div>
         </aside>
       )}
@@ -295,42 +299,4 @@ function probe(dataUrl: string): Promise<{ width: number; height: number }> {
     img.onerror = () => rej(new Error('That file is not a readable image.'));
     img.src = dataUrl;
   });
-}
-
-/* ── Brand ──────────────────────────────────────────────────────────────── */
-
-const PALETTES: Array<{ name: string; colors: string[] }> = [
-  { name: 'Studio', colors: ['#0f1117', '#6366f1', '#ec4899', '#f8fafc', '#f59e0b'] },
-  { name: 'Editorial', colors: ['#1c1917', '#78716c', '#d6d3d1', '#fafaf9', '#b91c1c'] },
-  { name: 'Botanical', colors: ['#14342b', '#3f7d5e', '#a3c9a8', '#f4f1de', '#e07a5f'] },
-  { name: 'Sunset', colors: ['#2b1055', '#7597de', '#ff6e7f', '#ffd6a5', '#fffbf0'] },
-  { name: 'Mono', colors: ['#000000', '#3f3f46', '#a1a1aa', '#e4e4e7', '#ffffff'] },
-];
-
-function Brand() {
-  const { state, run, artboard } = useEditor();
-  const sel = state.selection;
-
-  const applyColor = (color: string) => {
-    if (sel.length === 0) { run({ type: 'setArtboard', artboardId: artboard.id, patch: { background: { kind: 'solid', color } } }); return; }
-    for (const id of sel) run({ type: 'updateNode', nodeId: id, patch: { fill: { kind: 'solid', color } } });
-  };
-
-  return (
-    <>
-      <p className="hint tight">
-        {sel.length ? `Applies to ${sel.length} selected item${sel.length > 1 ? 's' : ''}.` : 'Nothing selected, so a colour sets the page background.'}
-      </p>
-      {PALETTES.map(p => (
-        <div key={p.name} className="palette">
-          <h4>{p.name}</h4>
-          <div className="prow">
-            {p.colors.map(c => (
-              <button key={c} className="swatch" style={{ background: c }} title={c} onClick={() => applyColor(c)} />
-            ))}
-          </div>
-        </div>
-      ))}
-    </>
-  );
 }
