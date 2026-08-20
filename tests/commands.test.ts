@@ -625,24 +625,23 @@ describe('commands: known bugs', () => {
 });
 
 describe('commands: known bugs (continued)', () => {
-  // BUG: `makeGroup` hand-writes the group node field by field, and has
-  // fallen behind NodeBase — it never sets `alt`,
-  // `flipX` or `flipY`. A grouped document therefore does not survive a save +
-  // reload unchanged: the reload defaults those three in and the node differs.
-  // This is exactly what buildNode() exists to prevent.
-  // Fix: `return buildNode({ id, name: 'Group', kind: 'group', x: minX, ... })`.
-  it.fails('produces a schema-complete group node', () => {
+  // REGRESSION GUARD: `makeGroup` used to hand-write the group node field by
+  // field and cast it to `Node`, which let it fall behind NodeBase — it never
+  // set `alt`, `flipX` or `flipY`, so a grouped document did not survive a save
+  // + reload unchanged. It now goes through `buildNode`. These two stay because
+  // the failure was silent: the cast suppresses the compiler error that would
+  // otherwise catch the next field the schema gains.
+  it('produces a schema-complete group node', () => {
     const doc = loadDocument({ id: 'd', artboards: [{ id: AB, width: 500, height: 500, nodes: [
       buildNode({ id: 'a', kind: 'rect', x: 0, y: 0, width: 10, height: 10 }),
       buildNode({ id: 'b', kind: 'rect', x: 50, y: 50, width: 10, height: 10 }),
     ]}]}).doc;
     const grouped = apply(doc, { type: 'group', artboardId: AB, nodeIds: ['a', 'b'], groupId: 'G' });
 
-    // actual: alt, flipX and flipY are all absent
     expect(findNode(grouped, 'G')).toMatchObject({ alt: '', flipX: false, flipY: false });
   });
 
-  it.fails('lets a grouped document survive a save/load cycle unchanged', () => {
+  it('lets a grouped document survive a save/load cycle unchanged', () => {
     const doc = loadDocument({ id: 'd', artboards: [{ id: AB, width: 500, height: 500, nodes: [
       buildNode({ id: 'a', kind: 'rect', x: 0, y: 0, width: 10, height: 10 }),
       buildNode({ id: 'b', kind: 'rect', x: 50, y: 50, width: 10, height: 10 }),

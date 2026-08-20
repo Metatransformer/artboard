@@ -1,4 +1,4 @@
-import type { Document, Node } from '@artboard/schema';
+import { buildNode, type Document, type Node } from '@artboard/schema';
 import { aabb } from '@artboard/engine';
 
 /** Immutable command layer. apply(doc, cmd) -> newDoc. invert(cmd) -> undo cmd. */
@@ -279,15 +279,17 @@ function makeGroup(id: string, members: Node[]): Node {
   const minY = Math.min(...boxes.map(b => b.y));
   const maxX = Math.max(...boxes.map(b => b.x + b.width));
   const maxY = Math.max(...boxes.map(b => b.y + b.height));
-  return {
+  // Through `buildNode`, never a hand-written literal cast to `Node`: the cast
+  // silences the compiler exactly when the schema grows a field this forgot, so
+  // the group a user makes stops matching the group a reload parses and the
+  // document no longer survives save/load unchanged. Zod fills every default.
+  return buildNode({
     id, name: 'Group', kind: 'group',
     x: minX, y: minY, width: maxX - minX, height: maxY - minY,
-    rotation: 0, opacity: 1, visible: true, locked: false,
-    shadow: null, effects: [], blend: 'normal',
     // Children stay in artboard space - render-svg's `case 'group'` draws each
     // child with its own absolute x/y and adds no translate of its own.
     children: members,
-  } as Node;
+  });
 }
 
 export const uid = (prefix = 'n'): string => `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
