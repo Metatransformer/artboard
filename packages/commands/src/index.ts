@@ -42,7 +42,16 @@ export function apply(doc: Document, cmd: Command): Document {
       });
 
     case 'removeNode':
-      return mapArtboard(doc, cmd.artboardId, ab => ({ ...ab, nodes: ab.nodes.filter((n: Node) => n.id !== cmd.nodeId) }));
+      // Throws on a node that is not there, like `updateNode`, `reorder` and
+      // `group` do — and like this command's own `invert` already did. A filter
+      // that quietly matches nothing reports a successful delete to whatever
+      // asked for it, which is survivable in the editor (the user can see the
+      // node is still on screen) and not survivable for an unattended caller.
+      return mapArtboard(doc, cmd.artboardId, ab => {
+        const nodes = (ab.nodes as Node[]).filter((n: Node) => n.id !== cmd.nodeId);
+        if (nodes.length === ab.nodes.length) throw new StaleCommandError(cmd.nodeId);
+        return { ...ab, nodes };
+      });
 
     case 'updateNode': {
       let hit = false;

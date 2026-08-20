@@ -1,0 +1,18 @@
+{
+  "name": "@artboard/mcp",
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "bin": { "artboard-mcp": "./bin/artboard-mcp.mjs" },
+  "files": ["bin", "src"],
+  "main": "src/index.ts",
+  "dependencies": {
+    "@artboard/commands": "*",
+    "@artboard/engine": "*",
+    "@artboard/render-svg": "*",
+    "@artboard/schema": "*",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "tsx": "^4.19.0",
+    "zod": "3.25.76"
+  }
+}

@@ -15,6 +15,9 @@ export default defineConfig({
       '@artboard/charts': pkg('charts'),
       '@artboard/codes': pkg('codes'),
       '@artboard/icons': pkg('icons'),
+      // The MCP server has no barrel export -- its modules are reached directly,
+      // because `main.ts` starts a stdio server the moment it is imported.
+      '@artboard/mcp/workspace': fileURLToPath(new URL('./packages/mcp/src/workspace.ts', import.meta.url)),
     },
   },
   test: {

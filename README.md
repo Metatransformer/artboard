@@ -69,7 +69,8 @@ rounding and snapping, and it imports the schema for types only.
 geometry into a scene graph. [`@artboard/commands`](packages/commands) is the only
 way a document changes: immutable `apply`/`invert` with undo and redo falling out of
 the inverse. On top sit [`apps/studio`](apps/studio), the React editor, and
-[`packages/cli`](packages/cli), the headless renderer.
+[`packages/cli`](packages/cli), the headless renderer, and
+[`@artboard/mcp`](packages/mcp), the same model over MCP for agents.
 
 ### The key insight
 
@@ -397,6 +398,23 @@ Rendering is a pure function of the document. No network, no filesystem reads be
 the input file, no clock, no randomness, no OS font lookup. The same input produces
 the same bytes on your laptop and on a CI runner, which is what makes `golden` mean
 anything.
+
+## Agents: the MCP server
+
+The same document model is exposed over MCP, so an agent can read a design and
+edit it without a browser — [`@artboard/mcp`](packages/mcp).
+
+```bash
+claude mcp add artboard -- node packages/mcp/bin/artboard-mcp.mjs ~/designs
+```
+
+`open_document` returns an outline of every artboard and node, `render_artboard`
+returns the SVG the editor would draw, and `edit_document` takes the same
+commands the editor's undo stack runs on. Two things keep it safe to point at an
+agent, both structural rather than advisory: every path is confined to the one
+workspace root chosen at launch, and every edit is re-parsed by the schema before
+it reaches disk, so an agent cannot write a document the editor would refuse to
+open. `--read-only` drops the write tools entirely.
 
 ---
 
