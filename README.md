@@ -392,12 +392,23 @@ node packages/cli/bin/artboard.mjs validate brand/poster.artboard.json || exit 1
 
 # Check nothing changed how designs render
 npm run golden
+
+# Ask the opposite question: which render paths does no fixture exercise?
+npm run golden:coverage
 ```
 
 Rendering is a pure function of the document. No network, no filesystem reads beyond
 the input file, no clock, no randomness, no OS font lookup. The same input produces
 the same bytes on your laptop and on a CI runner, which is what makes `golden` mean
 anything.
+
+`golden` can only prove that the paths some fixture walks still render the same way.
+It is silent about everything else, and a green oracle reads as "checked" — which is
+how grouping, image fit modes and the first cut of arrowheads all shipped with unit
+proof and no rendered proof. `tools/golden-coverage.mjs` derives the checklist from
+the schema (add a field, it shows up on the next run) and prints the paths no fixture
+touches. It is a report, not a gate: most gaps are not worth a fixture, and it exists
+so that judgement is made deliberately rather than by omission.
 
 ## Agents: the MCP server
 

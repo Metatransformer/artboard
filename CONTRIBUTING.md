@@ -205,13 +205,22 @@ Two things to know before reading the number:
 - **It is a report, not a gate.** It always exits 0. Uncovered paths are a prompt to
   judge whether a fixture earns its keep, and often it does not — seven blend modes
   down one `mix-blend-mode` emission buy nothing the first one did not.
-- **The denominator counts per node kind**, so `rect.blend=screen` and
-  `ellipse.blend=screen` are two entries for one code path. Read the list, not the
-  ratio; the ratio is pessimistic by construction.
+- **Dimensions are keyed on the field, not on node kind × field.** `blend`, `rotation`
+  and `flipX` live on `NodeBase` and are emitted by one shared path for every kind, so
+  they count once. An earlier cut keyed them per kind, got 283 dimensions, and buried
+  the seven real gaps under 200 entries like `ellipse.blend=hue` that were all true and
+  all useless.
 
-The "thinnest coverage" section at the bottom is the more actionable half — paths
-riding on a single fixture, where deleting that one fixture silently stops testing
-them.
+The `RIDING ON A SINGLE FIXTURE` section at the bottom is the more actionable half —
+paths held up by exactly one file, where deleting that file stops testing them and
+nothing goes red. That is the number worth watching.
+
+Prefer to extend the derivation over adding to `IGNORED`. The tool has been
+mutation-tested — run against the fixture set with `render-features.json` removed via
+`--dir`, coverage drops 53 → 44 and exactly that fixture's unique paths flip to
+missing — so a false "covered" is the one thing it is known not to do. Keep it that
+way: an exclusion that hides a real path re-creates the stale-allowlist bug the tool
+exists to prevent.
 
 ### The golden output is an API
 

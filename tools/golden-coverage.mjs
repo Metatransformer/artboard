@@ -6,192 +6,198 @@
  *   node tools/golden-coverage.mjs
  *
  * `artboard golden` proves that what the renderer draws today matches what it
- * drew yesterday — but only along the paths some fixture actually walks. A
+ * drew yesterday -- but only along the paths some fixture actually walks. A
  * feature with no fixture behind it is not "passing", it is unobserved, and a
- * green oracle reads downstream as "checked". Three separate regressions this
- * project shipped were hiding in exactly that gap.
+ * green oracle reads downstream as "checked". Several regressions this project
+ * shipped were hiding in exactly that gap: grouping, image fit modes, and the
+ * first cut of markers/flips/gradients all had unit proof and no rendered proof.
  *
- * ── how the checklist is built ────────────────────────────────────────────
- * DERIVED FROM THE SCHEMA, not hand-listed. Every node schema in `Node` is
- * introspected and each field turned into the render paths it can select:
- * an enum becomes one dimension per option, a boolean one dimension, a
- * nullable/optional one "is it set". Add `z.enum(['a','b'])` to the schema and
- * both values appear here on the next run with nobody remembering to add them.
+ * -- how the checklist is built --------------------------------------------
+ * DERIVED FROM THE SCHEMA, never hand-listed. Every node schema in `Node` is
+ * introspected and each field becomes the render paths it can select: an enum
+ * contributes its options, a boolean contributes itself, a nullable or optional
+ * contributes "is it set". Add a field to the schema and it appears here on the
+ * next run with nobody having remembered to add it.
  *
- * The only hand-maintained list is IGNORED below — an *exclusion* list, which
- * is the safe polarity: forgetting to exclude something shows up as noise in
- * the report, where forgetting to include something would show up as nothing
- * at all. Anything this script cannot classify is reported as UNCLASSIFIED
- * rather than silently dropped, so a field of a novel shape is loud.
+ * Dimensions are keyed on the FIELD, not on node-kind x field, because that is
+ * how the renderer is built -- `blend`, `rotation`, `flipX` and friends live on
+ * `NodeBase` and are emitted by one shared code path for every kind. Keying on
+ * the pair would report `ellipse.blend=hue` and 200 siblings: true, useless,
+ * and the fastest way to make a report nobody reads.
  *
- * This is a report, not a gate: it always exits 0. Uncovered paths are a
- * prompt to judge whether a fixture is worth it, and often it is not — seven
- * blend modes down one `mix-blend-mode` emission buy nothing that the first
- * one did not already buy.
+ * The only hand-maintained list is IGNORED -- an *exclusion* list, the safe
+ * polarity: forgetting to exclude shows up as noise, where forgetting to
+ * include would show up as nothing at all. Anything unrecognised is reported as
+ * UNCLASSIFIED rather than dropped, so a field of a novel shape is loud.
+ *
+ * -- what it cannot tell you ------------------------------------------------
+ * Coverage here means "a fixture sets this", not "the renderer branched on it".
+ * The schema lets you put `markerStart` on an ellipse; the renderer only draws
+ * markers for `line` and `path`. So a dimension can read covered from a node
+ * that never renders it. It over-claims rather than under-claims, and only for
+ * combinations nobody writes.
+ *
+ * A report, not a gate: always exits 0. An uncovered path is a prompt to judge
+ * whether a fixture earns its place, and often it does not -- seven blend modes
+ * down one shared `mix-blend-mode` emission buy nothing the first one did not.
  */
 import { readdirSync, readFileSync } from 'node:fs';
+// This report gets piped to `head` and `grep` constantly; a closed stdout is
+// the reader having seen enough, not an error worth a stack trace.
+process.stdout.on('error', (e) => { if (e.code === 'EPIPE') process.exit(0); });
+
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const FIXTURES = join(ROOT, 'tests', 'golden');
+/** `--dir <path>` mirrors `artboard golden --dir`, and makes this script's own
+ *  claims testable: drop a fixture, re-run, and the paths it uniquely carried
+ *  must flip to missing. */
+const dirArg = process.argv.indexOf('--dir');
+const FIXTURES = dirArg > -1 && process.argv[dirArg + 1]
+  ? process.argv[dirArg + 1]
+  : join(ROOT, 'tests', 'golden');
 
 /**
- * Fields that carry content rather than select a render path. Their value
- * changes what you see but not which branch of the renderer runs, so "is it
- * set" says nothing about coverage.
+ * Fields carrying content rather than selecting a render path: their value
+ * changes what you see, not which branch runs. Geometry lives here too -- every
+ * fixture sets x/y/width/height, so "is it set" says nothing about coverage.
  */
 const IGNORED = new Set([
   'id', 'name', 'kind', 'text', 'd', 'assetId', 'raw', 'originalKind', 'children',
   'x', 'y', 'width', 'height', 'color', 'fontFamily', 'fontSize', 'fontWeight',
-  'viewBox', 'frameD', 'frameBox', 'stops', 'angle', 'cx', 'cy', 'r', 'offset',
-  'locked', 'lineHeight',
+  'viewBox', 'frameD', 'frameBox', 'stops', 'offset', 'locked', 'lineHeight',
+  'angle', 'cx', 'cy', 'r',
 ]);
 
-/* ── schema introspection ─────────────────────────────────────────────────── */
-
+/* -- schema introspection -------------------------------------------------- */
 const { register } = await import('tsx/esm/api');
 register();
 const S = await import('@artboard/schema');
 
 const tn = (s) => s?._def?.typeName;
-const unwrapLazy = (s) => (tn(s) === 'ZodLazy' ? s._def.getter() : s);
+const unlazy = (s) => (tn(s) === 'ZodLazy' ? s._def.getter() : s);
 
-/** Every dimension the schema can express, as `label -> probe(value, node)`. */
+/** label -> { read, values: Set|null, seen: Set<"value file"> }. */
 const dims = new Map();
 const unclassified = [];
-const add = (label, probe) => { if (!dims.has(label)) dims.set(label, probe); };
+const dim = (label, read, values = null) => {
+  if (!dims.has(label)) dims.set(label, { read, values: values && new Set(values), seen: new Set() });
+};
 
-/** Turn one schema field into zero or more coverage dimensions. */
-function classify(prefix, key, schema) {
+/** Dotted path to a reader, so `stroke.cap` reads node.stroke.cap. */
+const reader = (path) => (n) => path.split('.').reduce((o, k) => (o == null ? o : o[k]), n);
+
+function classify(path, key, schema) {
   if (IGNORED.has(key)) return;
+  const full = path ? `${path}.${key}` : key;
+  const read = reader(full);
   const t = tn(schema);
 
   if (t === 'ZodDefault') {
-    const inner = schema._def.innerType;
-    const it = tn(inner);
-    const dflt = schema._def.defaultValue();
-    if (it === 'ZodEnum') {
-      for (const opt of inner.options) add(`${prefix}.${key}=${opt}`, (v) => (v ?? dflt) === opt);
-      return;
-    }
-    if (it === 'ZodBoolean') { add(`${prefix}.${key}`, (v) => v === true); return; }
-    if (it === 'ZodNumber')  { add(`${prefix}.${key}≠${dflt}`, (v) => v !== undefined && v !== dflt); return; }
-    if (it === 'ZodArray')   { add(`${prefix}.${key} non-empty`, (v) => Array.isArray(v) && v.length > 0); return; }
-    if (it === 'ZodString')  { add(`${prefix}.${key} non-empty`, (v) => typeof v === 'string' && v !== ''); return; }
-    if (it === 'ZodNullable'){ add(`${prefix}.${key} set`, (v) => v !== undefined && v !== null); return; }
-    if (it === 'ZodObject')  { descend(`${prefix}.${key}`, inner); return; }
-    unclassified.push(`${prefix}.${key} (ZodDefault<${it}>)`);
-    return;
+    const inner = schema._def.innerType, it = tn(inner), dflt = schema._def.defaultValue();
+    if (it === 'ZodEnum')      return dim(full, (n) => read(n) ?? dflt, inner.options);
+    // The interesting side of a boolean is whichever one is NOT the default:
+    // `flipX` matters when true, `visible` matters when false.
+    if (it === 'ZodBoolean')   return dim(`${full} = ${!dflt}`, (n) => read(n) === !dflt);
+    if (it === 'ZodNumber')    return dim(`${full} != ${dflt}`, (n) => read(n) !== undefined && read(n) !== dflt);
+    if (it === 'ZodArray')     return dim(`${full} non-empty`, (n) => (read(n)?.length ?? 0) > 0);
+    if (it === 'ZodString')    return dim(`${full} non-empty`, (n) => !!read(n));
+    if (it === 'ZodNullable')  return dim(`${full} set`, (n) => read(n) != null);
+    if (it === 'ZodObject')    return descend(full, inner);
+    // A defaulted union (every shape's `fill`) still selects a paint branch.
+    if (it === 'ZodDiscriminatedUnion') return union(full, inner, (n) => read(n) ?? dflt);
+    return void unclassified.push(`${full} (ZodDefault<${it}>)`);
   }
-  if (t === 'ZodOptional') { add(`${prefix}.${key} set`, (v) => v !== undefined && v !== null); return; }
-  if (t === 'ZodDiscriminatedUnion') { descendUnion(`${prefix}.${key}`, schema); return; }
-  if (t === 'ZodObject') { descend(`${prefix}.${key}`, schema); return; }
+  if (t === 'ZodOptional')           return dim(`${full} set`, (n) => read(n) != null);
+  if (t === 'ZodObject')             return descend(full, schema);
+  if (t === 'ZodDiscriminatedUnion') return union(full, schema, read);
   if (t === 'ZodArray') {
-    // effects[] — the element union's members are the real dimensions
-    const el = unwrapLazy(schema._def.type);
+    const el = unlazy(schema._def.type);
     if (tn(el) === 'ZodDiscriminatedUnion') {
-      for (const opt of el.options) {
-        const k = opt.shape.kind._def.value;
-        add(`${prefix}.${key}:${k}`, (v) => Array.isArray(v) && v.some((e) => e?.kind === k));
-      }
-      return;
+      const kinds = el.options.map((o) => o.shape.kind._def.value);
+      return dim(full, (n) => (read(n) ?? []).map((e) => e?.kind), kinds);
     }
-    unclassified.push(`${prefix}.${key} (ZodArray)`);
-    return;
+    return void unclassified.push(`${full} (ZodArray)`);
   }
   if (t === 'ZodString' || t === 'ZodNumber') return;   // required content field
-  unclassified.push(`${prefix}.${key} (${t})`);
+  unclassified.push(`${full} (${t})`);
 }
 
-function descend(prefix, obj) {
-  for (const [k, v] of Object.entries(obj.shape)) classify(prefix, k, v);
-}
+const descend = (path, obj) => { for (const [k, v] of Object.entries(obj.shape)) classify(path, k, v); };
 
-/** A `Fill`-shaped union: each member kind is a dimension, plus its own fields. */
-function descendUnion(prefix, union) {
-  for (const opt of union.options) {
+/** A `Fill`-shaped union: member kinds are the values; recurse for inner enums. */
+function union(path, schema, read) {
+  dim(path, (n) => read(n)?.kind, schema.options.map((o) => o.shape.kind._def.value));
+  for (const opt of schema.options) {
     const k = opt.shape.kind._def.value;
-    add(`${prefix}:${k}`, (v) => v?.kind === k);
     for (const [fk, fv] of Object.entries(opt.shape)) {
-      if (IGNORED.has(fk) || fk === 'kind') continue;
-      const inner = tn(fv) === 'ZodDefault' ? fv._def.innerType : fv;
-      if (tn(inner) === 'ZodEnum') {
-        const dflt = tn(fv) === 'ZodDefault' ? fv._def.defaultValue() : undefined;
-        for (const o of inner.options) add(`${prefix}:${k}.${fk}=${o}`, (v) => v?.kind === k && (v[fk] ?? dflt) === o);
-      }
+      if (IGNORED.has(fk) || fk === 'kind' || tn(fv) !== 'ZodDefault') continue;
+      const inner = fv._def.innerType;
+      if (tn(inner) !== 'ZodEnum') continue;
+      const dflt = fv._def.defaultValue();
+      dim(`${path}:${k}.${fk}`, (n) => (read(n)?.kind === k ? read(n)[fk] ?? dflt : undefined), inner.options);
     }
   }
 }
 
-const nodeSchemas = new Map();
-for (const opt of unwrapLazy(S.Node).options) {
-  const kind = opt.shape.kind._def.value;
-  nodeSchemas.set(kind, opt);
-  add(`kind:${kind}`, () => false);          // probed against the node itself, below
-  descend(kind, opt);
-}
-descendUnion('artboard.background', S.Fill);
+dim('node kind', (n) => n.kind, unlazy(S.Node).options.map((o) => o.shape.kind._def.value));
+for (const opt of unlazy(S.Node).options) descend('', opt);
+union('artboard background', S.Fill, (ab) => ab.background ?? { kind: 'solid' });
 
-/* ── walk the fixtures ────────────────────────────────────────────────────── */
-
+/* -- walk the fixtures ----------------------------------------------------- */
 const files = readdirSync(FIXTURES).filter((f) => f.endsWith('.json')).sort();
-const seen = new Map();                       // label -> Set(fixture)
-const mark = (label, f) => { if (!seen.has(label)) seen.set(label, new Set()); seen.get(label).add(f); };
+const isBg = (label) => label.startsWith('artboard background');
 
-function visit(node, file) {
-  if (!node || typeof node !== 'object') return;
-  mark(`kind:${node.kind}`, file);
-  for (const [label, probe] of dims) {
-    if (!label.startsWith(`${node.kind}.`)) continue;
-    const path = label.slice(node.kind.length + 1).split(/[.=:≠]/)[0];
-    let value = node[path];
-    // one level of nesting: `rect.stroke.cap=round` reads node.stroke.cap
-    const rest = label.slice(node.kind.length + 1);
-    if (rest.includes('.')) {
-      const [outer, innerKey] = rest.split('.');
-      const leaf = innerKey.split(/[=≠ ]/)[0];
-      value = node[outer]?.[leaf];
-    }
-    if (probe(value, node)) mark(label, file);
+function record(subject, file, backgrounds) {
+  for (const [label, d] of dims) {
+    if (isBg(label) !== backgrounds) continue;
+    let v;
+    try { v = d.read(subject); } catch { continue; }
+    if (v === undefined || v === null || v === false) continue;
+    if (d.values) for (const x of Array.isArray(v) ? v : [v]) { if (d.values.has(x)) d.seen.add(`${x} ${file}`); }
+    else if (v === true) d.seen.add(` ${file}`);
   }
-  for (const child of node.children ?? []) visit(child, file);
 }
 
+const visit = (n, f) => { record(n, f, false); for (const c of n.children ?? []) visit(c, f); };
 for (const f of files) {
   const doc = JSON.parse(readFileSync(join(FIXTURES, f), 'utf8'));
-  for (const ab of doc.artboards ?? []) {
-    for (const [label, probe] of dims) {
-      if (label.startsWith('artboard.background') && probe(ab.background ?? { kind: 'solid' })) mark(label, f);
-    }
-    for (const n of ab.nodes ?? []) visit(n, f);
+  for (const ab of doc.artboards ?? []) { record(ab, f, true); for (const n of ab.nodes ?? []) visit(n, f); }
+}
+
+/* -- report ---------------------------------------------------------------- */
+const hits = (d) => new Set([...d.seen].map((s) => s.slice(0, s.lastIndexOf(' '))));
+let total = 0, covered = 0;
+const gaps = [];
+for (const [label, d] of [...dims].sort(([a], [b]) => a.localeCompare(b))) {
+  if (d.values) {
+    const hit = hits(d);
+    total += d.values.size;
+    covered += [...d.values].filter((v) => hit.has(v)).length;
+    const miss = [...d.values].filter((v) => !hit.has(v));
+    if (miss.length) gaps.push([label, miss.join(', '), miss.length === d.values.size]);
+  } else {
+    total += 1;
+    if (d.seen.size) covered += 1;
+    else gaps.push([label, '(never set)', true]);
   }
 }
 
-/* ── report ───────────────────────────────────────────────────────────────── */
-
-const labels = [...dims.keys()].sort();
-const missing = labels.filter((l) => !seen.has(l));
-const pad = (s, n) => s + ' '.repeat(Math.max(0, n - s.length));
-
-console.log(`golden coverage  ${files.length} fixtures  ${labels.length - missing.length}/${labels.length} render paths exercised\n`);
-
-if (missing.length) {
-  console.log('NOT EXERCISED BY ANY FIXTURE');
-  let group = '';
-  for (const m of missing) {
-    const g = m.split(/[.:]/)[0];
-    if (g !== group) { group = g; console.log(`  ${group}`); }
-    console.log(`    ${m}`);
-  }
-} else console.log('every derived render path has at least one fixture behind it.');
-
+console.log(`golden coverage  ${files.length} fixtures  ${covered}/${total} render paths exercised\n`);
+if (!gaps.length) console.log('every schema-expressible render path has a fixture behind it.');
+else {
+  console.log('NOT EXERCISED BY ANY FIXTURE   (* = nothing in this dimension at all)');
+  const w = Math.max(...gaps.map(([l]) => l.length));
+  for (const [label, miss, whole] of gaps) console.log(`  ${whole ? '*' : ' '} ${label.padEnd(w)}  ${miss}`);
+}
 if (unclassified.length) {
-  console.log('\nUNCLASSIFIED — this script does not know how to probe these, so they are');
-  console.log('counted as neither covered nor missing. Teach it, or add them to IGNORED:');
+  console.log('\nUNCLASSIFIED -- not probed, so counted as neither covered nor missing.');
+  console.log('Teach this script the shape, or add the field to IGNORED:');
   for (const u of unclassified) console.log(`    ${u}`);
 }
-
-console.log(`\n${pad('thinnest coverage', 20)} (paths riding on a single fixture)`);
-const thin = labels.filter((l) => seen.get(l)?.size === 1).slice(0, 12);
-for (const t of thin) console.log(`    ${pad(t, 34)} ${[...seen.get(t)][0]}`);
+const thin = [...dims].filter(([, d]) => !d.values && d.seen.size === 1);
+if (thin.length) {
+  console.log('\nRIDING ON A SINGLE FIXTURE  (delete it and the path goes unobserved)');
+  for (const [label, d] of thin) console.log(`    ${label.padEnd(22)} ${[...d.seen][0].trim()}`);
+}
