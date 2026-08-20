@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  SCHEMA_VERSION, DocumentParseError, parseDocument, loadDocument, findNode, walk,
+  SCHEMA_VERSION, DocumentParseError, parseDocument, loadDocument, findNode, walk, buildNode,
   type Document, type Node,
 } from '@artboard/schema';
 import { baseDoc } from './helpers';
@@ -162,6 +162,11 @@ describe('schema: defaults', () => {
     expect(t.rotation).toBe(0);
     expect(t.shadow).toBeNull();
     expect(t.name).toBe('');
+    expect(t.flipX).toBe(false);
+    expect(t.flipY).toBe(false);
+    expect(t.alt).toBe('');
+    expect(t.effects).toEqual([]);
+    expect(t.blend).toBe('normal');
     // text-specific defaults
     expect(t.fontFamily).toBe('Inter');
     expect(t.fontSize).toBe(48);
@@ -182,7 +187,7 @@ describe('schema: defaults', () => {
     expect(doc.assets).toEqual({});
     expect(doc.diagnostics).toEqual([]);
     expect(doc.artboards[0]!.name).toBe('Artboard');
-    expect(doc.artboards[0]!.background).toEqual({ kind: 'solid', color: '#ffffff' });
+    expect(doc.artboards[0]!.background).toMatchObject({ kind: 'solid', color: '#ffffff' });
   });
 
   it('applies shape fill/stroke defaults', () => {
@@ -193,7 +198,7 @@ describe('schema: defaults', () => {
       ]}],
     });
     const r = findNode(doc, 'r1') as any;
-    expect(r.fill).toEqual({ kind: 'solid', color: '#4f46e5' });
+    expect(r.fill).toMatchObject({ kind: 'solid', color: '#4f46e5' });
     // Assert the fields this test is about, not the whole object: `Stroke`
     // gains fields over time (markers, etc.) and each one has a default that
     // preserves this behaviour, so exact equality would rot on every addition.
@@ -275,5 +280,168 @@ describe('schema: known bugs', () => {
     for (let i = 0; i < 3; i++) doc = loadDocument(JSON.parse(JSON.stringify(doc))).doc;
 
     expect(doc.diagnostics).toHaveLength(first);   // actual: 1 → 2 → 3 → 4
+  });
+});
+
+describe('schema: buildNode', () => {
+  it('fills every default from a minimal literal', () => {
+    const node = buildNode({ id: 'n1', kind: 'rect', x: 1, y: 2, width: 3, height: 4 }) as any;
+    expect(node).toMatchObject({ id: 'n1', kind: 'rect', x: 1, y: 2, width: 3, height: 4 });
+    // the point of buildNode: fields the caller never mentioned arrive anyway
+    for (const key of ['name', 'rotation', 'opacity', 'visible', 'locked', 'shadow',
+                       'flipX', 'flipY', 'alt', 'effects', 'blend', 'fill', 'stroke', 'radius']) {
+      expect(node, key).toHaveProperty(key);
+    }
+  });
+
+  it('builds every node kind', () => {
+    const kinds: Array<Record<string, unknown>> = [
+      { kind: 'rect' }, { kind: 'ellipse' }, { kind: 'line' }, { kind: 'text' },
+      { kind: 'path', d: 'M0 0 L1 1' }, { kind: 'image', assetId: 'a' },
+      { kind: 'group' }, { kind: 'opaque', originalKind: 'video', raw: null },
+    ];
+    for (const extra of kinds) {
+      const node = buildNode({ id: 'n', x: 0, y: 0, width: 10, height: 10, ...extra }) as any;
+      expect(node.kind, JSON.stringify(extra)).toBe(extra.kind);
+    }
+  });
+
+  it('throws DocumentParseError naming the kind when the literal is not a node', () => {
+    let caught: unknown;
+    try { buildNode({ id: 'n', kind: 'rect', x: 0, y: 0, width: -5, height: 10 }); } catch (e) { caught = e; }
+    expect(caught).toBeInstanceOf(DocumentParseError);
+    expect((caught as Error).message).toContain('rect');
+  });
+
+  it('rejects an unknown kind rather than inventing a node', () => {
+    expect(() => buildNode({ id: 'n', kind: 'hologram', x: 0, y: 0, width: 1, height: 1 })).toThrow(DocumentParseError);
+  });
+
+  it('produces nodes a document will accept without further massaging', () => {
+    const node = buildNode({ id: 'n1', kind: 'ellipse', x: 0, y: 0, width: 10, height: 10 });
+    const { doc } = loadDocument({ id: 'd', artboards: [{ id: 'a', width: 50, height: 50, nodes: [node] }] });
+    expect(findNode(doc, 'n1')).toEqual(node);
+  });
+});
+
+describe('schema: effects', () => {
+  const withEffects = (effects: unknown[]) => buildNode({
+    id: 'n', kind: 'rect', x: 0, y: 0, width: 10, height: 10, effects,
+  }) as any;
+
+  it('accepts every effect kind and fills its defaults', () => {
+    const kinds = ['shadow', 'glow', 'blur', 'outline', 'echo', 'background', 'curve', 'adjust', 'duotone', 'vignette'];
+    for (const kind of kinds) {
+      const node = withEffects([{ kind }]);
+      expect(node.effects[0].kind, kind).toBe(kind);
+      expect(Object.keys(node.effects[0]).length, `${kind} should have defaulted fields`).toBeGreaterThan(1);
+    }
+  });
+
+  it('keeps stacked effects in the order they were written', () => {
+    const node = withEffects([{ kind: 'blur' }, { kind: 'glow' }, { kind: 'shadow' }]);
+    expect(node.effects.map((e: any) => e.kind)).toEqual(['blur', 'glow', 'shadow']);
+  });
+
+  it('defaults to no effects at all, so pre-effects documents are untouched', () => {
+    expect((buildNode({ id: 'n', kind: 'rect', x: 0, y: 0, width: 1, height: 1 }) as any).effects).toEqual([]);
+  });
+
+  it('rejects an unknown effect kind', () => {
+    expect(() => withEffects([{ kind: 'kaleidoscope' }])).toThrow(DocumentParseError);
+  });
+
+  it('enforces each effect’s numeric bounds', () => {
+    expect(() => withEffects([{ kind: 'curve', amount: 200 }])).toThrow(DocumentParseError);
+    expect(() => withEffects([{ kind: 'echo', count: 99 }])).toThrow(DocumentParseError);
+    expect(() => withEffects([{ kind: 'adjust', hue: 400 }])).toThrow(DocumentParseError);
+    expect(() => withEffects([{ kind: 'blur', radius: -1 }])).toThrow(DocumentParseError);
+  });
+
+  it('round-trips effects through a save/load cycle', () => {
+    const first = loadDocument({ id: 'd', artboards: [{ id: 'a', width: 50, height: 50, nodes: [
+      buildNode({ id: 'n', kind: 'rect', x: 0, y: 0, width: 10, height: 10,
+        effects: [{ kind: 'glow', color: '#ff0000' }, { kind: 'blur', radius: 3 }] }),
+    ]}]}).doc;
+    const reloaded = loadDocument(JSON.parse(JSON.stringify(first))).doc;
+    expect(findNode(reloaded, 'n')).toEqual(findNode(first, 'n'));
+  });
+});
+
+describe('schema: blend, flip and alt', () => {
+  it('accepts every declared blend mode and rejects an invented one', () => {
+    for (const blend of ['normal', 'multiply', 'screen', 'overlay', 'luminosity']) {
+      expect((buildNode({ id: 'n', kind: 'rect', x: 0, y: 0, width: 1, height: 1, blend }) as any).blend).toBe(blend);
+    }
+    expect(() => buildNode({ id: 'n', kind: 'rect', x: 0, y: 0, width: 1, height: 1, blend: 'teleport' }))
+      .toThrow(DocumentParseError);
+  });
+
+  it('carries flipX / flipY independently', () => {
+    const node = buildNode({ id: 'n', kind: 'rect', x: 0, y: 0, width: 1, height: 1, flipX: true }) as any;
+    expect(node.flipX).toBe(true);
+    expect(node.flipY).toBe(false);
+  });
+
+  it('keeps alt text verbatim', () => {
+    const node = buildNode({ id: 'n', kind: 'image', assetId: 'a', x: 0, y: 0, width: 1, height: 1, alt: 'A red barn' }) as any;
+    expect(node.alt).toBe('A red barn');
+  });
+});
+
+describe('schema: gradients, text fill, strokes and frames', () => {
+  it('defaults a gradient to linear, so pre-radial documents render unchanged', () => {
+    const node = buildNode({ id: 'n', kind: 'rect', x: 0, y: 0, width: 1, height: 1,
+      fill: { kind: 'gradient', stops: [{ offset: 0, color: '#000000' }, { offset: 1, color: '#ffffff' }] } }) as any;
+    expect(node.fill).toMatchObject({ type: 'linear', angle: 90, cx: 0.5, cy: 0.5, r: 0.5 });
+  });
+
+  it('accepts a radial gradient with an explicit centre and radius', () => {
+    const node = buildNode({ id: 'n', kind: 'rect', x: 0, y: 0, width: 1, height: 1,
+      fill: { kind: 'gradient', type: 'radial', cx: 0.25, cy: 0.75, r: 0.9,
+              stops: [{ offset: 0, color: '#000000' }, { offset: 1, color: '#ffffff' }] } }) as any;
+    expect(node.fill).toMatchObject({ type: 'radial', cx: 0.25, cy: 0.75, r: 0.9 });
+  });
+
+  it('requires at least two gradient stops', () => {
+    expect(() => buildNode({ id: 'n', kind: 'rect', x: 0, y: 0, width: 1, height: 1,
+      fill: { kind: 'gradient', stops: [{ offset: 0, color: '#000000' }] } })).toThrow(DocumentParseError);
+  });
+
+  it('leaves the optional text fill absent by default, keeping color the simple path', () => {
+    const plain = buildNode({ id: 't', kind: 'text', x: 0, y: 0, width: 1, height: 1 }) as any;
+    expect(plain.fill).toBeUndefined();
+    expect(plain.color).toBe('#111111');
+
+    const painted = buildNode({ id: 't', kind: 'text', x: 0, y: 0, width: 1, height: 1,
+      fill: { kind: 'solid', color: '#ff0000' } }) as any;
+    expect(painted.fill).toMatchObject({ kind: 'solid', color: '#ff0000' });
+  });
+
+  it('defaults stroke cap, join and markers to the SVG defaults', () => {
+    const node = buildNode({ id: 'n', kind: 'line', x: 0, y: 0, width: 10, height: 0 }) as any;
+    expect(node.stroke).toMatchObject({ cap: 'butt', join: 'miter', markerStart: 'none', markerEnd: 'none' });
+  });
+
+  it('accepts every marker shape and rejects an unknown one', () => {
+    for (const markerEnd of ['none', 'arrow', 'dot', 'bar']) {
+      expect((buildNode({ id: 'n', kind: 'line', x: 0, y: 0, width: 1, height: 1,
+        stroke: { width: 2, markerEnd } }) as any).stroke.markerEnd).toBe(markerEnd);
+    }
+    expect(() => buildNode({ id: 'n', kind: 'line', x: 0, y: 0, width: 1, height: 1,
+      stroke: { width: 2, markerEnd: 'starburst' } })).toThrow(DocumentParseError);
+  });
+
+  it('defaults an image frame to a plain rect', () => {
+    const node = buildNode({ id: 'i', kind: 'image', assetId: 'a', x: 0, y: 0, width: 1, height: 1 }) as any;
+    expect(node).toMatchObject({ frame: 'rect', frameD: '', frameBox: [24, 24] });
+  });
+
+  it('accepts ellipse and path frames', () => {
+    expect((buildNode({ id: 'i', kind: 'image', assetId: 'a', x: 0, y: 0, width: 1, height: 1,
+      frame: 'ellipse' }) as any).frame).toBe('ellipse');
+    const pathFramed = buildNode({ id: 'i', kind: 'image', assetId: 'a', x: 0, y: 0, width: 1, height: 1,
+      frame: 'path', frameD: 'M0 0 L24 24 Z', frameBox: [48, 48] }) as any;
+    expect(pathFramed).toMatchObject({ frame: 'path', frameD: 'M0 0 L24 24 Z', frameBox: [48, 48] });
   });
 });

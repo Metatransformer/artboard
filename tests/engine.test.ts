@@ -1,51 +1,95 @@
 import { describe, it, expect } from 'vitest';
-import { TextNode } from '@artboard/schema';
+import { buildNode, type TextNode } from '@artboard/schema';
 import {
   layoutText, metricMeasurer, hitTest, objectFit, corners, aabb, round, snap,
+  resolveFont, fontVerticalMetrics, FONT_METRICS, DEFAULT_FAMILY,
   MAX_TEXT_CHARS, type Box,
 } from '@artboard/engine';
 
-/** Fully-defaulted text node; `over` supplies only what the test cares about. */
-const text = (over: Record<string, unknown> = {}) =>
-  TextNode.parse({
+/**
+ * Fully-defaulted text node; `over` supplies only what the test cares about.
+ * Goes through `buildNode` so every field added to NodeBase arrives for free.
+ */
+const text = (over: Record<string, unknown> = {}): TextNode =>
+  buildNode({
     id: 't', kind: 'text', x: 0, y: 0, width: 200, height: 100,
     fontSize: 10, fontWeight: 400, lineHeight: 1.2, text: '', ...over,
-  });
+  }) as TextNode;
 
 describe('engine: text wrapping', () => {
-  // With metricMeasurer at fontSize 10 / weight 400: "aaa" = 15.9px, " " = 2.7px.
-  const three = { text: 'aaa aaa aaa aaa', fontSize: 10, fontWeight: 400 };
+  const SENTENCE = 'the quick brown fox jumps over the lazy dog near the river bank';
 
-  it('wraps at the box width, producing the expected number of lines', () => {
-    const layout = layoutText(text({ ...three, width: 40 }));
-    expect(layout.lines.map(l => l.text)).toEqual(['aaa aaa', 'aaa aaa']);
-    expect(layout.truncated).toBe(false);
+  /**
+   * Assertions here are derived from the measurer rather than from hard-coded
+   * glyph widths. Advances come from the real font binaries via ./metrics, so a
+   * regenerated table would silently invalidate any number written by hand.
+   */
+  const widthOf = (node: TextNode, s: string) => metricMeasurer(s, node);
+
+  it('never emits a line wider than the box, except a single unbreakable word', () => {
+    for (const width of [40, 80, 150, 300, 600]) {
+      const node = text({ text: SENTENCE, width });
+      for (const line of layoutText(node).lines) {
+        if (line.text.includes(' ')) {
+          expect(widthOf(node, line.text), `width=${width} line="${line.text}"`)
+            .toBeLessThanOrEqual(Math.max(1, width));
+        }
+      }
+    }
   });
 
-  it('puts everything on one line when the box is wide enough', () => {
-    const layout = layoutText(text({ ...three, width: 400 }));
+  it('wraps greedily: the next line\u2019s first word would not have fitted on this one', () => {
+    const width = 150;
+    const node = text({ text: SENTENCE, width });
+    const lines = layoutText(node).lines;
+
+    for (let i = 0; i < lines.length - 1; i++) {
+      const nextWord = lines[i + 1]!.text.split(' ')[0]!;
+      const combined = `${lines[i]!.text} ${nextWord}`;
+      expect(widthOf(node, combined), `line ${i} could have taken "${nextWord}"`)
+        .toBeGreaterThan(width);
+    }
+  });
+
+  it('reports each line\u2019s own measured width', () => {
+    const node = text({ text: SENTENCE, width: 150 });
+    for (const line of layoutText(node).lines) {
+      expect(line.width).toBeCloseTo(round(widthOf(node, line.text)), 5);
+    }
+  });
+
+  it('puts everything on one line when the box is wide enough for the whole string', () => {
+    const node = text({ text: SENTENCE, width: 10000 });
+    const layout = layoutText(node);
     expect(layout.lines).toHaveLength(1);
-    expect(layout.lines[0]!.text).toBe('aaa aaa aaa aaa');
+    expect(layout.lines[0]!.text).toBe(SENTENCE);
   });
 
-  it('breaks every word onto its own line when the box is narrow', () => {
-    const layout = layoutText(text({ ...three, width: 20 }));
-    expect(layout.lines.map(l => l.text)).toEqual(['aaa', 'aaa', 'aaa', 'aaa']);
+  it('breaks every word onto its own line when the box is narrower than any word', () => {
+    const layout = layoutText(text({ text: 'alpha beta gamma delta', width: 1 }));
+    expect(layout.lines.map(l => l.text)).toEqual(['alpha', 'beta', 'gamma', 'delta']);
+  });
+
+  it('loses no words, whatever the box width', () => {
+    for (const width of [1, 40, 150, 10000]) {
+      const words = layoutText(text({ text: SENTENCE, width })).lines.map(l => l.text).join(' ').split(/\s+/).filter(Boolean);
+      expect(words, `width=${width}`).toEqual(SENTENCE.split(' '));
+    }
   });
 
   it('narrowing the box never reduces the line count', () => {
-    const counts = [400, 200, 100, 60, 40, 20].map(w => layoutText(text({ ...three, width: w })).lines.length);
+    const counts = [600, 300, 150, 80, 40, 20].map(w => layoutText(text({ text: SENTENCE, width: w })).lines.length);
     for (let i = 1; i < counts.length; i++) expect(counts[i]!).toBeGreaterThanOrEqual(counts[i - 1]!);
   });
 
   it('reports a block height consistent with the line count and line height', () => {
-    const layout = layoutText(text({ ...three, width: 40, fontSize: 10, lineHeight: 1.5 }));
+    const layout = layoutText(text({ text: SENTENCE, width: 150, fontSize: 10, lineHeight: 1.5 }));
     expect(layout.lineHeightPx).toBe(15);
     expect(layout.blockHeight).toBe(layout.lines.length * 15);
   });
 
   it('uppercases the source text when uppercase is set', () => {
-    const layout = layoutText(text({ text: 'hi there', width: 500, uppercase: true }));
+    const layout = layoutText(text({ text: 'hi there', width: 5000, uppercase: true }));
     expect(layout.lines[0]!.text).toBe('HI THERE');
   });
 });
@@ -82,7 +126,7 @@ describe('engine: budget', () => {
   it('sets truncated:true for text over MAX_TEXT_CHARS', () => {
     const layout = layoutText(text({ text: 'a'.repeat(MAX_TEXT_CHARS + 1), width: 100 }));
     expect(layout.truncated).toBe(true);
-    expect(layout.lines.join('').length).toBeLessThanOrEqual(MAX_TEXT_CHARS);
+    expect(layout.lines.map(l => l.text).join('').length).toBeLessThanOrEqual(MAX_TEXT_CHARS);
   });
 
   it('leaves truncated:false at exactly MAX_TEXT_CHARS', () => {
@@ -120,7 +164,8 @@ describe('engine: hard line breaks', () => {
   });
 
   it('combines hard breaks with soft wrapping', () => {
-    const layout = layoutText(text({ text: 'aaa aaa\nbbb', width: 20, fontSize: 10, fontWeight: 400 }));
+    // width 1 forces every word apart, so the only structure left is the hard break
+    const layout = layoutText(text({ text: 'aaa aaa\nbbb', width: 1 }));
     expect(layout.lines.map(l => l.text)).toEqual(['aaa', 'aaa', 'bbb']);
   });
 });
@@ -159,7 +204,7 @@ describe('engine: vertical alignment', () => {
 
 describe('engine: horizontal alignment', () => {
   it('sets line.x to 0 / width÷2 / width for left / center / right', () => {
-    const opts = { text: 'a\nbb', width: 300 };
+    const opts = { text: 'a\nbb', width: 300, fontSize: 8 };
     expect(layoutText(text({ ...opts, align: 'left' })).lines.map(l => l.x)).toEqual([0, 0]);
     expect(layoutText(text({ ...opts, align: 'center' })).lines.map(l => l.x)).toEqual([150, 150]);
     expect(layoutText(text({ ...opts, align: 'right' })).lines.map(l => l.x)).toEqual([300, 300]);
@@ -312,6 +357,7 @@ describe('engine: metricMeasurer', () => {
     const a = JSON.stringify(layoutText(text(opts)));
     const b = JSON.stringify(layoutText(text(opts)));
     expect(a).toBe(b);
+    expect(layoutText(text(opts)).lines.length).toBeGreaterThan(1);
   });
 });
 
@@ -328,5 +374,99 @@ describe('engine: numeric helpers', () => {
     expect(snap(23, 10)).toBe(20);
     expect(snap(26, 10)).toBe(30);
     expect(snap(23.7, 0)).toBe(23.7);
+  });
+});
+
+describe('engine: font resolution', () => {
+  it('resolves a known family and weight exactly', () => {
+    const match = resolveFont(DEFAULT_FAMILY, 400);
+    expect(match).toMatchObject({ family: DEFAULT_FAMILY, weight: 400, fallback: 'exact' });
+    expect(match.requestedFamily).toBe(DEFAULT_FAMILY);
+  });
+
+  it('treats quoting, casing and whitespace as the same family', () => {
+    const canonical = resolveFont('Playfair Display', 400);
+    for (const spelling of ["'Playfair Display'", '  playfair   display ', '"Playfair Display", serif']) {
+      expect(resolveFont(spelling, 400), spelling).toMatchObject({ family: canonical.family, fallback: 'exact' });
+    }
+  });
+
+  it('falls back to the nearest weight the family actually ships', () => {
+    // DM Serif Display ships one weight, so every request lands on it
+    const match = resolveFont('DM Serif Display', 900);
+    expect(match.family).toBe('DM Serif Display');
+    expect(match.weight).toBe(400);
+    expect(match.fallback).toBe('weight');
+  });
+
+  it('falls back to the default family for an unknown one', () => {
+    const match = resolveFont('Definitely Not A Font', 400);
+    expect(match.family).toBe(DEFAULT_FAMILY);
+    expect(match.fallback).toBe('family');
+    expect(match.requestedFamily).toBe('Definitely Not A Font');
+  });
+
+  it('only ever resolves to a weight the family declares', () => {
+    for (const [family, metrics] of Object.entries(FONT_METRICS)) {
+      const available = Object.keys(metrics.weights).map(Number);
+      for (const requested of [100, 350, 450, 550, 1000]) {
+        const match = resolveFont(family, requested);
+        expect(available, `${family}@${requested}`).toContain(match.weight);
+      }
+    }
+  });
+
+  it('is stable: resolving the same request twice gives the same match', () => {
+    expect(resolveFont('Space Grotesk', 620)).toEqual(resolveFont('Space Grotesk', 620));
+  });
+
+  it('exposes real vertical metrics, with a negative descender', () => {
+    for (const family of Object.keys(FONT_METRICS)) {
+      const vm = fontVerticalMetrics(family, 400);
+      expect(vm.ascender, family).toBeGreaterThan(0);
+      expect(vm.descender, family).toBeLessThan(0);
+      expect(vm.lineGap, family).toBeGreaterThanOrEqual(0);
+      expect(vm.naturalLineHeight, family).toBeCloseTo(vm.ascender - vm.descender + vm.lineGap, 3);
+    }
+  });
+});
+
+describe('engine: layout diagnostics', () => {
+  it('warns FONT_SUBSTITUTED when the requested family has no metrics', () => {
+    const layout = layoutText(text({ text: 'hello', fontFamily: 'Nonexistent Sans' }));
+
+    const diag = layout.diagnostics.find(d => d.code === 'FONT_SUBSTITUTED');
+    expect(diag).toBeDefined();
+    expect(diag!.level).toBe('warn');
+    expect(diag!.nodeId).toBe('t');
+    expect(diag!.message).toContain('Nonexistent Sans');
+    expect(layout.font.fallback).toBe('family');
+  });
+
+  it('stays silent for a known family, even when the weight is substituted', () => {
+    const exact = layoutText(text({ text: 'hello', fontFamily: DEFAULT_FAMILY, fontWeight: 400 }));
+    expect(exact.diagnostics).toEqual([]);
+    expect(exact.font.fallback).toBe('exact');
+
+    // a missing weight is routine and must not nag
+    const nearest = layoutText(text({ text: 'hello', fontFamily: 'DM Serif Display', fontWeight: 900 }));
+    expect(nearest.diagnostics).toEqual([]);
+    expect(nearest.font.fallback).toBe('weight');
+  });
+
+  it('reports the font it actually measured with on every layout', () => {
+    const layout = layoutText(text({ text: 'hello', fontFamily: 'Playfair Display', fontWeight: 700 }));
+    expect(layout.font).toMatchObject({ family: 'Playfair Display', weight: 700, requestedWeight: 700 });
+  });
+
+  it('measures different families differently', () => {
+    const wide = metricMeasurer('lllllllll', text({ fontFamily: 'JetBrains Mono', fontSize: 20 }));
+    const narrow = metricMeasurer('lllllllll', text({ fontFamily: DEFAULT_FAMILY, fontSize: 20 }));
+    expect(wide).not.toBeCloseTo(narrow, 3);   // a monospace 'l' is far wider than a proportional one
+  });
+
+  it('measures an unknown codepoint with the family fallback width rather than zero', () => {
+    const node = text({ fontSize: 100, fontFamily: DEFAULT_FAMILY, fontWeight: 400 });
+    expect(metricMeasurer('\u{1F600}', node)).toBeGreaterThan(0);
   });
 });

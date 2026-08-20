@@ -3,6 +3,8 @@
  *
  *   artboard validate <file.json>
  *   artboard render   <file.json> [--out out.svg] [--artboard N]
+ *   artboard export   <file.json> [--format svg|pdf|json] [--scale N] [--pages 1-3]
+ *                                 [--transparent] [--zip] [--out path]
  *   artboard golden   [--update] [--dir tests/golden]
  *   artboard info     <file.json>
  *
@@ -17,6 +19,12 @@ import { fileURLToPath } from 'node:url';
 
 import { parseDocument, walk, type Diagnostic } from '@artboard/schema';
 import { renderToString } from '@artboard/render-svg';
+
+import {
+  buildVectorExport, fileStem, HEADLESS_FORMATS, isFormat, parsePages,
+  PageRangeError, type ExportFormat,
+} from './format/options.js';
+import { zipStore } from './format/zip.js';
 
 import {
   bold, cyan, describeError, dim, formatDiagnostic, green, hasErrors,
@@ -44,7 +52,7 @@ export class ArtboardRangeError extends Error {
 }
 
 /* -- argv ----------------------------------------------------------------- */
-const VALUE_FLAGS = new Set(['out', 'artboard', 'dir']);
+const VALUE_FLAGS = new Set(['out', 'artboard', 'dir', 'format', 'scale', 'pages', 'quality']);
 
 interface Argv { command: string; positionals: string[]; flags: Record<string, string | boolean> }
 
@@ -212,6 +220,78 @@ function cmdInfo(argv: Argv): number {
   return OK;
 }
 
+/* -- export ---------------------------------------------------------------
+ *
+ * The headless half of the Export dialog. Same options, same code underneath,
+ * so `artboard export --format svg --scale 2` and the dialog's SVG at 2x are
+ * the same bytes. PNG and JPG are deliberately absent: rasterising needs a
+ * canvas, and a CLI that silently produced a different-looking PNG would be
+ * worse than one that says it cannot.
+ * ------------------------------------------------------------------------ */
+async function cmdExport(argv: Argv): Promise<number> {
+  const file = argv.positionals[0];
+  if (file === undefined) throw new UsageError('export needs a file: artboard export <file.json> [--format svg]');
+
+  const rawFormat = argv.flags.format === undefined ? 'svg' : String(argv.flags.format).toLowerCase();
+  if (!isFormat(rawFormat)) {
+    throw new UsageError(`--format must be one of ${HEADLESS_FORMATS.join(', ')} (got "${rawFormat}").`);
+  }
+  const format: ExportFormat = rawFormat;
+  if (!HEADLESS_FORMATS.includes(format)) {
+    throw new UsageError(`${format.toUpperCase()} export needs a canvas to rasterise. The editor can do it; a headless CLI cannot without a rasteriser dependency. Use --format svg or --format pdf.`);
+  }
+
+  const scale = argv.flags.scale === undefined ? 1 : Number(argv.flags.scale);
+  if (!Number.isFinite(scale) || scale <= 0 || scale > 10) throw new UsageError(`--scale must be between 0 and 10, got "${String(argv.flags.scale)}".`);
+
+  const transparent = argv.flags.transparent === true ? true
+    : argv.flags['no-transparent'] === true ? false
+    : undefined;
+
+  const { path, doc, diagnostics: openDiagnostics } = openDocument(file);
+  const pages = parsePages(argv.flags.pages === undefined ? 'all' : String(argv.flags.pages), doc.artboards.length);
+
+  const stem = fileStem(doc.name);
+  const { files, notes } = await buildVectorExport(doc, { format, scale, transparent, pages, quality: 0.92 }, stem);
+
+  const out = typeof argv.flags.out === 'string' ? argv.flags.out : undefined;
+  const asZip = argv.flags.zip === true;
+
+  const written: string[] = [];
+  if (asZip) {
+    const target = resolve(process.cwd(), out ?? `${stem}.zip`);
+    writeBytes(target, zipStore(files.map(f => ({ name: f.name, data: toBytes(f.data) }))));
+    written.push(target);
+  } else if (files.length === 1) {
+    const only = files[0]!;
+    const target = resolve(process.cwd(), out ?? only.name);
+    writeBytes(target, toBytes(only.data));
+    written.push(target);
+  } else {
+    const dir = resolve(process.cwd(), out ?? '.');
+    for (const f of files) {
+      const target = join(dir, f.name);
+      writeBytes(target, toBytes(f.data));
+      written.push(target);
+    }
+  }
+
+  for (const target of written) {
+    process.stderr.write(`${green('wrote')} ${rel(target)} ${dim(`(${statSync(target).size} bytes)`)}\n`);
+  }
+  for (const note of notes) process.stderr.write(`${yellow('note')} ${note}\n`);
+  printDiagnostics(openDiagnostics, process.stderr);
+  return hasErrors(openDiagnostics) ? FAILED : OK;
+}
+
+const toBytes = (data: string | Uint8Array): Uint8Array =>
+  typeof data === 'string' ? new TextEncoder().encode(data) : data;
+
+function writeBytes(path: string, bytes: Uint8Array): void {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, bytes);
+}
+
 /* -- golden (the oracle) --------------------------------------------------- */
 type CaseStatus = 'pass' | 'fail' | 'created' | 'updated' | 'unchanged';
 
@@ -376,6 +456,14 @@ ${bold('COMMANDS')}
   golden                            THE ORACLE: re-render every tests/golden fixture and diff the SVG.
       --update                      Rewrite the .svg baselines instead of failing.
       --dir <path>                  Fixture directory (default <repo>/tests/golden).
+  export   <file.json>              Export a document. Same options as the editor's Export dialog.
+      --format <fmt>                svg (default), pdf, or json. png/jpg need a canvas; use the editor.
+      --scale <n>                   Output size multiplier: SVG width/height, PDF page size. Default 1.
+      --pages <spec>                all (default), 3, 2-5, or 1,4,7-9. 1-based.
+      --transparent                 Force every page's background to none.
+      --no-transparent              Force an opaque white behind a page that has none.
+      --zip                         Bundle the output into one stored .zip.
+      --out <path>                  File to write (single output) or directory (several).
   info     <file.json>              Artboard count, node counts by kind, asset count, diagnostics.
 
 ${bold('OPTIONS')}
@@ -396,7 +484,7 @@ function version(): string {
 }
 
 /* -- entry ---------------------------------------------------------------- */
-export function run(rawArgv: readonly string[]): number {
+export async function run(rawArgv: readonly string[]): Promise<number> {
   let argv: Argv;
   try {
     argv = parseArgv(rawArgv);
@@ -416,11 +504,12 @@ export function run(rawArgv: readonly string[]): number {
     return askedForHelp ? OK : USAGE;
   }
 
-  const commands: Record<string, (a: Argv) => number> = {
+  const commands: Record<string, (a: Argv) => number | Promise<number>> = {
     validate: cmdValidate,
     render: cmdRender,
     golden: cmdGolden,
     info: cmdInfo,
+    export: cmdExport,
   };
   const handler = commands[argv.command];
   if (!handler) {
@@ -429,9 +518,9 @@ export function run(rawArgv: readonly string[]): number {
   }
 
   try {
-    return handler(argv);
+    return await handler(argv);
   } catch (e) {
     process.stderr.write(`${red('error')} ${describeError(e)}\n`);
-    return e instanceof UsageError ? USAGE : FAILED;
+    return e instanceof UsageError || e instanceof PageRangeError ? USAGE : FAILED;
   }
 }

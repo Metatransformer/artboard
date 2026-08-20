@@ -132,7 +132,7 @@ const slug = (family) => family.toLowerCase().replace(/\s+/g, '-');
  * measured. Leaving it out makes the browser synthesize an oblique, which
  * shears the upright and keeps its advance widths — so the wrap stays correct.
  */
-async function bundleWebFonts() {
+async function bundleWebFonts(measured) {
   mkdirSync(FONT_OUT, { recursive: true });
   // Drop faces from a previous run so a removed subset cannot linger in `dist/`.
   for (const f of readdirSync(FONT_OUT)) if (f.endsWith('.woff2')) rmSync(join(FONT_OUT, f));
@@ -141,6 +141,12 @@ async function bundleWebFonts() {
   const files = [];
 
   for (const { family, css: query } of FAMILIES) {
+    // Clamp the descriptor to the weights we actually measured, rather than
+    // echoing the font's full axis. A weight the browser can render but the
+    // table cannot measure is the disagreement we are here to remove; clamping
+    // makes the browser snap into our range instead.
+    const weights = measured.find((m) => m.family === family).weights.map((w) => w.weight);
+    const range = weights.length > 1 ? `${weights[0]} ${weights[weights.length - 1]}` : `${weights[0]}`;
     const url = `https://fonts.googleapis.com/css2?family=${query}&display=swap`;
     const res = await fetch(url, { headers: { 'User-Agent': BROWSER_UA } });
     if (!res.ok) throw new Error(`GET ${url} -> ${res.status} ${res.statusText}`);
@@ -171,7 +177,7 @@ async function bundleWebFonts() {
         '@font-face {',
         `  font-family: '${family}';`,
         '  font-style: normal;',
-        `  font-weight: ${pick('font-weight')};`,
+        `  font-weight: ${range};`,
         '  font-display: swap;',
         `  src: url('/fonts/${name}') format('woff2');`,
         `  unicode-range: ${pick('unicode-range')};`,
@@ -232,7 +238,7 @@ async function main() {
   console.log(`${families.length} families, ${families.reduce((s, f) => s + f.weights.length, 0)} family+weight tables, ${total} advances, ${kb} KB`);
   for (const f of families) console.log(`  ${f.family.padEnd(18)} upm=${f.upm} weights=[${f.weights.map((w) => w.weight).join(', ')}]`);
 
-  const { css, files } = await bundleWebFonts();
+  const { css, files } = await bundleWebFonts(families);
   const bytes = files.reduce((s, f) => s + f.bytes, 0);
   console.log(`\nwrote ${files.length} woff2 faces to ${FONT_OUT} (${(bytes / 1024).toFixed(1)} KB total)`);
   for (const f of files) console.log(`  ${f.name.padEnd(34)} ${(f.bytes / 1024).toFixed(1).padStart(6)} KB`);

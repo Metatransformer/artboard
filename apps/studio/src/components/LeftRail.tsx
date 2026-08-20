@@ -3,6 +3,10 @@ import { uid } from '@artboard/commands';
 import { buildNode } from '@artboard/schema';
 import { renderArtboard, serialize } from '@artboard/render-svg';
 import { TEMPLATES, CATEGORIES } from '@artboard/templates';
+import {
+  ICONS, SHAPES, ICON_CATEGORIES, searchIcons, iconNodeStyle, shapeNodeStyle,
+  type Icon, type IconCategory,
+} from '@artboard/icons';
 import { useEditor, documentFromTemplate } from '../state/store';
 import { makeNode } from './Canvas';
 import { BrandPanel } from './BrandPanel';
@@ -113,16 +117,13 @@ function TemplateThumb({ template }: { template: any }) {
 
 /* ── Elements ───────────────────────────────────────────────────────────── */
 
-const SHAPES: Array<{ name: string; d: string; vb: [number, number] }> = [
-  { name: 'Star', d: 'M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.3 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8z', vb: [24, 24] },
-  { name: 'Heart', d: 'M12 21s-8-4.9-8-10.4A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8 3.6C20 16.1 12 21 12 21z', vb: [24, 24] },
-  { name: 'Bolt', d: 'M13 2L4 14h6l-1 8 9-12h-6z', vb: [24, 24] },
-  { name: 'Check', d: 'M20 6L9 17l-5-5', vb: [24, 24] },
-  { name: 'Arrow', d: 'M4 12h14m-5-6l6 6-6 6', vb: [24, 24] },
-  { name: 'Blob', d: 'M45 8c12 0 22 9 22 21s-6 25-19 28S18 52 15 40 20 12 33 9z', vb: [80, 70] },
-  { name: 'Triangle', d: 'M12 3l9 17H3z', vb: [24, 24] },
-  { name: 'Badge', d: 'M12 1l3 3h4v4l3 3-3 3v4h-4l-3 3-3-3H5v-4l-3-3 3-3V4h4z', vb: [24, 24] },
-];
+/**
+ * Default insert size as a fraction of the artboard width. Icons come in a
+ * little smaller than shapes: an outline drawing at 28% of the page reads as a
+ * diagram, while a solid shape at that size reads as a design element.
+ */
+const SHAPE_SCALE = 0.28;
+const ICON_SCALE = 0.2;
 
 function useInsert() {
   const { run, dispatch, artboard } = useEditor();
@@ -133,12 +134,25 @@ function useInsert() {
 
 function Elements() {
   const { add, centre, artboard } = useInsert();
-  const sq = () => { const s = Math.round(artboard.width * 0.3); return { s, c: centre(s, s) }; };
+  const sq = () => { const s = Math.round(artboard.width * SHAPE_SCALE); return { s, c: centre(s, s) }; };
+
+  /**
+   * Every icon and shape enters the document through `buildNode`, so the schema
+   * fills in every field it owns. A hand-written node literal here has broken
+   * three times as the schema grew — the paint half of the node comes from
+   * `@artboard/icons`, which is the one place that knows a stroked icon needs
+   * `fill: none` and a filled shape needs no stroke.
+   */
+  const insertPath = (name: string, d: string, style: Record<string, unknown>, scale: number) => {
+    const size = Math.round(artboard.width * scale);
+    const c = centre(size, size);
+    add(buildNode({ id: uid('n'), kind: 'path', name, x: c.x, y: c.y, width: size, height: size, d, ...style }));
+  };
 
   return (
     <>
       <h4>Shapes</h4>
-      <div className="egrid">
+      <div className="egrid dense">
         <button className="ecard" title="Rectangle" onClick={() => { const { s, c } = sq(); add(makeNode('rect', c.x, c.y, s, s)); }}>
           <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" fill="currentColor" /></svg>
         </button>
@@ -152,14 +166,15 @@ function Elements() {
           <svg viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" strokeWidth="2.5" /></svg>
         </button>
         {SHAPES.map(s => (
-          <button key={s.name} className="ecard" title={s.name} onClick={() => {
-            const size = Math.round(artboard.width * 0.28); const c = centre(size, size);
-            add({ ...makeNode('rect', c.x, c.y, size, size), kind: 'path', name: s.name, d: s.d, viewBox: s.vb, fill: { kind: 'solid', color: '#4f46e5' }, stroke: { color: '#000000', width: 0, dash: [] } });
-          }}>
-            <svg viewBox={`0 0 ${s.vb[0]} ${s.vb[1]}`}><path d={s.d} fill="currentColor" /></svg>
+          <button key={s.id} className="ecard" title={s.name}
+                  onClick={() => insertPath(s.name, s.d, shapeNodeStyle(), SHAPE_SCALE)}>
+            <svg viewBox="0 0 100 100"><path d={s.d} fill="currentColor" /></svg>
           </button>
         ))}
       </div>
+
+      <h4>Icons</h4>
+      <IconLibrary insert={i => insertPath(i.name, i.d, iconNodeStyle(), ICON_SCALE)} />
 
       <h4>Lines &amp; dividers</h4>
       <div className="stack">
@@ -170,6 +185,42 @@ function Elements() {
           }}>{l.n}</button>
         ))}
       </div>
+    </>
+  );
+}
+
+/**
+ * Search + category chips over the bundled icon set, deliberately built the
+ * same way the Designs section is: one text field, a row of chips, a grid, and
+ * the same empty state. Two libraries in the same drawer that filter
+ * differently is a worse problem than a little duplicated JSX.
+ */
+function IconLibrary({ insert }: { insert: (icon: Icon) => void }) {
+  const [cat, setCat] = useState<IconCategory | null>(null);
+  const [q, setQ] = useState('');
+  const list = useMemo(() => searchIcons(q, cat), [q, cat]);
+
+  return (
+    <>
+      <input className="field search" placeholder={`Search ${ICONS.length} icons`} value={q} onChange={e => setQ(e.target.value)} />
+      <div className="chips">
+        <button className={`chip ${cat === null ? 'on' : ''}`} onClick={() => setCat(null)}>All</button>
+        {ICON_CATEGORIES.map(c => (
+          <button key={c.id} className={`chip ${cat === c.id ? 'on' : ''}`} onClick={() => setCat(c.id)}>{c.label}</button>
+        ))}
+      </div>
+      {list.length === 0 ? <div className="hint">Nothing matches that search.</div> : (
+        <div className="egrid dense">
+          {list.map(i => (
+            <button key={i.id} className="ecard icon" title={i.name} onClick={() => insert(i)}>
+              {/* Painted exactly as the document renderer will paint it - no
+                  stroke-linecap the renderer cannot express, so the preview
+                  never promises a rounder icon than the canvas delivers. */}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d={i.d} /></svg>
+            </button>
+          ))}
+        </div>
+      )}
     </>
   );
 }

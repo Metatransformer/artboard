@@ -18,6 +18,20 @@ npm run test                  # 132 tests
 npm run golden -- --update    # baselines move if the numbers moved — that is correct
 ```
 
+`npm run metrics` does **two** things, and they must stay in step: it writes
+`packages/engine/src/metrics.ts`, and it writes the woff2 faces the app renders
+with into `apps/studio/public/fonts/`. Measuring one set of binaries while
+shipping another is the bug this whole area exists to prevent, so they are
+produced by one command from one list of families.
+
+It also prints an `@font-face` block. Paste it between the
+`ARTBOARD FONTS: BEGIN/END` markers at the **end** of `apps/studio/src/styles.css`.
+The generator deliberately does not write that file itself: other agents append
+to it concurrently, and a tool that rewrites a shared file races with them.
+(It has to be the `@font-face` rules and not an `@import`, because CSS requires
+`@import` to precede every other rule — an `@import` appended at the end of a
+stylesheet is invalid and silently ignored.)
+
 Then **look at the re-baked SVGs**, don't just trust the diff. `fontkit` is
 deliberately *not* in `package.json`: `@artboard/engine` ships with zero runtime
 dependencies, and a font parser must never end up in that graph.
@@ -36,15 +50,18 @@ silently reflow every document in the product.
 
 Five families, measured from the Google Fonts binaries:
 
-| Family | Source | Weights available |
+| Family | Source | Weights sampled |
 | --- | --- | --- |
-| Inter | variable (`opsz`, `wght`) | 400, 500, 600, 700, 800 |
-| Playfair Display | variable (`wght`) | 400, 500, 600, 700, 800 |
+| Inter | variable (`opsz`, `wght` 100–900) | 300, 400, 500, 600, 700, 800, 900 |
+| Playfair Display | variable (`wght` 400–900) | 400, 500, 600, 700, 800, 900 |
 | DM Serif Display | static | 400 only |
-| Space Grotesk | variable (`wght` 300–700) | 400, 500, 600, 700 |
-| JetBrains Mono | variable (`wght` 100–800) | 400, 500, 600, 700, 800 |
+| Space Grotesk | variable (`wght` 300–700) | 300, 400, 500, 600, 700 |
+| JetBrains Mono | variable (`wght` 100–800) | 300, 400, 500, 600, 700, 800 |
 
-The sampled weights are the ones the product actually uses (`grep -rn fontWeight`).
+The sampled weights are every weight the picker in `Inspector.tsx` can produce
+(300–900). Content only uses 400–800, but 300 and 900 are one click away, and a
+weight the user can select but we cannot measure is precisely the disagreement
+this table exists to remove.
 Variable families are instanced with `fontkit`'s `getVariation({ wght })`, so an
 800 is the font's real 800 master, not a synthetic smear of the 400.
 
@@ -124,7 +141,7 @@ only. Browsers add it *after* every glyph including the last, so a run with lett
 spacing is one `letterSpacing` narrower in our measurement than on screen. That
 predates this change and was left alone.
 
-**The table is ~73 KB of source** (4537 advances across 20 family+weight tables).
+**The table is ~91 KB of source** (5680 advances across 25 family+weight tables, ~19 KB gzipped).
 It is plain data, it minifies and gzips well, and it is the price of a renderer
 that does not have to load a font to know how wide a word is.
 
@@ -133,3 +150,82 @@ nearest available weight, while the SVG still asks the browser for the requested
 weight. For Space Grotesk 800 the browser will render its own 700 (or synthesise),
 so the two stay consistent in practice — but the honest fix is for the UI not to
 offer a weight the family does not have.
+
+## The bundled web fonts
+
+The editor renders with fonts shipped in `apps/studio/public/fonts/`, not from
+`fonts.googleapis.com`. The CDN `<link>` tags are gone from
+`apps/studio/index.html`.
+
+Two reasons, and the second is the one that matters here:
+
+1. The desktop shell (`apps/desktop`) serves a CSP with `style-src 'self'` and
+   `font-src 'self' data:` — no `https:`. A CDN stylesheet is refused outright
+   (`Refused to load the stylesheet 'https://fonts.googleapis.com/...'`) and every
+   family silently falls back to a system default. A local-first app has to
+   render correctly with the network unplugged.
+2. **These are the binaries the metrics table was measured from.** If the runtime
+   paints with whatever the OS substituted, the measured wrap and the painted
+   wrap disagree — the exact bug the table exists to remove. Bundling is what
+   makes the numbers *true* rather than merely precise.
+
+Verified, not assumed: re-measuring all 24 golden documents against the **built**
+app loading the **bundled** faces gives 0.27% mean / 0.92% p95 / 1.68% max —
+identical to the figures against the CDN, i.e. the bundled woff2 and the pinned
+TTFs describe the same faces.
+
+### What ships
+
+10 files, 307 KB total: `latin` and `latin-ext` for each of the five families,
+as woff2. One variable file covers a family's whole weight range.
+
+| Family | latin | latin-ext |
+| --- | --- | --- |
+| Inter | 47.3 KB | 83.3 KB |
+| Playfair Display | 37.6 KB | 20.5 KB |
+| DM Serif Display | 17.4 KB | 6.6 KB |
+| Space Grotesk | 21.8 KB | 18.5 KB |
+| JetBrains Mono | 39.5 KB | 14.8 KB |
+
+Dropped: the `cyrillic`, `cyrillic-ext`, `greek`, `greek-ext` and `vietnamese`
+subsets Google slices out. `latin` carries U+0000–00FF and U+2000–206F — all of
+Latin-1 plus every dash, quote, bullet and ellipsis in the metrics table —
+and `latin-ext` adds the remaining European accents. Text outside those ranges
+falls back to a system font for rendering, and to `fallbackWidth` for measuring,
+which is the same story the metrics table already tells.
+
+The `font-weight` descriptor is **clamped to the measured range** (Inter is
+declared `300 900`, not its full `100 900` axis) so the browser cannot be asked
+to render a weight the table has no numbers for; it snaps into our range instead.
+
+### Upright only, deliberately
+
+No italic faces are bundled, and the metrics table has no italic advances. The
+browser therefore synthesizes an oblique, which shears the upright outline and
+**keeps its advance widths** — so a wrap stays correct when the italic toggle is
+on. Bundling a real italic without measuring it would look better and wrap worse.
+
+No content in `@artboard/templates` uses italic today, so this is a latent path.
+Closing it properly means adding an `italic` dimension to the table and to
+`resolveFont`/`FontMatch`, and bundling the italic faces — a real change, not a
+tweak.
+
+### The one thing that is not pinned
+
+The TTFs we measure are pinned to a `google/fonts` commit. The woff2 files come
+from the Google Fonts CSS API, which has no version pin — Google can reissue
+them. The check that catches any drift is the one above: re-measure the goldens
+against the built app and confirm the error is still ~0.27%.
+
+### Known gap: the single-file demo
+
+`tools/build-demo.mjs` inlines everything into one standalone HTML for the
+shareable demo, and it used to recover the fonts by grepping
+`apps/studio/index.html` for the Google Fonts `<link>`. That link is gone, and a
+single-file artifact cannot resolve `url('/fonts/inter-latin.woff2')` — so the
+demo currently renders in system fallback fonts. It still builds; it just looks
+wrong. Either inline the faces as `data:` URIs in `build-demo.mjs` (keeps the
+demo's fonts identical to the measured ones and works offline, ~+410 KB
+base64), or re-add the CDN link in that script for the demo only (the CSP
+argument is desktop-specific; the demo is a hosted web page). `build-demo.mjs`
+was outside the scope of this change.

@@ -648,43 +648,80 @@ function gstate(p: Painter, entries: string): string {
   return name;
 }
 
+/** `"55%"`, `"0.55"` and `0.55` are the same number to SVG. */
+function ratio(value: string | number | undefined, fallback: number): number {
+  const text = String(value ?? '').trim();
+  if (text === '') return fallback;
+  const n = text.endsWith('%') ? Number(text.slice(0, -1)) / 100 : Number(text);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 /** An axial or radial shading, defined on the unit square and mapped to `box`. */
-function shading(p: Painter, def: SceneNode, box: Box): string | null {
+function shading(p: Painter, def: SceneNode, box: Box): { name: string; smask: string | null } | null {
   if (box.width <= 0 || box.height <= 0) return null;
-  const stops = (def.children ?? [])
+  const raw = (def.children ?? [])
     .filter(c => c.tag === 'stop')
-    .map(c => ({ offset: Number(c.attrs['offset'] ?? 0), color: parseColor(c.attrs['stop-color']) }))
-    .filter((s): s is { offset: number; color: Rgba } => s.color !== null);
-  if (stops.length < 2) return null;
-  if (stops.some(s => s.color.a < 1)) p.notes.add('Gradient stops with transparency are drawn opaque in PDF.');
+    .map(c => {
+      const color = parseColor(c.attrs['stop-color']);
+      if (!color) return null;
+      const opacity = c.attrs['stop-opacity'];
+      return {
+        offset: Math.min(1, Math.max(0, ratio(c.attrs['offset'], 0))),
+        color: opacity === undefined ? color : { ...color, a: color.a * Number(opacity) },
+      };
+    })
+    .filter((s): s is { offset: number; color: Rgba } => s !== null);
+  if (raw.length < 2) return null;
 
-  const pieces: string[] = [];
-  const bounds: number[] = [];
-  const encode: string[] = [];
-  for (let i = 0; i < stops.length - 1; i++) {
-    const a = stops[i]!.color, b = stops[i + 1]!.color;
-    pieces.push(`<< /FunctionType 2 /Domain [0 1] /C0 [${f(a.r)} ${f(a.g)} ${f(a.b)}] /C1 [${f(b.r)} ${f(b.g)} ${f(b.b)}] /N 1 >>`);
-    encode.push('0 1');
-    if (i > 0) bounds.push(stops[i]!.offset);
-  }
-  const fn = pieces.length === 1
-    ? pieces[0] as string
-    : `<< /FunctionType 3 /Domain [0 1] /Functions [${pieces.join(' ')}] /Bounds [${bounds.map(f).join(' ')}] /Encode [${encode.join(' ')}] >>`;
+  // PDF stitching functions run over the whole [0 1] domain, so a ramp that
+  // starts at 55% needs an explicit flat segment in front of it. Without the
+  // clamp stops the gradient starts in the wrong place.
+  const stops = [...raw];
+  if ((stops[0] as { offset: number }).offset > 0) stops.unshift({ ...stops[0]!, offset: 0 });
+  const last = stops[stops.length - 1]!;
+  if (last.offset < 1) stops.push({ ...last, offset: 1 });
 
-  const pct = (v: string | number | undefined, fallback: number): number => {
-    const s = String(v ?? '');
-    if (s.endsWith('%')) return Number(s.slice(0, -1)) / 100;
-    return s === '' ? fallback : Number(s);
+  /** One stitched ramp over the stops, in whatever colour space `channel` picks. */
+  const ramp = (channel: (c: Rgba) => number[]): string => {
+    const pieces: string[] = [];
+    const bounds: number[] = [];
+    const encode: string[] = [];
+    for (let i = 0; i < stops.length - 1; i++) {
+      const a = channel(stops[i]!.color).map(f).join(' ');
+      const b = channel(stops[i + 1]!.color).map(f).join(' ');
+      pieces.push(`<< /FunctionType 2 /Domain [0 1] /C0 [${a}] /C1 [${b}] /N 1 >>`);
+      encode.push('0 1');
+      if (i > 0) bounds.push(stops[i]!.offset);
+    }
+    if (pieces.length === 0) return `<< /FunctionType 2 /Domain [0 1] /C0 [0] /C1 [0] /N 1 >>`;
+    return pieces.length === 1
+      ? pieces[0] as string
+      : `<< /FunctionType 3 /Domain [0 1] /Functions [${pieces.join(' ')}] /Bounds [${bounds.map(f).join(' ')}] /Encode [${encode.join(' ')}] >>`;
   };
+  const fn = ramp(c => [c.r, c.g, c.b]);
 
   const coords = def.tag === 'radialGradient'
-    ? `/ShadingType 3 /Coords [${f(pct(def.attrs['cx'], 0.5))} ${f(pct(def.attrs['cy'], 0.5))} 0 ${f(pct(def.attrs['cx'], 0.5))} ${f(pct(def.attrs['cy'], 0.5))} ${f(pct(def.attrs['r'], 0.5))}]`
-    : `/ShadingType 2 /Coords [${f(pct(def.attrs['x1'], 0))} ${f(pct(def.attrs['y1'], 0))} ${f(pct(def.attrs['x2'], 1))} ${f(pct(def.attrs['y2'], 0))}]`;
+    ? `/ShadingType 3 /Coords [${f(ratio(def.attrs['cx'], 0.5))} ${f(ratio(def.attrs['cy'], 0.5))} 0 ${f(ratio(def.attrs['cx'], 0.5))} ${f(ratio(def.attrs['cy'], 0.5))} ${f(ratio(def.attrs['r'], 0.5))}]`
+    : `/ShadingType 2 /Coords [${f(ratio(def.attrs['x1'], 0))} ${f(ratio(def.attrs['y1'], 0))} ${f(ratio(def.attrs['x2'], 1))} ${f(ratio(def.attrs['y2'], 0))}]`;
 
   const ref = p.file.add(`<< ${coords} /ColorSpace /DeviceRGB /Function ${fn} /Extend [true true] >>`);
   const name = `Sh${p.res.shadings.length + 1}`;
   p.res.shadings.push({ name, ref });
-  return name;
+
+  // Transparent stops (a vignette, a fade) are a luminosity soft mask: the same
+  // ramp painted in greyscale, where white keeps the pixel and black drops it.
+  // Without this a fade-to-nothing gradient paints as fade-to-solid.
+  let smask: string | null = null;
+  if (stops.some(st => st.color.a < 1)) {
+    const maskShading = p.file.add(`<< ${coords} /ColorSpace /DeviceGray /Function ${ramp(c => [c.a])} /Extend [true true] >>`);
+    const form = p.file.addStream(
+      `/Type /XObject /Subtype /Form /BBox [0 0 1 1] /Group << /S /Transparency /CS /DeviceGray >>` +
+      ` /Resources << /Shading << /ShM ${maskShading} 0 R >> >>`,
+      latin1('/ShM sh'),
+    );
+    smask = gstate(p, `/SMask << /S /Luminosity /G ${form} 0 R >>`);
+  }
+  return { name, smask };
 }
 
 /** Turn one drawable element into path segments in the current user space. */
@@ -773,9 +810,11 @@ function paintShape(p: Painter, node: SceneNode, segs: Seg[]): void {
   if (gradId) {
     const def = p.defs.get(gradId);
     const box = segsBox(segs);
-    const name = def ? shading(p, def, box) : null;
-    if (name) {
-      p.ops.push(ops, 'W n', matOp([box.width, 0, 0, box.height, box.x, box.y]), `/${name} sh`);
+    const sh = def ? shading(p, def, box) : null;
+    if (sh) {
+      p.ops.push(ops, 'W n', matOp([box.width, 0, 0, box.height, box.x, box.y]));
+      if (sh.smask) p.ops.push(`/${sh.smask} gs`);
+      p.ops.push(`/${sh.name} sh`);
     } else if (def) {
       const first = parseColor(def.children?.[0]?.attrs['stop-color']);
       if (first) p.ops.push(fillOp(first), ops, 'f');

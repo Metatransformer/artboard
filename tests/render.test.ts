@@ -420,3 +420,294 @@ describe('render: known bugs', () => {
     expect(portraitInSquare('contain')).not.toBe(portraitInSquare('fill'));
   });
 });
+
+describe('render: node identity', () => {
+  const idsIn = (doc: Document) =>
+    flatten(renderArtboard(doc, doc.artboards[0]!).scene).map(n => n.nodeId).filter(Boolean);
+
+  it('puts the node id on exactly ONE element, however the node is decorated', () => {
+    // each of these takes a different branch through the wrapper logic
+    const decorations: Array<Record<string, unknown>> = [
+      {},
+      { rotation: 30 },
+      { opacity: 0.5 },
+      { flipX: true },
+      { blend: 'multiply' },
+      { alt: 'A red square' },
+      { shadow: { x: 1, y: 2, blur: 4, color: '#00000033' } },
+      { effects: [{ kind: 'blur', radius: 4 }] },
+      { effects: [{ kind: 'vignette' }] },
+      { effects: [{ kind: 'background' }] },
+      { rotation: 30, opacity: 0.5, alt: 'Everything', effects: [{ kind: 'glow' }], blend: 'screen' },
+    ];
+
+    for (const extra of decorations) {
+      const doc = docWith([{ id: 'n1', kind: 'rect', x: 0, y: 0, width: 10, height: 10, ...extra }]);
+      const ids = idsIn(doc);
+      expect(ids.filter(id => id === 'n1'), JSON.stringify(extra)).toHaveLength(1);
+    }
+  });
+
+  it('gives every visible node in a group its own single id', () => {
+    const doc = docWith([
+      { id: 'g', kind: 'group', x: 0, y: 0, width: 100, height: 100, rotation: 10, children: [
+        { id: 'c1', kind: 'rect', x: 0, y: 0, width: 5, height: 5, opacity: 0.5 },
+        { id: 'c2', kind: 'ellipse', x: 0, y: 0, width: 5, height: 5 },
+      ]},
+    ]);
+    const ids = idsIn(doc);
+    for (const id of ['g', 'c1', 'c2']) expect(ids.filter(x => x === id), id).toHaveLength(1);
+  });
+});
+
+describe('render: transforms, flips and blending', () => {
+  it('mirrors about the node centre for flipX and flipY', () => {
+    const svg = renderToString(docWith([
+      { id: 'r', kind: 'rect', x: 10, y: 20, width: 100, height: 50, flipX: true },
+    ])).svg;
+    expect(svg).toContain('translate(60 45) scale(-1 1) translate(-60 -45)');
+  });
+
+  it('applies the flip before the rotation, so a rotated node mirrors inside its own frame', () => {
+    const svg = renderToString(docWith([
+      { id: 'r', kind: 'rect', x: 0, y: 0, width: 100, height: 100, rotation: 45, flipY: true },
+    ])).svg;
+    const transform = svg.match(/transform="([^"]*)"/)![1]!;
+    // SVG applies a transform list right-to-left: rotate listed first means it happens last
+    expect(transform.indexOf('rotate(')).toBeLessThan(transform.indexOf('scale('));
+    expect(transform).toContain('scale(1 -1)');
+  });
+
+  it('emits no transform when the node is neither rotated nor flipped', () => {
+    expect(renderToString(docWith([{ id: 'r', kind: 'rect', x: 0, y: 0, width: 10, height: 10 }])).svg)
+      .not.toContain('transform=');
+  });
+
+  it('emits a mix-blend-mode style only for a non-normal blend', () => {
+    expect(renderToString(docWith([{ id: 'r', kind: 'rect', x: 0, y: 0, width: 10, height: 10, blend: 'multiply' }])).svg)
+      .toContain('style="mix-blend-mode:multiply"');
+    expect(renderToString(docWith([{ id: 'r', kind: 'rect', x: 0, y: 0, width: 10, height: 10, blend: 'normal' }])).svg)
+      .not.toContain('mix-blend-mode');
+  });
+});
+
+describe('render: effects', () => {
+  const withEffects = (effects: unknown[], extra: Record<string, unknown> = {}) =>
+    renderToString(docWith([{ id: 'n', kind: 'rect', x: 20, y: 20, width: 100, height: 100, effects, ...extra }]));
+
+  it('compiles blur, glow and shadow into a filter the node references', () => {
+    for (const kind of ['blur', 'glow', 'shadow', 'outline', 'echo']) {
+      const { svg } = withEffects([{ kind }]);
+      const id = svg.match(/<filter id="([^"]+)"/)?.[1];
+      expect(id, kind).toBeDefined();
+      expect(svg, kind).toContain(`filter="url(#${id})"`);
+      expect(checkXml(svg).ok, kind).toBe(true);
+    }
+  });
+
+  it('draws a background plate behind the node rather than as a filter', () => {
+    const { svg } = withEffects([{ kind: 'background', color: '#ff0000', padding: 10 }]);
+    const plate = svg.indexOf('#ff0000');
+    const shape = svg.indexOf('#4f46e5');       // the rect's own default fill
+    expect(plate).toBeGreaterThan(-1);
+    expect(plate, 'the plate must be painted before the shape').toBeLessThan(shape);
+  });
+
+  it('lays a vignette over the node, outside the filter that blurs it', () => {
+    const { svg } = withEffects([{ kind: 'blur' }, { kind: 'vignette' }]);
+    expect(svg).toContain('<radialGradient');
+    expect(svg).toContain('pointer-events="none"');
+    // the overlay rect comes after the filtered content
+    expect(svg.indexOf('pointer-events="none"')).toBeGreaterThan(svg.indexOf('filter="url(#'));
+  });
+
+  it('stacks several effects without producing malformed markup', () => {
+    const { svg } = withEffects([
+      { kind: 'shadow' }, { kind: 'glow' }, { kind: 'blur' },
+      { kind: 'adjust', saturation: 40 }, { kind: 'duotone' }, { kind: 'vignette' },
+    ]);
+    expect(checkXml(svg).ok).toBe(true);
+  });
+
+  it('emits nothing extra when the effects list is empty', () => {
+    expect(withEffects([]).svg).not.toContain('<filter');
+  });
+
+  it('is deterministic with a full effects stack', () => {
+    const doc = docWith([{ id: 'n', kind: 'rect', x: 0, y: 0, width: 50, height: 50,
+      effects: [{ kind: 'glow' }, { kind: 'vignette' }, { kind: 'background' }] }]);
+    const runs = [renderToString(doc).svg, renderToString(doc).svg, renderToString(doc).svg];
+    expect(new Set(runs).size).toBe(1);
+  });
+});
+
+describe('render: curved text', () => {
+  const curved = (text: string, width = 400) => renderToString(docWith([
+    { id: 't', kind: 'text', x: 0, y: 0, width, height: 100, text, fontSize: 20,
+      effects: [{ kind: 'curve', amount: 60 }] },
+  ]));
+
+  it('rides the text on a path in defs instead of laying out tspans', () => {
+    const { svg } = curved('Arched headline');
+    const pathId = svg.match(/<path id="([^"]+)"/)?.[1];
+    expect(pathId).toBeDefined();
+    expect(svg).toContain(`href="#${pathId}"`);
+    expect(svg).toContain('<textPath');
+    expect(svg).not.toContain('<tspan');
+    expect(checkXml(svg).ok).toBe(true);
+  });
+
+  it('warns CURVE_SINGLE_LINE and keeps the first line when the text wraps', () => {
+    const { svg, diagnostics } = curved('this headline is far too long to fit on a single line', 60);
+    const diag = diagnostics.find(d => d.code === 'CURVE_SINGLE_LINE');
+    expect(diag).toBeDefined();
+    expect(diag!.level).toBe('warn');
+    expect(diag!.nodeId).toBe('t');
+    expect(checkXml(svg).ok).toBe(true);
+  });
+
+  it('stays silent when the curved text already fits on one line', () => {
+    expect(curved('Short').diagnostics.filter(d => d.code === 'CURVE_SINGLE_LINE')).toEqual([]);
+  });
+});
+
+describe('render: paint', () => {
+  it('emits a <radialGradient> for a radial fill and a <linearGradient> for a linear one', () => {
+    const stops = [{ offset: 0, color: '#ff0000' }, { offset: 1, color: '#0000ff' }];
+    const radial = renderToString(docWith([{ id: 'r', kind: 'rect', x: 0, y: 0, width: 10, height: 10,
+      fill: { kind: 'gradient', type: 'radial', stops } }])).svg;
+    const linear = renderToString(docWith([{ id: 'r', kind: 'rect', x: 0, y: 0, width: 10, height: 10,
+      fill: { kind: 'gradient', type: 'linear', stops } }])).svg;
+
+    expect(radial).toContain('<radialGradient');
+    expect(radial).not.toContain('<linearGradient');
+    expect(linear).toContain('<linearGradient');
+    expect(linear).not.toContain('<radialGradient');
+  });
+
+  it('lets a text fill win over the legacy color', () => {
+    const plain = renderToString(docWith([
+      { id: 't', kind: 'text', x: 0, y: 0, width: 100, height: 40, text: 'hi', color: '#123456' },
+    ])).svg;
+    expect(plain).toContain('fill="#123456"');
+
+    const painted = renderToString(docWith([
+      { id: 't', kind: 'text', x: 0, y: 0, width: 100, height: 40, text: 'hi', color: '#123456',
+        fill: { kind: 'gradient', stops: [{ offset: 0, color: '#ff0000' }, { offset: 1, color: '#0000ff' }] } },
+    ])).svg;
+    expect(painted).toContain('<linearGradient');
+    expect(painted).not.toContain('fill="#123456"');
+  });
+
+  it('emits a <marker> per decorated stroke end and references it', () => {
+    const svg = renderToString(docWith([
+      { id: 'l', kind: 'line', x: 0, y: 50, width: 200, height: 0,
+        stroke: { width: 4, color: '#111111', markerStart: 'dot', markerEnd: 'arrow' } },
+    ])).svg;
+
+    const ids = [...svg.matchAll(/<marker id="([^"]+)"/g)].map(m => m[1]!);
+    expect(ids).toHaveLength(2);
+    expect(svg).toContain(`marker-start="url(#${ids[0]})"`);
+    expect(svg).toContain(`marker-end="url(#${ids[1]})"`);
+    expect(checkXml(svg).ok).toBe(true);
+  });
+
+  it('emits no markers when both ends are none', () => {
+    expect(renderToString(docWith([
+      { id: 'l', kind: 'line', x: 0, y: 0, width: 100, height: 0, stroke: { width: 2 } },
+    ])).svg).not.toContain('<marker');
+  });
+
+  it('emits stroke cap and join only when they differ from the SVG defaults', () => {
+    const plain = renderToString(docWith([
+      { id: 'r', kind: 'rect', x: 0, y: 0, width: 10, height: 10, stroke: { width: 2 } },
+    ])).svg;
+    expect(plain).not.toContain('stroke-linejoin');
+
+    const round = renderToString(docWith([
+      { id: 'r', kind: 'rect', x: 0, y: 0, width: 10, height: 10, stroke: { width: 2, cap: 'round', join: 'round' } },
+    ])).svg;
+    expect(round).toContain('stroke-linecap="round"');
+    expect(round).toContain('stroke-linejoin="round"');
+  });
+
+  it('draws nothing at all for a none background, leaving the export transparent', () => {
+    const doc = loadDocument({ id: 'd', artboards: [{ id: 'ab', width: 100, height: 100,
+      background: { kind: 'none' }, nodes: [] }] }).doc;
+    const { scene } = renderArtboard(doc, doc.artboards[0]!);
+    expect(scene.children ?? []).toHaveLength(0);
+  });
+});
+
+describe('render: image frames', () => {
+  const framed = (extra: Record<string, unknown>) => renderToString(docWith(
+    [{ id: 'i', kind: 'image', assetId: 'a', x: 10, y: 20, width: 100, height: 80, ...extra }],
+    { assets: { a: { id: 'a', mime: 'image/png', width: 200, height: 100, data: 'data:,x' } } },
+  )).svg;
+
+  it('clips to a rect by default, honouring the corner radius', () => {
+    const svg = framed({ radius: 12 });
+    expect(svg).toContain('<clipPath');
+    expect(svg).toContain('rx="12"');
+  });
+
+  it('clips to an ellipse centred on the node box', () => {
+    const svg = framed({ frame: 'ellipse' });
+    expect(svg).toMatch(/<ellipse cx="60" cy="60" rx="50" ry="40"\/>/);
+  });
+
+  it('clips to a scaled path in frameBox space', () => {
+    const svg = framed({ frame: 'path', frameD: 'M0 0 L24 24 Z', frameBox: [24, 24] });
+    expect(svg).toContain('d="M0 0 L24 24 Z"');
+    // 100/24 and 80/24, rounded to 2dp
+    expect(svg).toContain('translate(10 20) scale(4.17 3.33)');
+  });
+
+  it('falls back to a rect when a path frame carries no path data', () => {
+    const svg = framed({ frame: 'path', frameD: '' });
+    expect(svg).toContain('<clipPath');
+    expect(svg).not.toContain('<path');
+  });
+});
+
+describe('render: accessibility', () => {
+  const doc = () => docWith([
+    { id: 'r', kind: 'rect', x: 0, y: 0, width: 10, height: 10 },
+    { id: 'i', kind: 'image', assetId: 'a', x: 0, y: 0, width: 10, height: 10, alt: 'A red barn' },
+  ], { name: 'My design', assets: { a: { id: 'a', mime: 'image/png', width: 2, height: 2, data: 'data:,x' } } });
+
+  it('renders per-node alt text as a <title>, with or without the a11y option', () => {
+    for (const a11y of [false, true]) {
+      const svg = renderToString(doc(), 0, { a11y }).svg;
+      expect(svg, `a11y=${a11y}`).toContain('<title>A red barn</title>');
+    }
+  });
+
+  it('adds role, a document title and aria-hidden on decorative shapes only under a11y', () => {
+    const off = renderToString(doc(), 0).svg;
+    expect(off).not.toContain('role="img"');
+    expect(off).not.toContain('aria-hidden');
+
+    const on = renderToString(doc(), 0, { a11y: true }).svg;
+    expect(on).toContain('role="img"');
+    expect(on).toContain('<title>My design</title>');
+    expect(on).toContain('aria-hidden="true"');       // the unnamed rect
+    expect(checkXml(on).ok).toBe(true);
+  });
+
+  it('never hides a shape that carries alt text', () => {
+    const svg = renderToString(docWith([
+      { id: 'r', kind: 'rect', x: 0, y: 0, width: 10, height: 10, alt: 'Meaningful square' },
+    ]), 0, { a11y: true }).svg;
+    expect(svg).toContain('<title>Meaningful square</title>');
+    expect(svg).not.toContain('aria-hidden');
+  });
+
+  it('escapes markup inside alt text', () => {
+    const svg = renderToString(docWith([
+      { id: 'r', kind: 'rect', x: 0, y: 0, width: 10, height: 10, alt: 'A <b>bold</b> & odd name' },
+    ])).svg;
+    expect(svg).toContain('<title>A &lt;b&gt;bold&lt;/b&gt; &amp; odd name</title>');
+    expect(checkXml(svg).ok).toBe(true);
+  });
+});

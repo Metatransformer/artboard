@@ -368,3 +368,20 @@
 .app-desktop .toolbar input,
 .app-desktop .toolbar select,
 .app-desktop .toolbar .pop { -webkit-app-region: no-drag; }
+
+/* ── element library (LeftRail.tsx › Elements) ─────────────────────────────
+ * Both grids in this drawer run one step denser than the shared `.egrid`.
+ * With four columns the 43 shape tiles alone are eleven rows, which pushes the
+ * icon search — the reason the drawer exists — below the fold on a laptop; at
+ * five columns a tile is still 54px, comfortably larger than the 44px touch
+ * minimum, and the Icons header lands on screen. Only the modifier is defined
+ * here: the base `.egrid`/`.ecard` rules live in styles.css and are
+ * deliberately not restated.
+ * ------------------------------------------------------------------------ */
+.egrid.dense{grid-template-columns:repeat(5,1fr);gap:4px}
+.egrid.dense .ecard{border-radius:7px}
+.egrid.dense .ecard svg{width:19px;height:19px}
+
+@media (max-width:1180px){
+  .egrid.dense{grid-template-columns:repeat(4,1fr)}
+}
