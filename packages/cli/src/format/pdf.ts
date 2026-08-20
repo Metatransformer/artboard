@@ -387,9 +387,15 @@ function advances(text: string, family: string, weight: number, size: number, tr
  *
  * Fourteen faces need six tables: the oblique and italic cuts carry their roman
  * widths, and every Courier is a flat 600. The values were read out of the
- * system faces and check against the published AFM metrics, which is what a
+ * system faces and checked against the published AFM metrics, which is what a
  * reader uses for a base-14 font it is not handed a /Widths array for. The gaps
  * are the unassigned WinAnsi codes, which `winAnsi()` cannot produce.
+ *
+ * These numbers only hold as far as the reader agrees with them. A reader that
+ * substitutes something metrically different for a base-14 face will drift, and
+ * nothing here can prevent it - that is the price of shipping metrics instead of
+ * font binaries. If text is ever right in Preview and wrong somewhere else, this
+ * is the first place to look.
  */
 const W_HELVETICA: readonly number[] = [
   278, 278, 355, 556, 556, 889, 667, 191, 333, 333, 389, 584, 278, 333, 278, 278,
