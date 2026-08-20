@@ -336,7 +336,12 @@ export function loadDocument(json: unknown): OpenResult {
       diagnostics.push({ level: 'error', code: 'ASSET_MISSING', nodeId: n.id, message: `Image asset "${(n as any).assetId}" is missing.` });
     }
   });
-  return { doc: { ...doc, diagnostics: [...doc.diagnostics, ...diagnostics] }, readOnly, diagnostics };
+  // Diagnostics describe THIS load, so they replace whatever the file carried
+  // rather than appending to it. `loadDocument` is their only producer and it
+  // re-derives every one of them above, so appending just meant a document
+  // that had been opened and saved five times reported the same missing asset
+  // five times, and grew a little on every cycle.
+  return { doc: { ...doc, diagnostics }, readOnly, diagnostics };
 }
 
 /** Migrations are additive and forward-only. Never down-migrate a user's file. */

@@ -263,23 +263,44 @@ describe('schema: round trip', () => {
   });
 });
 
-describe('schema: known bugs', () => {
-  // BUG: `loadDocument` returns `diagnostics: [...doc.diagnostics, ...diagnostics]`
-  // in its final `return`. Since diagnostics are part of the saved
-  // Document, every open/save cycle re-appends the same findings and the array
-  // grows without bound. Fix: return only the freshly computed diagnostics.
-  it.fails('does not accumulate diagnostics across repeated save/load cycles', () => {
-    let doc = loadDocument({
-      ...minimal,
-      artboards: [{ id: 'ab-1', width: 400, height: 300, nodes: [
-        { id: 'i1', kind: 'image', assetId: 'gone', x: 0, y: 0, width: 10, height: 10 },
-      ]}],
-    }).doc;
+describe('schema: diagnostics are derived, not accumulated', () => {
+  // REGRESSION GUARD: `loadDocument` used to return
+  // `[...doc.diagnostics, ...diagnostics]`. Diagnostics are part of the saved
+  // Document, so every open/save cycle re-appended the same findings and the
+  // array grew without bound -- a document opened five times reported the same
+  // missing asset five times. They describe the load, so they replace.
+  const withMissingAsset = () => ({
+    ...minimal,
+    artboards: [{ id: 'ab-1', width: 400, height: 300, nodes: [
+      { id: 'i1', kind: 'image', assetId: 'gone', x: 0, y: 0, width: 10, height: 10 },
+    ]}],
+  });
 
+  it('does not accumulate diagnostics across repeated save/load cycles', () => {
+    let doc = loadDocument(withMissingAsset()).doc;
     const first = doc.diagnostics.length;
-    for (let i = 0; i < 3; i++) doc = loadDocument(JSON.parse(JSON.stringify(doc))).doc;
+    expect(first).toBe(1);
 
-    expect(doc.diagnostics).toHaveLength(first);   // actual: 1 → 2 → 3 → 4
+    for (let i = 0; i < 5; i++) doc = loadDocument(JSON.parse(JSON.stringify(doc))).doc;
+
+    expect(doc.diagnostics).toHaveLength(first);
+  });
+
+  it('drops a stale diagnostic once the problem is fixed', () => {
+    // The accumulating version could never do this: a diagnostic written into
+    // the file outlived the thing it described.
+    const broken = loadDocument(withMissingAsset()).doc;
+    expect(broken.diagnostics).toHaveLength(1);
+
+    const repaired = JSON.parse(JSON.stringify(broken));
+    repaired.assets = { gone: { id: 'gone', mime: 'image/png', width: 1, height: 1, data: 'data:image/png;base64,AA' } };
+
+    expect(loadDocument(repaired).doc.diagnostics).toHaveLength(0);
+  });
+
+  it('reports the same diagnostics on the returned doc and the result', () => {
+    const r = loadDocument(withMissingAsset());
+    expect(r.doc.diagnostics).toEqual(r.diagnostics);
   });
 });
 
