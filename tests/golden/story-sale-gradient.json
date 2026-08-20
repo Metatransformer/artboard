@@ -1,0 +1,298 @@
+{
+  "version": 1,
+  "id": "doc-story-sale-gradient",
+  "name": "Sale Story",
+  "artboards": [
+    {
+      "id": "ab-story-sale-gradient",
+      "name": "Sale Story",
+      "width": 1080,
+      "height": 1920,
+      "background": {
+        "kind": "gradient",
+        "angle": 160,
+        "stops": [
+          {
+            "offset": 0,
+            "color": "#f97316"
+          },
+          {
+            "offset": 0.5,
+            "color": "#f43f5e"
+          },
+          {
+            "offset": 1,
+            "color": "#db2777"
+          }
+        ]
+      },
+      "nodes": [
+        {
+          "id": "story-sale-gradient-orb-a",
+          "name": "",
+          "x": 700,
+          "y": -220,
+          "width": 640,
+          "height": 640,
+          "rotation": 0,
+          "opacity": 0.12,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "ellipse",
+          "fill": {
+            "kind": "solid",
+            "color": "#ffffff"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          }
+        },
+        {
+          "id": "story-sale-gradient-orb-b",
+          "name": "",
+          "x": -260,
+          "y": 1240,
+          "width": 900,
+          "height": 900,
+          "rotation": 0,
+          "opacity": 0.18,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "ellipse",
+          "fill": {
+            "kind": "solid",
+            "color": "#fef08a"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          }
+        },
+        {
+          "id": "story-sale-gradient-pill",
+          "name": "",
+          "x": 100,
+          "y": 220,
+          "width": 360,
+          "height": 64,
+          "rotation": 0,
+          "opacity": 0.2,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "rect",
+          "fill": {
+            "kind": "solid",
+            "color": "#ffffff"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          },
+          "radius": 32
+        },
+        {
+          "id": "story-sale-gradient-pill-label",
+          "name": "",
+          "x": 100,
+          "y": 220,
+          "width": 360,
+          "height": 64,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "Spring Sale",
+          "fontFamily": "Inter",
+          "fontSize": 26,
+          "fontWeight": 600,
+          "italic": false,
+          "lineHeight": 1.2,
+          "letterSpacing": 3,
+          "align": "center",
+          "valign": "middle",
+          "color": "#ffffff",
+          "uppercase": true
+        },
+        {
+          "id": "story-sale-gradient-number",
+          "name": "",
+          "x": 100,
+          "y": 380,
+          "width": 880,
+          "height": 600,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "50%\nOFF",
+          "fontFamily": "Space Grotesk",
+          "fontSize": 300,
+          "fontWeight": 700,
+          "italic": false,
+          "lineHeight": 0.98,
+          "letterSpacing": -8,
+          "align": "left",
+          "valign": "top",
+          "color": "#ffffff",
+          "uppercase": true
+        },
+        {
+          "id": "story-sale-gradient-scope",
+          "name": "",
+          "x": 100,
+          "y": 1000,
+          "width": 880,
+          "height": 100,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "Everything in store",
+          "fontFamily": "Space Grotesk",
+          "fontSize": 68,
+          "fontWeight": 500,
+          "italic": false,
+          "lineHeight": 1.2,
+          "letterSpacing": -1,
+          "align": "left",
+          "valign": "top",
+          "color": "#fff7ed",
+          "uppercase": false
+        },
+        {
+          "id": "story-sale-gradient-rule",
+          "name": "",
+          "x": 100,
+          "y": 1140,
+          "width": 880,
+          "height": 0,
+          "rotation": 0,
+          "opacity": 0.4,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "line",
+          "stroke": {
+            "color": "#ffffff",
+            "width": 2,
+            "dash": []
+          }
+        },
+        {
+          "id": "story-sale-gradient-detail",
+          "name": "",
+          "x": 100,
+          "y": 1190,
+          "width": 700,
+          "height": 190,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "Two weeks only. Use code SPRING50 at checkout — it applies to every plan and every add-on.",
+          "fontFamily": "Inter",
+          "fontSize": 34,
+          "fontWeight": 400,
+          "italic": false,
+          "lineHeight": 1.45,
+          "letterSpacing": 0,
+          "align": "left",
+          "valign": "top",
+          "color": "#ffe4e6",
+          "uppercase": false
+        },
+        {
+          "id": "story-sale-gradient-cta",
+          "name": "",
+          "x": 100,
+          "y": 1560,
+          "width": 880,
+          "height": 112,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "rect",
+          "fill": {
+            "kind": "solid",
+            "color": "#ffffff"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          },
+          "radius": 56
+        },
+        {
+          "id": "story-sale-gradient-cta-label",
+          "name": "",
+          "x": 100,
+          "y": 1560,
+          "width": 880,
+          "height": 112,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "Shop the sale",
+          "fontFamily": "Inter",
+          "fontSize": 38,
+          "fontWeight": 700,
+          "italic": false,
+          "lineHeight": 1.2,
+          "letterSpacing": 0,
+          "align": "center",
+          "valign": "middle",
+          "color": "#db2777",
+          "uppercase": false
+        },
+        {
+          "id": "story-sale-gradient-swipe",
+          "name": "",
+          "x": 100,
+          "y": 1740,
+          "width": 880,
+          "height": 44,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "Swipe up for details",
+          "fontFamily": "Inter",
+          "fontSize": 26,
+          "fontWeight": 500,
+          "italic": false,
+          "lineHeight": 1.2,
+          "letterSpacing": 2,
+          "align": "center",
+          "valign": "top",
+          "color": "#ffe4e6",
+          "uppercase": true
+        }
+      ]
+    }
+  ],
+  "assets": {},
+  "diagnostics": []
+}

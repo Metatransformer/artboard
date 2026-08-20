@@ -1,0 +1,234 @@
+{
+  "version": 1,
+  "id": "doc-social-gradient-launch",
+  "name": "Launch Week",
+  "artboards": [
+    {
+      "id": "ab-social-gradient-launch",
+      "name": "Launch Week",
+      "width": 1080,
+      "height": 1080,
+      "background": {
+        "kind": "gradient",
+        "angle": 135,
+        "stops": [
+          {
+            "offset": 0,
+            "color": "#4338ca"
+          },
+          {
+            "offset": 0.55,
+            "color": "#7c3aed"
+          },
+          {
+            "offset": 1,
+            "color": "#db2777"
+          }
+        ]
+      },
+      "nodes": [
+        {
+          "id": "social-gradient-launch-blob",
+          "name": "",
+          "x": 600,
+          "y": -180,
+          "width": 700,
+          "height": 700,
+          "rotation": 0,
+          "opacity": 0.1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "path",
+          "d": "M54 2 C80 6 99 26 96 52 C93 78 72 98 46 97 C20 96 2 76 3 50 C4 24 28 -2 54 2 Z",
+          "viewBox": [
+            100,
+            100
+          ],
+          "fill": {
+            "kind": "solid",
+            "color": "#ffffff"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          }
+        },
+        {
+          "id": "social-gradient-launch-orb",
+          "name": "",
+          "x": -220,
+          "y": 640,
+          "width": 560,
+          "height": 560,
+          "rotation": 0,
+          "opacity": 0.18,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "ellipse",
+          "fill": {
+            "kind": "solid",
+            "color": "#fbbf24"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          }
+        },
+        {
+          "id": "social-gradient-launch-label",
+          "name": "",
+          "x": 96,
+          "y": 248,
+          "width": 888,
+          "height": 40,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "Launch Week · 2026",
+          "fontFamily": "Space Grotesk",
+          "fontSize": 26,
+          "fontWeight": 600,
+          "italic": false,
+          "lineHeight": 1.2,
+          "letterSpacing": 4,
+          "align": "left",
+          "valign": "top",
+          "color": "#fde68a",
+          "uppercase": true
+        },
+        {
+          "id": "social-gradient-launch-bar",
+          "name": "",
+          "x": 96,
+          "y": 306,
+          "width": 88,
+          "height": 8,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "rect",
+          "fill": {
+            "kind": "solid",
+            "color": "#fbbf24"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          },
+          "radius": 4
+        },
+        {
+          "id": "social-gradient-launch-headline",
+          "name": "",
+          "x": 96,
+          "y": 356,
+          "width": 888,
+          "height": 400,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "Ship your\nnext idea\nin a weekend.",
+          "fontFamily": "Space Grotesk",
+          "fontSize": 118,
+          "fontWeight": 700,
+          "italic": false,
+          "lineHeight": 1.05,
+          "letterSpacing": -3,
+          "align": "left",
+          "valign": "top",
+          "color": "#ffffff",
+          "uppercase": false
+        },
+        {
+          "id": "social-gradient-launch-sub",
+          "name": "",
+          "x": 96,
+          "y": 792,
+          "width": 760,
+          "height": 120,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "A design tool that gets out of the way. Free, open source, yours.",
+          "fontFamily": "Inter",
+          "fontSize": 34,
+          "fontWeight": 400,
+          "italic": false,
+          "lineHeight": 1.45,
+          "letterSpacing": 0,
+          "align": "left",
+          "valign": "top",
+          "color": "#e9d5ff",
+          "uppercase": false
+        },
+        {
+          "id": "social-gradient-launch-cta",
+          "name": "",
+          "x": 96,
+          "y": 940,
+          "width": 320,
+          "height": 76,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "rect",
+          "fill": {
+            "kind": "solid",
+            "color": "#ffffff"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          },
+          "radius": 38
+        },
+        {
+          "id": "social-gradient-launch-cta-label",
+          "name": "",
+          "x": 96,
+          "y": 940,
+          "width": 320,
+          "height": 76,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "Get started free",
+          "fontFamily": "Inter",
+          "fontSize": 26,
+          "fontWeight": 600,
+          "italic": false,
+          "lineHeight": 1.2,
+          "letterSpacing": 0,
+          "align": "center",
+          "valign": "middle",
+          "color": "#4338ca",
+          "uppercase": false
+        }
+      ]
+    }
+  ],
+  "assets": {},
+  "diagnostics": []
+}

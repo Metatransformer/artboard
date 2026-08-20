@@ -1,0 +1,244 @@
+{
+  "version": 1,
+  "id": "doc-deck-title-cool",
+  "name": "Deck Title",
+  "artboards": [
+    {
+      "id": "ab-deck-title-cool",
+      "name": "Deck Title",
+      "width": 1920,
+      "height": 1080,
+      "background": {
+        "kind": "gradient",
+        "angle": 150,
+        "stops": [
+          {
+            "offset": 0,
+            "color": "#0f172a"
+          },
+          {
+            "offset": 1,
+            "color": "#1e40af"
+          }
+        ]
+      },
+      "nodes": [
+        {
+          "id": "deck-title-cool-glow",
+          "name": "",
+          "x": 1240,
+          "y": -260,
+          "width": 940,
+          "height": 940,
+          "rotation": 0,
+          "opacity": 0.18,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "ellipse",
+          "fill": {
+            "kind": "solid",
+            "color": "#3b82f6"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          }
+        },
+        {
+          "id": "deck-title-cool-ring",
+          "name": "",
+          "x": 1420,
+          "y": 460,
+          "width": 420,
+          "height": 420,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "ellipse",
+          "fill": {
+            "kind": "none"
+          },
+          "stroke": {
+            "color": "#1d4ed8",
+            "width": 2,
+            "dash": []
+          }
+        },
+        {
+          "id": "deck-title-cool-label",
+          "name": "",
+          "x": 140,
+          "y": 240,
+          "width": 900,
+          "height": 36,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "Q3 Product Review",
+          "fontFamily": "Space Grotesk",
+          "fontSize": 22,
+          "fontWeight": 600,
+          "italic": false,
+          "lineHeight": 1.2,
+          "letterSpacing": 5,
+          "align": "left",
+          "valign": "top",
+          "color": "#93c5fd",
+          "uppercase": true
+        },
+        {
+          "id": "deck-title-cool-bar",
+          "name": "",
+          "x": 140,
+          "y": 300,
+          "width": 96,
+          "height": 8,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "rect",
+          "fill": {
+            "kind": "solid",
+            "color": "#60a5fa"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          },
+          "radius": 4
+        },
+        {
+          "id": "deck-title-cool-title",
+          "name": "",
+          "x": 140,
+          "y": 360,
+          "width": 1180,
+          "height": 300,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "The year we\nmade it boring",
+          "fontFamily": "Space Grotesk",
+          "fontSize": 128,
+          "fontWeight": 700,
+          "italic": false,
+          "lineHeight": 1.08,
+          "letterSpacing": -3,
+          "align": "left",
+          "valign": "top",
+          "color": "#f8fafc",
+          "uppercase": false
+        },
+        {
+          "id": "deck-title-cool-sub",
+          "name": "",
+          "x": 140,
+          "y": 700,
+          "width": 900,
+          "height": 140,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "How we cut the surface area of the product in half and doubled activation.",
+          "fontFamily": "Inter",
+          "fontSize": 34,
+          "fontWeight": 400,
+          "italic": false,
+          "lineHeight": 1.45,
+          "letterSpacing": 0,
+          "align": "left",
+          "valign": "top",
+          "color": "#bfdbfe",
+          "uppercase": false
+        },
+        {
+          "id": "deck-title-cool-rule",
+          "name": "",
+          "x": 140,
+          "y": 900,
+          "width": 1640,
+          "height": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "line",
+          "stroke": {
+            "color": "#1e40af",
+            "width": 2,
+            "dash": []
+          }
+        },
+        {
+          "id": "deck-title-cool-presenter",
+          "name": "",
+          "x": 140,
+          "y": 936,
+          "width": 800,
+          "height": 40,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "Mira Okonkwo · Head of Design",
+          "fontFamily": "Inter",
+          "fontSize": 24,
+          "fontWeight": 500,
+          "italic": false,
+          "lineHeight": 1.2,
+          "letterSpacing": 0,
+          "align": "left",
+          "valign": "top",
+          "color": "#cbd5e1",
+          "uppercase": false
+        },
+        {
+          "id": "deck-title-cool-page",
+          "name": "",
+          "x": 1580,
+          "y": 936,
+          "width": 200,
+          "height": 40,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "01 / 24",
+          "fontFamily": "JetBrains Mono",
+          "fontSize": 24,
+          "fontWeight": 400,
+          "italic": false,
+          "lineHeight": 1.2,
+          "letterSpacing": 0,
+          "align": "right",
+          "valign": "top",
+          "color": "#60a5fa",
+          "uppercase": false
+        }
+      ]
+    }
+  ],
+  "assets": {},
+  "diagnostics": []
+}

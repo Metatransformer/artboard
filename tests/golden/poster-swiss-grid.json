@@ -1,0 +1,333 @@
+{
+  "version": 1,
+  "id": "doc-poster-swiss-grid",
+  "name": "Swiss Grid Poster",
+  "artboards": [
+    {
+      "id": "ab-poster-swiss-grid",
+      "name": "Swiss Grid Poster",
+      "width": 2480,
+      "height": 3508,
+      "background": {
+        "kind": "solid",
+        "color": "#f4f4f5"
+      },
+      "nodes": [
+        {
+          "id": "poster-swiss-grid-column-0",
+          "name": "",
+          "x": 200,
+          "y": 200,
+          "width": 2,
+          "height": 3108,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "rect",
+          "fill": {
+            "kind": "solid",
+            "color": "#e0e0e3"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          },
+          "radius": 0
+        },
+        {
+          "id": "poster-swiss-grid-column-1",
+          "name": "",
+          "x": 720,
+          "y": 200,
+          "width": 2,
+          "height": 3108,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "rect",
+          "fill": {
+            "kind": "solid",
+            "color": "#e0e0e3"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          },
+          "radius": 0
+        },
+        {
+          "id": "poster-swiss-grid-column-2",
+          "name": "",
+          "x": 1240,
+          "y": 200,
+          "width": 2,
+          "height": 3108,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "rect",
+          "fill": {
+            "kind": "solid",
+            "color": "#e0e0e3"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          },
+          "radius": 0
+        },
+        {
+          "id": "poster-swiss-grid-column-3",
+          "name": "",
+          "x": 1760,
+          "y": 200,
+          "width": 2,
+          "height": 3108,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "rect",
+          "fill": {
+            "kind": "solid",
+            "color": "#e0e0e3"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          },
+          "radius": 0
+        },
+        {
+          "id": "poster-swiss-grid-column-4",
+          "name": "",
+          "x": 2280,
+          "y": 200,
+          "width": 2,
+          "height": 3108,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "rect",
+          "fill": {
+            "kind": "solid",
+            "color": "#e0e0e3"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          },
+          "radius": 0
+        },
+        {
+          "id": "poster-swiss-grid-block",
+          "name": "",
+          "x": 1240,
+          "y": 200,
+          "width": 1040,
+          "height": 1040,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "rect",
+          "fill": {
+            "kind": "solid",
+            "color": "#dc2626"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          },
+          "radius": 0
+        },
+        {
+          "id": "poster-swiss-grid-block-label",
+          "name": "",
+          "x": 1320,
+          "y": 1000,
+          "width": 880,
+          "height": 160,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "Vol. 09",
+          "fontFamily": "Inter",
+          "fontSize": 96,
+          "fontWeight": 700,
+          "italic": false,
+          "lineHeight": 1.2,
+          "letterSpacing": -2,
+          "align": "left",
+          "valign": "top",
+          "color": "#ffffff",
+          "uppercase": false
+        },
+        {
+          "id": "poster-swiss-grid-headline",
+          "name": "",
+          "x": 200,
+          "y": 1400,
+          "width": 2080,
+          "height": 1100,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "Form\nfollows\nfunction",
+          "fontFamily": "Inter",
+          "fontSize": 340,
+          "fontWeight": 800,
+          "italic": false,
+          "lineHeight": 1.02,
+          "letterSpacing": -10,
+          "align": "left",
+          "valign": "top",
+          "color": "#09090b",
+          "uppercase": true
+        },
+        {
+          "id": "poster-swiss-grid-rule",
+          "name": "",
+          "x": 200,
+          "y": 2600,
+          "width": 2080,
+          "height": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "line",
+          "stroke": {
+            "color": "#09090b",
+            "width": 4,
+            "dash": []
+          }
+        },
+        {
+          "id": "poster-swiss-grid-body",
+          "name": "",
+          "x": 200,
+          "y": 2680,
+          "width": 980,
+          "height": 460,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "A retrospective of Swiss typographic method, 1957 to 1972. Posters, grids, and the discipline of the modular scale.",
+          "fontFamily": "Inter",
+          "fontSize": 46,
+          "fontWeight": 400,
+          "italic": false,
+          "lineHeight": 1.5,
+          "letterSpacing": 0,
+          "align": "left",
+          "valign": "top",
+          "color": "#3f3f46",
+          "uppercase": false
+        },
+        {
+          "id": "poster-swiss-grid-meta",
+          "name": "",
+          "x": 1320,
+          "y": 2680,
+          "width": 960,
+          "height": 460,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "12 March – 30 June\nKunsthalle, Basel\nDaily 10:00 – 18:00",
+          "fontFamily": "JetBrains Mono",
+          "fontSize": 44,
+          "fontWeight": 400,
+          "italic": false,
+          "lineHeight": 1.7,
+          "letterSpacing": 0,
+          "align": "left",
+          "valign": "top",
+          "color": "#09090b",
+          "uppercase": false
+        },
+        {
+          "id": "poster-swiss-grid-tick",
+          "name": "",
+          "x": 200,
+          "y": 3240,
+          "width": 200,
+          "height": 14,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "rect",
+          "fill": {
+            "kind": "solid",
+            "color": "#dc2626"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          },
+          "radius": 0
+        },
+        {
+          "id": "poster-swiss-grid-footer",
+          "name": "",
+          "x": 440,
+          "y": 3226,
+          "width": 1840,
+          "height": 60,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "Free entry",
+          "fontFamily": "Inter",
+          "fontSize": 40,
+          "fontWeight": 600,
+          "italic": false,
+          "lineHeight": 1.2,
+          "letterSpacing": 4,
+          "align": "left",
+          "valign": "top",
+          "color": "#09090b",
+          "uppercase": true
+        }
+      ]
+    }
+  ],
+  "assets": {},
+  "diagnostics": []
+}

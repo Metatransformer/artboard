@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2480 3508" width="2480" height="3508">
+  <rect x="0" y="0" width="2480" height="3508" fill="#f4f4f5"/>
+  <rect x="200" y="200" width="2" height="3108" fill="#e0e0e3"/>
+  <rect x="720" y="200" width="2" height="3108" fill="#e0e0e3"/>
+  <rect x="1240" y="200" width="2" height="3108" fill="#e0e0e3"/>
+  <rect x="1760" y="200" width="2" height="3108" fill="#e0e0e3"/>
+  <rect x="2280" y="200" width="2" height="3108" fill="#e0e0e3"/>
+  <rect x="1240" y="200" width="1040" height="1040" fill="#dc2626"/>
+  <text x="1320" y="1000" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="96" font-weight="700" letter-spacing="-2" text-anchor="start" fill="#ffffff" xml:space="preserve">
+    <tspan x="1320" y="1075.84">Vol. 09</tspan>
+  </text>
+  <text x="200" y="1400" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="340" font-weight="800" letter-spacing="-10" text-anchor="start" fill="#09090b" xml:space="preserve">
+    <tspan x="200" y="1668.6">FORM</tspan>
+    <tspan x="200" y="2015.4">FOLLOWS</tspan>
+    <tspan x="200" y="2362.2">FUNCTION</tspan>
+  </text>
+  <line x1="200" y1="2600" x2="2280" y2="2600" stroke-linecap="round" stroke="#09090b" stroke-width="4"/>
+  <text x="200" y="2680" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="46" font-weight="400" text-anchor="start" fill="#3f3f46" xml:space="preserve">
+    <tspan x="200" y="2716.34">A retrospective of Swiss typographic method,</tspan>
+    <tspan x="200" y="2785.34">1957 to 1972. Posters, grids, and the discipline</tspan>
+    <tspan x="200" y="2854.34">of the modular scale.</tspan>
+  </text>
+  <text x="1320" y="2680" font-family="'JetBrains Mono', ui-sans-serif, system-ui, sans-serif" font-size="44" font-weight="400" text-anchor="start" fill="#09090b" xml:space="preserve">
+    <tspan x="1320" y="2714.76">12 March – 30 June</tspan>
+    <tspan x="1320" y="2789.56">Kunsthalle, Basel</tspan>
+    <tspan x="1320" y="2864.36">Daily 10:00 – 18:00</tspan>
+  </text>
+  <rect x="200" y="3240" width="200" height="14" fill="#dc2626"/>
+  <text x="440" y="3226" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="40" font-weight="600" letter-spacing="4" text-anchor="start" fill="#09090b" xml:space="preserve">
+    <tspan x="440" y="3257.6">FREE ENTRY</tspan>
+  </text>
+</svg>

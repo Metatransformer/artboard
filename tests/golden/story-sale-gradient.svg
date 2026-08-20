@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" width="1080" height="1920">
+  <defs>
+    <linearGradient id="grad-0" x1="32.9%" y1="3.02%" x2="67.1%" y2="96.98%">
+      <stop offset="0" stop-color="#f97316"/>
+      <stop offset="0.5" stop-color="#f43f5e"/>
+      <stop offset="1" stop-color="#db2777"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="1080" height="1920" fill="url(#grad-0)"/>
+  <g opacity="0.12">
+    <ellipse cx="1020" cy="100" rx="320" ry="320" fill="#ffffff"/>
+  </g>
+  <g opacity="0.18">
+    <ellipse cx="190" cy="1690" rx="450" ry="450" fill="#fef08a"/>
+  </g>
+  <g opacity="0.2">
+    <rect x="100" y="220" width="360" height="64" rx="32" ry="32" fill="#ffffff"/>
+  </g>
+  <text x="100" y="220" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="26" font-weight="600" letter-spacing="3" text-anchor="middle" fill="#ffffff" xml:space="preserve">
+    <tspan x="280" y="256.94">SPRING SALE</tspan>
+  </text>
+  <text x="100" y="380" font-family="'Space Grotesk', ui-sans-serif, system-ui, sans-serif" font-size="300" font-weight="700" letter-spacing="-8" text-anchor="start" fill="#ffffff" xml:space="preserve">
+    <tspan x="100" y="617">50%</tspan>
+    <tspan x="100" y="911">OFF</tspan>
+  </text>
+  <text x="100" y="1000" font-family="'Space Grotesk', ui-sans-serif, system-ui, sans-serif" font-size="68" font-weight="500" letter-spacing="-1" text-anchor="start" fill="#fff7ed" xml:space="preserve">
+    <tspan x="100" y="1053.72">Everything in store</tspan>
+  </text>
+  <g opacity="0.4">
+    <line x1="100" y1="1140" x2="980" y2="1140" stroke-linecap="round" stroke="#ffffff" stroke-width="2"/>
+  </g>
+  <text x="100" y="1190" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="34" font-weight="400" text-anchor="start" fill="#ffe4e6" xml:space="preserve">
+    <tspan x="100" y="1216.86">Two weeks only. Use code SPRING50 at</tspan>
+    <tspan x="100" y="1266.16">checkout — it applies to every plan and every</tspan>
+    <tspan x="100" y="1315.46">add-on.</tspan>
+  </text>
+  <rect x="100" y="1560" width="880" height="112" rx="56" ry="56" fill="#ffffff"/>
+  <text x="100" y="1560" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="38" font-weight="700" text-anchor="middle" fill="#db2777" xml:space="preserve">
+    <tspan x="540" y="1623.22">Shop the sale</tspan>
+  </text>
+  <text x="100" y="1740" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="26" font-weight="500" letter-spacing="2" text-anchor="middle" fill="#ffe4e6" xml:space="preserve">
+    <tspan x="540" y="1760.54">SWIPE UP FOR DETAILS</tspan>
+  </text>
+</svg>

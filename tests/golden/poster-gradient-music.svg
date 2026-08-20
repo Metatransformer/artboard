@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2480 3508" width="2480" height="3508">
+  <defs>
+    <linearGradient id="grad-0" x1="21.32%" y1="9.04%" x2="78.68%" y2="90.96%">
+      <stop offset="0" stop-color="#7c3aed"/>
+      <stop offset="0.55" stop-color="#4f46e5"/>
+      <stop offset="1" stop-color="#06b6d4"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="2480" height="3508" fill="url(#grad-0)"/>
+  <g opacity="0.32">
+    <ellipse cx="2100" cy="800" rx="600" ry="600" fill="#f0abfc"/>
+  </g>
+  <g opacity="0.28">
+    <ellipse cx="590" cy="1390" rx="410" ry="410" fill="#22d3ee"/>
+  </g>
+  <g opacity="0.5">
+    <ellipse cx="2000" cy="560" rx="380" ry="380" fill="none" stroke="#ffffff" stroke-width="6"/>
+  </g>
+  <text x="200" y="260" font-family="'Space Grotesk', ui-sans-serif, system-ui, sans-serif" font-size="44" font-weight="600" letter-spacing="10" text-anchor="start" fill="#f5d0fe" xml:space="preserve">
+    <tspan x="200" y="294.76">NIGHT PROGRAMME</tspan>
+  </text>
+  <text x="200" y="1500" font-family="'Space Grotesk', ui-sans-serif, system-ui, sans-serif" font-size="360" font-weight="700" letter-spacing="-12" text-anchor="start" fill="#ffffff" xml:space="preserve">
+    <tspan x="200" y="1784.4">SOUND</tspan>
+    <tspan x="200" y="2144.4">AND</tspan>
+    <tspan x="200" y="2504.4">SILENCE</tspan>
+  </text>
+  <g opacity="0.6">
+    <line x1="200" y1="2700" x2="2280" y2="2700" stroke-linecap="round" stroke="#ffffff" stroke-width="4"/>
+  </g>
+  <text x="200" y="2780" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="62" font-weight="500" text-anchor="start" fill="#ffffff" xml:space="preserve">
+    <tspan x="200" y="2828.98">Kaia Vance</tspan>
+    <tspan x="200" y="2921.98">The Long Room</tspan>
+    <tspan x="200" y="3014.98">Orenda</tspan>
+    <tspan x="200" y="3107.98">Nilüfer Ash</tspan>
+  </text>
+  <text x="1560" y="2780" font-family="'JetBrains Mono', ui-sans-serif, system-ui, sans-serif" font-size="48" font-weight="400" text-anchor="end" fill="#e9d5ff" xml:space="preserve">
+    <tspan x="2280" y="2817.92">Sat 21 June</tspan>
+    <tspan x="2280" y="2894.72">20:00</tspan>
+    <tspan x="2280" y="2971.52">Pier 4, Rotterdam</tspan>
+    <tspan x="2280" y="3048.32">€24</tspan>
+  </text>
+  <text x="200" y="3320" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="40" font-weight="500" letter-spacing="4" text-anchor="start" fill="#ffffff" xml:space="preserve">
+    <tspan x="200" y="3351.6">TICKETS AT ARTBOARD.DESIGN/SOUND</tspan>
+  </text>
+</svg>

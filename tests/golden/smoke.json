@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "id": "doc_smoke",
+  "name": "Smoke",
+  "artboards": [
+    {
+      "id": "ab_smoke",
+      "name": "Smoke",
+      "width": 400,
+      "height": 300,
+      "background": { "kind": "solid", "color": "#ffffff" },
+      "nodes": [
+        {
+          "id": "rect_1",
+          "kind": "rect",
+          "name": "Card",
+          "x": 40,
+          "y": 40,
+          "width": 320,
+          "height": 140,
+          "radius": 16,
+          "fill": { "kind": "solid", "color": "#4f46e5" }
+        },
+        {
+          "id": "text_1",
+          "kind": "text",
+          "name": "Headline",
+          "x": 40,
+          "y": 210,
+          "width": 320,
+          "height": 60,
+          "text": "Artboard smoke test",
+          "fontSize": 28,
+          "fontWeight": 700,
+          "align": "center",
+          "color": "#111111"
+        }
+      ]
+    }
+  ]
+}

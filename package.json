@@ -1,0 +1,29 @@
+{
+  "name": "artboard",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @artboard/studio",
+    "build": "npm run build -w @artboard/studio",
+    "build:demo": "npm run build:demo -w @artboard/studio",
+    "typecheck": "tsc -b --pretty false",
+    "test": "vitest run",
+    "golden": "node packages/cli/bin/artboard.mjs golden",
+    "gauntlet": "node tools/gauntlet/loop.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.62.1",
+    "tsx": "^4.23.12",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
+  }
+}

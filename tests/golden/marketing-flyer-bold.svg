@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1275 1650" width="1275" height="1650">
+  <defs>
+    <linearGradient id="grad-0" x1="17.86%" y1="11.7%" x2="82.14%" y2="88.3%">
+      <stop offset="0" stop-color="#0f766e"/>
+      <stop offset="1" stop-color="#65a30d"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="1275" height="1650" fill="#fffdf7"/>
+  <rect x="0" y="0" width="1275" height="560" fill="url(#grad-0)"/>
+  <g opacity="0.25">
+    <ellipse cx="1160" cy="100" rx="260" ry="260" fill="#fef9c3"/>
+  </g>
+  <text x="100" y="110" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="24" font-weight="600" letter-spacing="6" text-anchor="start" fill="#d9f99d" xml:space="preserve">
+    <tspan x="100" y="128.96">TWO-DAY WORKSHOP</tspan>
+  </text>
+  <text x="100" y="190" font-family="'Space Grotesk', ui-sans-serif, system-ui, sans-serif" font-size="108" font-weight="700" letter-spacing="-2" text-anchor="start" fill="#ffffff" xml:space="preserve">
+    <tspan x="100" y="275.32">Print for</tspan>
+    <tspan x="100" y="391.96">screen people</tspan>
+  </text>
+  <text x="100" y="640" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="30" font-weight="400" text-anchor="start" fill="#3f3f46" xml:space="preserve">
+    <tspan x="100" y="663.7">Grids, ink limits, bleed, and the joy of a thing you can hold.</tspan>
+    <tspan x="100" y="708.7">Bring a laptop and one idea worth printing.</tspan>
+  </text>
+  <line x1="100" y1="860" x2="1175" y2="860" stroke-linecap="round" stroke="#d4d4d8" stroke-width="2"/>
+  <text x="100" y="910" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="22" font-weight="600" letter-spacing="4" text-anchor="start" fill="#0f766e" xml:space="preserve">
+    <tspan x="100" y="927.38">WHEN</tspan>
+  </text>
+  <text x="400" y="904" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="30" font-weight="400" text-anchor="start" fill="#27272a" xml:space="preserve">
+    <tspan x="400" y="927.7">Sat 8 – Sun 9 March</tspan>
+    <tspan x="400" y="972.7">10:00 – 16:00</tspan>
+  </text>
+  <text x="100" y="1080" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="22" font-weight="600" letter-spacing="4" text-anchor="start" fill="#0f766e" xml:space="preserve">
+    <tspan x="100" y="1097.38">WHERE</tspan>
+  </text>
+  <text x="400" y="1074" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="30" font-weight="400" text-anchor="start" fill="#27272a" xml:space="preserve">
+    <tspan x="400" y="1097.7">Studio Fourteen</tspan>
+    <tspan x="400" y="1142.7">14 Mill Lane, Bristol</tspan>
+  </text>
+  <text x="100" y="1250" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="22" font-weight="600" letter-spacing="4" text-anchor="start" fill="#0f766e" xml:space="preserve">
+    <tspan x="100" y="1267.38">COST</tspan>
+  </text>
+  <text x="400" y="1244" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="30" font-weight="400" text-anchor="start" fill="#27272a" xml:space="preserve">
+    <tspan x="400" y="1267.7">£180 · materials included</tspan>
+    <tspan x="400" y="1312.7">Ten places only</tspan>
+  </text>
+  <rect x="100" y="1470" width="480" height="96" rx="12" ry="12" fill="#0f766e"/>
+  <text x="100" y="1470" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="32" font-weight="700" text-anchor="middle" fill="#ffffff" xml:space="preserve">
+    <tspan x="340" y="1524.08">Book a place</tspan>
+  </text>
+  <text x="640" y="1470" font-family="'JetBrains Mono', ui-sans-serif, system-ui, sans-serif" font-size="26" font-weight="400" letter-spacing="1" text-anchor="end" fill="#71717a" xml:space="preserve">
+    <tspan x="1175" y="1522.94">studiofourteen.co.uk</tspan>
+  </text>
+</svg>

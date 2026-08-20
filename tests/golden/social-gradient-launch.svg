@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" width="1080" height="1080">
+  <defs>
+    <linearGradient id="grad-0" x1="14.64%" y1="14.64%" x2="85.36%" y2="85.36%">
+      <stop offset="0" stop-color="#4338ca"/>
+      <stop offset="0.55" stop-color="#7c3aed"/>
+      <stop offset="1" stop-color="#db2777"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="1080" height="1080" fill="url(#grad-0)"/>
+  <g opacity="0.1">
+    <g transform="translate(600 -180) scale(7 7)">
+      <path d="M54 2 C80 6 99 26 96 52 C93 78 72 98 46 97 C20 96 2 76 3 50 C4 24 28 -2 54 2 Z" fill="#ffffff"/>
+    </g>
+  </g>
+  <g opacity="0.18">
+    <ellipse cx="60" cy="920" rx="280" ry="280" fill="#fbbf24"/>
+  </g>
+  <text x="96" y="248" font-family="'Space Grotesk', ui-sans-serif, system-ui, sans-serif" font-size="26" font-weight="600" letter-spacing="4" text-anchor="start" fill="#fde68a" xml:space="preserve">
+    <tspan x="96" y="268.54">LAUNCH WEEK · 2026</tspan>
+  </text>
+  <rect x="96" y="306" width="88" height="8" rx="4" ry="4" fill="#fbbf24"/>
+  <text x="96" y="356" font-family="'Space Grotesk', ui-sans-serif, system-ui, sans-serif" font-size="118" font-weight="700" letter-spacing="-3" text-anchor="start" fill="#ffffff" xml:space="preserve">
+    <tspan x="96" y="449.22">Ship your</tspan>
+    <tspan x="96" y="573.12">next idea</tspan>
+    <tspan x="96" y="697.02">in a weekend.</tspan>
+  </text>
+  <text x="96" y="792" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="34" font-weight="400" text-anchor="start" fill="#e9d5ff" xml:space="preserve">
+    <tspan x="96" y="818.86">A design tool that gets out of the way. Free, open</tspan>
+    <tspan x="96" y="868.16">source, yours.</tspan>
+  </text>
+  <rect x="96" y="940" width="320" height="76" rx="38" ry="38" fill="#ffffff"/>
+  <text x="96" y="940" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="26" font-weight="600" text-anchor="middle" fill="#4338ca" xml:space="preserve">
+    <tspan x="256" y="982.94">Get started free</tspan>
+  </text>
+</svg>

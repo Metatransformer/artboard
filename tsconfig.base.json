@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": false,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@artboard/schema": ["packages/schema/src/index.ts"],
+      "@artboard/engine": ["packages/engine/src/index.ts"],
+      "@artboard/render-svg": ["packages/render-svg/src/index.ts"],
+      "@artboard/commands": ["packages/commands/src/index.ts"],
+      "@artboard/templates": ["packages/templates/src/index.ts"]
+    }
+  }
+}

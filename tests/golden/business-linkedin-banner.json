@@ -1,0 +1,201 @@
+{
+  "version": 1,
+  "id": "doc-business-linkedin-banner",
+  "name": "Profile Banner",
+  "artboards": [
+    {
+      "id": "ab-business-linkedin-banner",
+      "name": "Profile Banner",
+      "width": 1584,
+      "height": 396,
+      "background": {
+        "kind": "gradient",
+        "angle": 120,
+        "stops": [
+          {
+            "offset": 0,
+            "color": "#0f172a"
+          },
+          {
+            "offset": 1,
+            "color": "#155e75"
+          }
+        ]
+      },
+      "nodes": [
+        {
+          "id": "business-linkedin-banner-orb-a",
+          "name": "",
+          "x": 1180,
+          "y": -120,
+          "width": 520,
+          "height": 520,
+          "rotation": 0,
+          "opacity": 0.16,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "ellipse",
+          "fill": {
+            "kind": "solid",
+            "color": "#22d3ee"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          }
+        },
+        {
+          "id": "business-linkedin-banner-orb-b",
+          "name": "",
+          "x": 980,
+          "y": 180,
+          "width": 300,
+          "height": 300,
+          "rotation": 0,
+          "opacity": 0.14,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "ellipse",
+          "fill": {
+            "kind": "solid",
+            "color": "#0ea5e9"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          }
+        },
+        {
+          "id": "business-linkedin-banner-label",
+          "name": "",
+          "x": 96,
+          "y": 86,
+          "width": 900,
+          "height": 32,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "Northwind Studio",
+          "fontFamily": "Inter",
+          "fontSize": 18,
+          "fontWeight": 600,
+          "italic": false,
+          "lineHeight": 1.2,
+          "letterSpacing": 5,
+          "align": "left",
+          "valign": "top",
+          "color": "#67e8f9",
+          "uppercase": true
+        },
+        {
+          "id": "business-linkedin-banner-bar",
+          "name": "",
+          "x": 96,
+          "y": 124,
+          "width": 72,
+          "height": 6,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "rect",
+          "fill": {
+            "kind": "solid",
+            "color": "#22d3ee"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          },
+          "radius": 3
+        },
+        {
+          "id": "business-linkedin-banner-headline",
+          "name": "",
+          "x": 96,
+          "y": 160,
+          "width": 1000,
+          "height": 80,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "Design systems that outlive redesigns",
+          "fontFamily": "Space Grotesk",
+          "fontSize": 48,
+          "fontWeight": 700,
+          "italic": false,
+          "lineHeight": 1.2,
+          "letterSpacing": -1,
+          "align": "left",
+          "valign": "top",
+          "color": "#f8fafc",
+          "uppercase": false
+        },
+        {
+          "id": "business-linkedin-banner-sub",
+          "name": "",
+          "x": 96,
+          "y": 254,
+          "width": 900,
+          "height": 50,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "Product design · Design systems · Brand · Amsterdam",
+          "fontFamily": "Inter",
+          "fontSize": 24,
+          "fontWeight": 400,
+          "italic": false,
+          "lineHeight": 1.2,
+          "letterSpacing": 0,
+          "align": "left",
+          "valign": "top",
+          "color": "#a5f3fc",
+          "uppercase": false
+        },
+        {
+          "id": "business-linkedin-banner-site",
+          "name": "",
+          "x": 1120,
+          "y": 254,
+          "width": 368,
+          "height": 44,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "northwind.co",
+          "fontFamily": "JetBrains Mono",
+          "fontSize": 24,
+          "fontWeight": 500,
+          "italic": false,
+          "lineHeight": 1.2,
+          "letterSpacing": 0,
+          "align": "right",
+          "valign": "top",
+          "color": "#67e8f9",
+          "uppercase": false
+        }
+      ]
+    }
+  ],
+  "assets": {},
+  "diagnostics": []
+}

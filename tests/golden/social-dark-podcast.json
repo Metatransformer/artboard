@@ -1,0 +1,438 @@
+{
+  "version": 1,
+  "id": "doc-social-dark-podcast",
+  "name": "Podcast Episode",
+  "artboards": [
+    {
+      "id": "ab-social-dark-podcast",
+      "name": "Podcast Episode",
+      "width": 1080,
+      "height": 1080,
+      "background": {
+        "kind": "gradient",
+        "angle": 160,
+        "stops": [
+          {
+            "offset": 0,
+            "color": "#0f172a"
+          },
+          {
+            "offset": 1,
+            "color": "#1e293b"
+          }
+        ]
+      },
+      "nodes": [
+        {
+          "id": "social-dark-podcast-glow",
+          "name": "",
+          "x": -180,
+          "y": -180,
+          "width": 760,
+          "height": 760,
+          "rotation": 0,
+          "opacity": 0.12,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "ellipse",
+          "fill": {
+            "kind": "solid",
+            "color": "#38bdf8"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          }
+        },
+        {
+          "id": "social-dark-podcast-tick",
+          "name": "",
+          "x": 88,
+          "y": 132,
+          "width": 10,
+          "height": 64,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "rect",
+          "fill": {
+            "kind": "solid",
+            "color": "#38bdf8"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          },
+          "radius": 5
+        },
+        {
+          "id": "social-dark-podcast-show",
+          "name": "",
+          "x": 124,
+          "y": 136,
+          "width": 700,
+          "height": 32,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "The Build Log",
+          "fontFamily": "Space Grotesk",
+          "fontSize": 26,
+          "fontWeight": 600,
+          "italic": false,
+          "lineHeight": 1.2,
+          "letterSpacing": 4,
+          "align": "left",
+          "valign": "top",
+          "color": "#38bdf8",
+          "uppercase": true
+        },
+        {
+          "id": "social-dark-podcast-episode",
+          "name": "",
+          "x": 124,
+          "y": 176,
+          "width": 700,
+          "height": 32,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "Episode 42",
+          "fontFamily": "Inter",
+          "fontSize": 22,
+          "fontWeight": 400,
+          "italic": false,
+          "lineHeight": 1.2,
+          "letterSpacing": 1,
+          "align": "left",
+          "valign": "top",
+          "color": "#94a3b8",
+          "uppercase": false
+        },
+        {
+          "id": "social-dark-podcast-title",
+          "name": "",
+          "x": 88,
+          "y": 352,
+          "width": 904,
+          "height": 360,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "Why your tool\nshould be\nboring.",
+          "fontFamily": "Space Grotesk",
+          "fontSize": 110,
+          "fontWeight": 700,
+          "italic": false,
+          "lineHeight": 1.06,
+          "letterSpacing": -2,
+          "align": "left",
+          "valign": "top",
+          "color": "#f1f5f9",
+          "uppercase": false
+        },
+        {
+          "id": "social-dark-podcast-rule",
+          "name": "",
+          "x": 88,
+          "y": 760,
+          "width": 904,
+          "height": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "line",
+          "stroke": {
+            "color": "#334155",
+            "width": 1,
+            "dash": []
+          }
+        },
+        {
+          "id": "social-dark-podcast-bar-0",
+          "name": "",
+          "x": 88,
+          "y": 912,
+          "width": 14,
+          "height": 28,
+          "rotation": 0,
+          "opacity": 0.45,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "rect",
+          "fill": {
+            "kind": "solid",
+            "color": "#38bdf8"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          },
+          "radius": 7
+        },
+        {
+          "id": "social-dark-podcast-bar-1",
+          "name": "",
+          "x": 118,
+          "y": 884,
+          "width": 14,
+          "height": 56,
+          "rotation": 0,
+          "opacity": 0.65,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "rect",
+          "fill": {
+            "kind": "solid",
+            "color": "#38bdf8"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          },
+          "radius": 7
+        },
+        {
+          "id": "social-dark-podcast-bar-2",
+          "name": "",
+          "x": 148,
+          "y": 844,
+          "width": 14,
+          "height": 96,
+          "rotation": 0,
+          "opacity": 0.8500000000000001,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "rect",
+          "fill": {
+            "kind": "solid",
+            "color": "#38bdf8"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          },
+          "radius": 7
+        },
+        {
+          "id": "social-dark-podcast-bar-3",
+          "name": "",
+          "x": 178,
+          "y": 800,
+          "width": 14,
+          "height": 140,
+          "rotation": 0,
+          "opacity": 0.45,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "rect",
+          "fill": {
+            "kind": "solid",
+            "color": "#38bdf8"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          },
+          "radius": 7
+        },
+        {
+          "id": "social-dark-podcast-bar-4",
+          "name": "",
+          "x": 208,
+          "y": 868,
+          "width": 14,
+          "height": 72,
+          "rotation": 0,
+          "opacity": 0.65,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "rect",
+          "fill": {
+            "kind": "solid",
+            "color": "#38bdf8"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          },
+          "radius": 7
+        },
+        {
+          "id": "social-dark-podcast-bar-5",
+          "name": "",
+          "x": 238,
+          "y": 822,
+          "width": 14,
+          "height": 118,
+          "rotation": 0,
+          "opacity": 0.8500000000000001,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "rect",
+          "fill": {
+            "kind": "solid",
+            "color": "#38bdf8"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          },
+          "radius": 7
+        },
+        {
+          "id": "social-dark-podcast-bar-6",
+          "name": "",
+          "x": 268,
+          "y": 896,
+          "width": 14,
+          "height": 44,
+          "rotation": 0,
+          "opacity": 0.45,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "rect",
+          "fill": {
+            "kind": "solid",
+            "color": "#38bdf8"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          },
+          "radius": 7
+        },
+        {
+          "id": "social-dark-podcast-bar-7",
+          "name": "",
+          "x": 298,
+          "y": 852,
+          "width": 14,
+          "height": 88,
+          "rotation": 0,
+          "opacity": 0.65,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "rect",
+          "fill": {
+            "kind": "solid",
+            "color": "#38bdf8"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          },
+          "radius": 7
+        },
+        {
+          "id": "social-dark-podcast-bar-8",
+          "name": "",
+          "x": 328,
+          "y": 908,
+          "width": 14,
+          "height": 32,
+          "rotation": 0,
+          "opacity": 0.8500000000000001,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "rect",
+          "fill": {
+            "kind": "solid",
+            "color": "#38bdf8"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          },
+          "radius": 7
+        },
+        {
+          "id": "social-dark-podcast-guest",
+          "name": "",
+          "x": 520,
+          "y": 826,
+          "width": 472,
+          "height": 40,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "With Mira Okonkwo",
+          "fontFamily": "Inter",
+          "fontSize": 28,
+          "fontWeight": 500,
+          "italic": false,
+          "lineHeight": 1.2,
+          "letterSpacing": 0,
+          "align": "right",
+          "valign": "top",
+          "color": "#cbd5e1",
+          "uppercase": false
+        },
+        {
+          "id": "social-dark-podcast-guest-role",
+          "name": "",
+          "x": 520,
+          "y": 874,
+          "width": 472,
+          "height": 36,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "Head of Design, Northwind",
+          "fontFamily": "Inter",
+          "fontSize": 22,
+          "fontWeight": 400,
+          "italic": false,
+          "lineHeight": 1.2,
+          "letterSpacing": 0,
+          "align": "right",
+          "valign": "top",
+          "color": "#64748b",
+          "uppercase": false
+        }
+      ]
+    }
+  ],
+  "assets": {},
+  "diagnostics": []
+}

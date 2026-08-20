@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2480 3508" width="2480" height="3508">
+  <rect x="0" y="0" width="2480" height="3508" fill="#f7f1e8"/>
+  <line x1="200" y1="200" x2="2280" y2="200" stroke-linecap="round" stroke="#d6c7b0" stroke-width="4"/>
+  <text x="200" y="250" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="42" font-weight="600" letter-spacing="8" text-anchor="start" fill="#b45309" xml:space="preserve">
+    <tspan x="200" y="283.18">THE ARTBOARD REVIEW · ISSUE 04</tspan>
+  </text>
+  <text x="200" y="600" font-family="'Playfair Display', ui-sans-serif, system-ui, sans-serif" font-size="420" font-weight="400" letter-spacing="-8" text-anchor="start" fill="#1b1917" xml:space="preserve">
+    <tspan x="200" y="931.8">Making</tspan>
+    <tspan x="200" y="1360.2">things</tspan>
+    <tspan x="200" y="1788.6">by hand,</tspan>
+    <tspan x="200" y="2217">again</tspan>
+  </text>
+  <rect x="200" y="2440" width="240" height="12" fill="#b45309"/>
+  <text x="200" y="2520" font-family="'Playfair Display', ui-sans-serif, system-ui, sans-serif" font-size="76" font-weight="400" text-anchor="start" fill="#3f3a35" xml:space="preserve">
+    <tspan x="200" y="2580.04">A field guide to slow tools, honest defaults,</tspan>
+    <tspan x="200" y="2682.64">and software that does not ask for your</tspan>
+    <tspan x="200" y="2785.24">attention.</tspan>
+  </text>
+  <ellipse cx="2090" cy="2690" rx="190" ry="190" fill="none" stroke="#b45309" stroke-width="4"/>
+  <text x="1900" y="2500" font-family="'DM Serif Display', ui-sans-serif, system-ui, sans-serif" font-size="130" font-weight="400" text-anchor="middle" fill="#b45309" xml:space="preserve">
+    <tspan x="2090" y="2714.7">04</tspan>
+  </text>
+  <line x1="200" y1="3150" x2="2280" y2="3150" stroke-linecap="round" stroke="#d6c7b0" stroke-width="2"/>
+  <text x="200" y="3210" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="38" font-weight="400" text-anchor="start" fill="#6b6257" xml:space="preserve">
+    <tspan x="200" y="3240.02">Printed in Lisbon</tspan>
+    <tspan x="200" y="3297.02">Edition of 300</tspan>
+  </text>
+  <text x="1480" y="3210" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="38" font-weight="500" letter-spacing="4" text-anchor="end" fill="#6b6257" xml:space="preserve">
+    <tspan x="2280" y="3240.02">artboard.design</tspan>
+  </text>
+</svg>

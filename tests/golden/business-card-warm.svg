@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1050 600" width="1050" height="600">
+  <rect x="0" y="0" width="1050" height="600" fill="#fdfaf5"/>
+  <rect x="0" y="0" width="1050" height="14" fill="#a16207"/>
+  <text x="110" y="168" font-family="'DM Serif Display', ui-sans-serif, system-ui, sans-serif" font-size="62" font-weight="400" text-anchor="start" fill="#2a2118" xml:space="preserve">
+    <tspan x="110" y="216.98">Elias Moreau</tspan>
+  </text>
+  <text x="110" y="268" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="22" font-weight="500" letter-spacing="4" text-anchor="start" fill="#a16207" xml:space="preserve">
+    <tspan x="110" y="285.38">BOOKBINDER &amp; PRINTER</tspan>
+  </text>
+  <line x1="110" y1="344" x2="270" y2="344" stroke-linecap="round" stroke="#ddd0ba" stroke-width="2"/>
+  <text x="110" y="386" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="21" font-weight="400" text-anchor="start" fill="#5a4c3b" xml:space="preserve">
+    <tspan x="110" y="402.59">atelier@moreau.paris</tspan>
+    <tspan x="110" y="438.29">+33 1 45 67 89 01</tspan>
+    <tspan x="110" y="473.99">12 Rue de la Presse, Paris</tspan>
+  </text>
+  <ellipse cx="875" cy="243" rx="75" ry="75" fill="#f4ead8"/>
+  <text x="800" y="168" font-family="'DM Serif Display', ui-sans-serif, system-ui, sans-serif" font-size="58" font-weight="400" text-anchor="middle" fill="#a16207" xml:space="preserve">
+    <tspan x="875" y="254.02">EM</tspan>
+  </text>
+  <text x="760" y="476" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="18" font-weight="500" letter-spacing="3" text-anchor="end" fill="#8b7a63" xml:space="preserve">
+    <tspan x="950" y="490.22">EST. 1998</tspan>
+  </text>
+  <rect x="0" y="586" width="1050" height="14" fill="#ddd0ba"/>
+</svg>

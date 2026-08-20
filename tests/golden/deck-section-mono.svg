@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <rect x="0" y="0" width="1920" height="1080" fill="#111111"/>
+  <rect x="0" y="0" width="760" height="1080" fill="#fafafa"/>
+  <text x="80" y="280" font-family="'Space Grotesk', ui-sans-serif, system-ui, sans-serif" font-size="380" font-weight="700" letter-spacing="-20" text-anchor="start" fill="#111111" xml:space="preserve">
+    <tspan x="80" y="580.2">02</tspan>
+  </text>
+  <rect x="80" y="800" width="180" height="10" fill="#ef4444"/>
+  <text x="80" y="846" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="22" font-weight="600" letter-spacing="6" text-anchor="start" fill="#737373" xml:space="preserve">
+    <tspan x="80" y="863.38">SECTION</tspan>
+  </text>
+  <text x="880" y="380" font-family="'Space Grotesk', ui-sans-serif, system-ui, sans-serif" font-size="110" font-weight="700" letter-spacing="-2" text-anchor="start" fill="#fafafa" xml:space="preserve">
+    <tspan x="880" y="466.9">Rendering</tspan>
+    <tspan x="880" y="587.9">&amp; fidelity</tspan>
+  </text>
+  <line x1="880" y1="700" x2="1820" y2="700" stroke-linecap="round" stroke="#3f3f46" stroke-width="2"/>
+  <text x="880" y="744" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="30" font-weight="400" text-anchor="start" fill="#a1a1aa" xml:space="preserve">
+    <tspan x="880" y="767.7">One renderer, one code path. What the editor draws is</tspan>
+    <tspan x="880" y="812.7">exactly what the exporter writes.</tspan>
+  </text>
+  <text x="1620" y="976" font-family="'JetBrains Mono', ui-sans-serif, system-ui, sans-serif" font-size="22" font-weight="400" text-anchor="end" fill="#71717a" xml:space="preserve">
+    <tspan x="1820" y="993.38">02 / 24</tspan>
+  </text>
+</svg>

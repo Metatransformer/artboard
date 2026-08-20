@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <rect x="0" y="0" width="1280" height="720" fill="#18181b"/>
+  <g opacity="0.28">
+    <ellipse cx="1160" cy="140" rx="280" ry="280" fill="#ef4444"/>
+  </g>
+  <g transform="rotate(12 1140 200)">
+    <rect x="1050" y="110" width="180" height="180" rx="28" ry="28" fill="#ef4444"/>
+  </g>
+  <g transform="rotate(12 1140 200)">
+    <text x="1050" y="110" font-family="'Space Grotesk', ui-sans-serif, system-ui, sans-serif" font-size="76" font-weight="800" text-anchor="middle" fill="#ffffff" xml:space="preserve">
+      <tspan x="1140" y="214.44">07</tspan>
+    </text>
+  </g>
+  <text x="80" y="88" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="28" font-weight="700" letter-spacing="6" text-anchor="start" fill="#facc15" xml:space="preserve">
+    <tspan x="80" y="110.12">TUTORIAL</tspan>
+  </text>
+  <text x="80" y="168" font-family="'Space Grotesk', ui-sans-serif, system-ui, sans-serif" font-size="104" font-weight="800" letter-spacing="-2" text-anchor="start" fill="#ffffff" xml:space="preserve">
+    <tspan x="80" y="250.16">BUILD A</tspan>
+    <tspan x="80" y="362.48">CANVAS EDITOR</tspan>
+    <tspan x="80" y="474.8">IN A WEEKEND</tspan>
+  </text>
+  <rect x="0" y="612" width="1280" height="108" fill="#facc15"/>
+  <text x="80" y="612" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="34" font-weight="700" letter-spacing="2" text-anchor="start" fill="#18181b" xml:space="preserve">
+    <tspan x="80" y="672.46">ARTBOARD.DESIGN · FULL BUILD, NO FLUFF</tspan>
+  </text>
+</svg>

@@ -1,0 +1,13 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 1500, height: 950 } });
+const errs = [];
+p.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
+p.on('console', m => errs.push(`[${m.type()}] ${m.text()}`));
+const resp = await p.goto('http://localhost:5399/artboard-demo.html', { waitUntil: 'networkidle' });
+console.log('status', resp?.status());
+await p.waitForTimeout(2500);
+console.log('rootChildren', await p.evaluate(() => document.getElementById('root')?.children.length ?? -1));
+console.log('bodyStart', (await p.content()).slice(0, 300).replace(/\n/g,' '));
+console.log('LOGS:', errs.slice(0,10).join('\n'));
+await b.close();

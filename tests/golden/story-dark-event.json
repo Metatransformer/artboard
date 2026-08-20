@@ -1,0 +1,319 @@
+{
+  "version": 1,
+  "id": "doc-story-dark-event",
+  "name": "Event Story",
+  "artboards": [
+    {
+      "id": "ab-story-dark-event",
+      "name": "Event Story",
+      "width": 1080,
+      "height": 1920,
+      "background": {
+        "kind": "gradient",
+        "angle": 165,
+        "stops": [
+          {
+            "offset": 0,
+            "color": "#020617"
+          },
+          {
+            "offset": 1,
+            "color": "#1e3a8a"
+          }
+        ]
+      },
+      "nodes": [
+        {
+          "id": "story-dark-event-ring",
+          "name": "",
+          "x": -160,
+          "y": 140,
+          "width": 520,
+          "height": 520,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "ellipse",
+          "fill": {
+            "kind": "none"
+          },
+          "stroke": {
+            "color": "#1e40af",
+            "width": 3,
+            "dash": []
+          }
+        },
+        {
+          "id": "story-dark-event-blob",
+          "name": "",
+          "x": 680,
+          "y": 1240,
+          "width": 560,
+          "height": 560,
+          "rotation": 0,
+          "opacity": 0.25,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "path",
+          "d": "M50 3 C72 3 97 22 97 48 C97 74 76 97 50 97 C24 97 3 76 3 50 C3 24 28 3 50 3 Z",
+          "viewBox": [
+            100,
+            100
+          ],
+          "fill": {
+            "kind": "gradient",
+            "angle": 120,
+            "stops": [
+              {
+                "offset": 0,
+                "color": "#22d3ee"
+              },
+              {
+                "offset": 1,
+                "color": "#3b82f6"
+              }
+            ]
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          }
+        },
+        {
+          "id": "story-dark-event-label",
+          "name": "",
+          "x": 96,
+          "y": 280,
+          "width": 888,
+          "height": 40,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "Live · Online",
+          "fontFamily": "Space Grotesk",
+          "fontSize": 24,
+          "fontWeight": 600,
+          "italic": false,
+          "lineHeight": 1.2,
+          "letterSpacing": 5,
+          "align": "left",
+          "valign": "top",
+          "color": "#22d3ee",
+          "uppercase": true
+        },
+        {
+          "id": "story-dark-event-title",
+          "name": "",
+          "x": 96,
+          "y": 380,
+          "width": 888,
+          "height": 500,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "Design\nSystems\nSummit",
+          "fontFamily": "Space Grotesk",
+          "fontSize": 152,
+          "fontWeight": 700,
+          "italic": false,
+          "lineHeight": 1.02,
+          "letterSpacing": -4,
+          "align": "left",
+          "valign": "top",
+          "color": "#f8fafc",
+          "uppercase": false
+        },
+        {
+          "id": "story-dark-event-rule",
+          "name": "",
+          "x": 96,
+          "y": 920,
+          "width": 888,
+          "height": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "line",
+          "stroke": {
+            "color": "#1e40af",
+            "width": 2,
+            "dash": []
+          }
+        },
+        {
+          "id": "story-dark-event-date",
+          "name": "",
+          "x": 96,
+          "y": 976,
+          "width": 560,
+          "height": 64,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "14 – 15 November",
+          "fontFamily": "Inter",
+          "fontSize": 44,
+          "fontWeight": 600,
+          "italic": false,
+          "lineHeight": 1.2,
+          "letterSpacing": 0,
+          "align": "left",
+          "valign": "top",
+          "color": "#e2e8f0",
+          "uppercase": false
+        },
+        {
+          "id": "story-dark-event-time",
+          "name": "",
+          "x": 96,
+          "y": 1054,
+          "width": 560,
+          "height": 48,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "09:00 – 17:00 GMT",
+          "fontFamily": "JetBrains Mono",
+          "fontSize": 28,
+          "fontWeight": 400,
+          "italic": false,
+          "lineHeight": 1.2,
+          "letterSpacing": 0,
+          "align": "left",
+          "valign": "top",
+          "color": "#93c5fd",
+          "uppercase": false
+        },
+        {
+          "id": "story-dark-event-body",
+          "name": "",
+          "x": 96,
+          "y": 1180,
+          "width": 560,
+          "height": 240,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "Two days of talks on tokens, theming, and the unglamorous work of keeping a system alive.",
+          "fontFamily": "Inter",
+          "fontSize": 32,
+          "fontWeight": 400,
+          "italic": false,
+          "lineHeight": 1.5,
+          "letterSpacing": 0,
+          "align": "left",
+          "valign": "top",
+          "color": "#cbd5e1",
+          "uppercase": false
+        },
+        {
+          "id": "story-dark-event-cta",
+          "name": "",
+          "x": 96,
+          "y": 1620,
+          "width": 520,
+          "height": 104,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "rect",
+          "fill": {
+            "kind": "gradient",
+            "angle": 90,
+            "stops": [
+              {
+                "offset": 0,
+                "color": "#22d3ee"
+              },
+              {
+                "offset": 1,
+                "color": "#3b82f6"
+              }
+            ]
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          },
+          "radius": 12
+        },
+        {
+          "id": "story-dark-event-cta-label",
+          "name": "",
+          "x": 96,
+          "y": 1620,
+          "width": 520,
+          "height": 104,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "Reserve a seat",
+          "fontFamily": "Inter",
+          "fontSize": 34,
+          "fontWeight": 700,
+          "italic": false,
+          "lineHeight": 1.2,
+          "letterSpacing": 0,
+          "align": "center",
+          "valign": "middle",
+          "color": "#04121f",
+          "uppercase": false
+        },
+        {
+          "id": "story-dark-event-footer",
+          "name": "",
+          "x": 96,
+          "y": 1776,
+          "width": 888,
+          "height": 40,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "Free for members · artboard.design/summit",
+          "fontFamily": "Inter",
+          "fontSize": 22,
+          "fontWeight": 400,
+          "italic": false,
+          "lineHeight": 1.2,
+          "letterSpacing": 0,
+          "align": "left",
+          "valign": "top",
+          "color": "#94a3b8",
+          "uppercase": false
+        }
+      ]
+    }
+  ],
+  "assets": {},
+  "diagnostics": []
+}

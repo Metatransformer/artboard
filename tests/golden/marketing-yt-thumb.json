@@ -1,0 +1,192 @@
+{
+  "version": 1,
+  "id": "doc-marketing-yt-thumb",
+  "name": "Video Thumbnail",
+  "artboards": [
+    {
+      "id": "ab-marketing-yt-thumb",
+      "name": "Video Thumbnail",
+      "width": 1280,
+      "height": 720,
+      "background": {
+        "kind": "solid",
+        "color": "#18181b"
+      },
+      "nodes": [
+        {
+          "id": "marketing-yt-thumb-glow",
+          "name": "",
+          "x": 880,
+          "y": -140,
+          "width": 560,
+          "height": 560,
+          "rotation": 0,
+          "opacity": 0.28,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "ellipse",
+          "fill": {
+            "kind": "solid",
+            "color": "#ef4444"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          }
+        },
+        {
+          "id": "marketing-yt-thumb-badge",
+          "name": "",
+          "x": 1050,
+          "y": 110,
+          "width": 180,
+          "height": 180,
+          "rotation": 12,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "rect",
+          "fill": {
+            "kind": "solid",
+            "color": "#ef4444"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          },
+          "radius": 28
+        },
+        {
+          "id": "marketing-yt-thumb-badge-label",
+          "name": "",
+          "x": 1050,
+          "y": 110,
+          "width": 180,
+          "height": 180,
+          "rotation": 12,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "07",
+          "fontFamily": "Space Grotesk",
+          "fontSize": 76,
+          "fontWeight": 800,
+          "italic": false,
+          "lineHeight": 1.2,
+          "letterSpacing": 0,
+          "align": "center",
+          "valign": "middle",
+          "color": "#ffffff",
+          "uppercase": false
+        },
+        {
+          "id": "marketing-yt-thumb-kicker",
+          "name": "",
+          "x": 80,
+          "y": 88,
+          "width": 800,
+          "height": 48,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "Tutorial",
+          "fontFamily": "Inter",
+          "fontSize": 28,
+          "fontWeight": 700,
+          "italic": false,
+          "lineHeight": 1.2,
+          "letterSpacing": 6,
+          "align": "left",
+          "valign": "top",
+          "color": "#facc15",
+          "uppercase": true
+        },
+        {
+          "id": "marketing-yt-thumb-headline",
+          "name": "",
+          "x": 80,
+          "y": 168,
+          "width": 940,
+          "height": 380,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "Build a\ncanvas editor\nin a weekend",
+          "fontFamily": "Space Grotesk",
+          "fontSize": 104,
+          "fontWeight": 800,
+          "italic": false,
+          "lineHeight": 1.08,
+          "letterSpacing": -2,
+          "align": "left",
+          "valign": "top",
+          "color": "#ffffff",
+          "uppercase": true
+        },
+        {
+          "id": "marketing-yt-thumb-band",
+          "name": "",
+          "x": 0,
+          "y": 612,
+          "width": 1280,
+          "height": 108,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "rect",
+          "fill": {
+            "kind": "solid",
+            "color": "#facc15"
+          },
+          "stroke": {
+            "color": "#000000",
+            "width": 0,
+            "dash": []
+          },
+          "radius": 0
+        },
+        {
+          "id": "marketing-yt-thumb-band-label",
+          "name": "",
+          "x": 80,
+          "y": 612,
+          "width": 1120,
+          "height": 108,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "shadow": null,
+          "kind": "text",
+          "text": "artboard.design · full build, no fluff",
+          "fontFamily": "Inter",
+          "fontSize": 34,
+          "fontWeight": 700,
+          "italic": false,
+          "lineHeight": 1.2,
+          "letterSpacing": 2,
+          "align": "left",
+          "valign": "middle",
+          "color": "#18181b",
+          "uppercase": true
+        }
+      ]
+    }
+  ],
+  "assets": {},
+  "diagnostics": []
+}
