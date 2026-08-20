@@ -1,11 +1,11 @@
 /**
  * The geometric shape catalogue.
  *
- * Everything regular — polygons, stars, rings — is COMPUTED, not typed out.
- * Hand-written path data for a heptagon is a transcription error waiting to
- * happen, and it cannot be re-tuned (a star whose valleys are slightly too deep
- * stays that way forever). Only the organic shapes, which have no formula, are
- * written by hand.
+ * Everything with a formula — polygons, stars, rings, blobs — is COMPUTED, not
+ * typed out. Hand-written path data for a heptagon is a transcription error
+ * waiting to happen, and it cannot be re-tuned (a star whose valleys are
+ * slightly too deep stays that way forever). Only shapes with genuinely no
+ * formula — heart, cloud, speech bubble — are written by hand.
  *
  * Every shape is drawn in a **0..100 box** (`PathNode.viewBox = [100, 100]`),
  * so a shape is scaled to whatever size the node is. Coordinates round to 3 dp
@@ -64,6 +64,39 @@ export function circlePath(cx: number, cy: number, r: number, cw = true): string
   return `M${r3(cx - r)} ${r3(cy)}A${r3(r)} ${r3(r)} 0 1 ${s} ${r3(cx + r)} ${r3(cy)}A${r3(r)} ${r3(r)} 0 1 ${s} ${r3(cx - r)} ${r3(cy)} Z`;
 }
 
+/**
+ * A smooth closed curve through one point per entry in `radii`, spaced evenly
+ * around the circle — the organic "blob" every design tool ships.
+ *
+ * Hand-writing these is what produced three blobs that were all, on inspection,
+ * circles: bezier handles nudged by eye tend back towards the mean. Driving the
+ * shape off an explicit radius list makes the asymmetry a number you can read,
+ * and makes two blobs differ by construction rather than by hope.
+ *
+ * The curve is a Catmull-Rom spline converted to cubic beziers, which is what
+ * makes it pass exactly through each radius instead of merely near it. Keep the
+ * radii within roughly 0.6..1.0 of the largest; below that the handles overshoot
+ * and the outline crosses itself.
+ */
+export function blobPath(radii: readonly number[], rotate = 0): string {
+  const n = radii.length;
+  if (n < 4) throw new Error('a blob needs at least 4 radii');
+  const at = (i: number): [number, number] => {
+    const k = ((i % n) + n) % n;
+    return pt(radii[k]!, rotate + (k * 2 * Math.PI) / n);
+  };
+  const parts: string[] = [];
+  const first = at(0);
+  parts.push(`M${r3(first[0])} ${r3(first[1])}`);
+  for (let i = 0; i < n; i++) {
+    const prev = at(i - 1), p0 = at(i), p1 = at(i + 1), next = at(i + 2);
+    const c1: [number, number] = [p0[0] + (p1[0] - prev[0]) / 6, p0[1] + (p1[1] - prev[1]) / 6];
+    const c2: [number, number] = [p1[0] - (next[0] - p0[0]) / 6, p1[1] - (next[1] - p0[1]) / 6];
+    parts.push(`C${r3(c1[0])} ${r3(c1[1])} ${r3(c2[0])} ${r3(c2[1])} ${r3(p1[0])} ${r3(p1[1])}`);
+  }
+  return parts.join('') + ' Z';
+}
+
 export interface Shape {
   id: string;
   name: string;
@@ -96,7 +129,10 @@ export const SHAPES: readonly Shape[] = [
   /* ── rings and frames (hole = opposite winding) ───────────────────────── */
   shape('ring', 'Ring', circlePath(50, 50, 48, true) + circlePath(50, 50, 27, false)),
   shape('frame', 'Frame', 'M4 4 H96 V96 H4 Z M20 20 V80 H80 V20 Z'),
-  shape('crescent', 'Crescent', circlePath(50, 50, 46, true) + circlePath(72, 50, 38, false)),
+  // The cut-out circle must sit ENTIRELY inside the outer one. Any part that
+  // escapes has winding -1, and the non-zero rule fills that too — an inner
+  // circle poking out the side paints a lens instead of biting one away.
+  shape('crescent', 'Crescent', circlePath(50, 50, 46, true) + circlePath(60, 50, 35, false)),
   shape('semicircle', 'Semicircle', 'M2 74 A48 48 0 0 1 98 74 Z'),
   shape('quarter', 'Quarter circle', 'M8 92 V8 A84 84 0 0 1 92 92 Z'),
   shape('pill', 'Pill', 'M28 22 H72 A28 28 0 0 1 72 78 H28 A28 28 0 0 1 28 22 Z'),
@@ -128,10 +164,7 @@ export const SHAPES: readonly Shape[] = [
   shape('bolt', 'Lightning bolt', 'M58 4 L16 58 H42 L38 96 L84 40 H56 Z'),
   shape('cloud', 'Cloud',
     'M24 80 C12 80 4 71 4 60 C4 50 11 42 20 40 C22 24 36 12 52 12 C66 12 78 21 82 34 C92 36 98 45 98 55 C98 69 87 80 74 80 Z'),
-  shape('blob-1', 'Blob',
-    'M78 14 C90 26 96 44 90 60 C84 76 68 90 50 92 C32 94 14 84 8 68 C2 52 6 32 18 20 C30 8 50 4 62 6 C68 7 74 10 78 14 Z'),
-  shape('blob-2', 'Pebble',
-    'M50 4 C72 4 94 18 96 40 C98 62 82 84 60 92 C38 100 12 90 6 70 C0 50 10 26 26 14 C34 8 42 4 50 4 Z'),
-  shape('blob-3', 'Splat',
-    'M30 8 C52 0 80 8 90 28 C100 48 92 74 74 86 C56 98 30 96 16 82 C2 68 0 42 10 24 C14 17 22 11 30 8 Z'),
+  shape('blob-1', 'Blob', blobPath([48, 34, 44, 31, 46, 33, 42, 37], -1.1)),
+  shape('blob-2', 'Pebble', blobPath([46, 38, 48, 33, 41, 45, 35], 0.4)),
+  shape('blob-3', 'Splat', blobPath([48, 35, 46, 38, 42, 33], 0.9)),
 ];

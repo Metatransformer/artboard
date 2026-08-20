@@ -129,8 +129,25 @@ export function apply(doc: Document, cmd: Command): Document {
 /** Produce the command that undoes `cmd`, captured against the doc BEFORE it was applied. */
 export function invert(doc: Document, cmd: Command): Command {
   switch (cmd.type) {
-    case 'batch':
-      return { type: 'batch', label: `Undo ${cmd.label}`, commands: [...cmd.commands].reverse().map(c => invert(doc, c)) };
+    case 'batch': {
+      /*
+       * Each child is inverted against the document as it stood immediately
+       * BEFORE that child ran, not against the batch's starting document.
+       *
+       * That distinction is the whole correctness of a batch. The inverse of
+       * `removeNode` is `addNode` at an INDEX, and the inverse of `reorder` is
+       * another index — and indices shift as earlier children of the same batch
+       * are applied. Capturing every inverse against the starting document made
+       * deleting two non-adjacent nodes in one gesture come back in the wrong
+       * z-order on undo. So: walk forward capturing inverses against the live
+       * state, then reverse the list, because undo runs the last thing first.
+       */
+      const inverses: Command[] = [];
+      let d = doc;
+      for (const c of cmd.commands) { inverses.push(invert(d, c)); d = apply(d, c); }
+      inverses.reverse();
+      return { type: 'batch', label: `Undo ${cmd.label}`, commands: inverses };
+    }
 
     case 'addNode':
       return { type: 'removeNode', artboardId: cmd.artboardId, nodeId: cmd.node.id };

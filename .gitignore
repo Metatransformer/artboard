@@ -4,3 +4,7 @@ dist-demo/
 *.tsbuildinfo
 .scratch/screens/
 .gstack/
+
+# Verification scratch: screenshots, probe scripts, throwaway harnesses.
+# Useful locally, not part of the project.
+.scratch/

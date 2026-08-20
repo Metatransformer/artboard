@@ -16,7 +16,7 @@
  * produce a byte-identical file.
  */
 import { createHash } from 'node:crypto';
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,17 +29,42 @@ const CACHE = join(tmpdir(), 'artboard-font-cache');
 const FONTS_REF = '3b1480ea4b6e15fed70a42f4cb29216476a044ed';
 const RAW = (path) => `https://raw.githubusercontent.com/google/fonts/${FONTS_REF}/${path}`;
 
-/** Weights the product actually uses. `grep -rn fontWeight` — 400/500/600/700/800. */
-const USED_WEIGHTS = [400, 500, 600, 700, 800];
+/**
+ * Every weight the weight picker in `Inspector.tsx` can produce. Content only
+ * uses 400–800, but 300 and 900 are one click away, and a weight the user can
+ * select but we cannot measure is exactly the disagreement this table exists to
+ * remove — the browser would render a real 900 while we measured an 800.
+ */
+const USED_WEIGHTS = [300, 400, 500, 600, 700, 800, 900];
 
-/** The five families in `Inspector.tsx` / `LeftRail.tsx` / `@artboard/templates`. */
+/**
+ * The five families in `Inspector.tsx` / `LeftRail.tsx` / `@artboard/templates`.
+ *
+ * `ttf` is what we MEASURE (pinned, full, unsubsetted). `css` is the Google
+ * Fonts request we BUNDLE from — the same upstream design, served as woff2.
+ * Both must describe the same faces or the metrics stop being true.
+ */
 const FAMILIES = [
-  { family: 'Inter',            file: 'ofl/inter/Inter%5Bopsz,wght%5D.ttf' },
-  { family: 'Playfair Display', file: 'ofl/playfairdisplay/PlayfairDisplay%5Bwght%5D.ttf' },
-  { family: 'DM Serif Display', file: 'ofl/dmserifdisplay/DMSerifDisplay-Regular.ttf' },
-  { family: 'Space Grotesk',    file: 'ofl/spacegrotesk/SpaceGrotesk%5Bwght%5D.ttf' },
-  { family: 'JetBrains Mono',   file: 'ofl/jetbrainsmono/JetBrainsMono%5Bwght%5D.ttf' },
+  { family: 'Inter',            file: 'ofl/inter/Inter%5Bopsz,wght%5D.ttf',            css: 'Inter:wght@100..900' },
+  { family: 'Playfair Display', file: 'ofl/playfairdisplay/PlayfairDisplay%5Bwght%5D.ttf', css: 'Playfair+Display:wght@400..900' },
+  { family: 'DM Serif Display', file: 'ofl/dmserifdisplay/DMSerifDisplay-Regular.ttf',  css: 'DM+Serif+Display' },
+  { family: 'Space Grotesk',    file: 'ofl/spacegrotesk/SpaceGrotesk%5Bwght%5D.ttf',    css: 'Space+Grotesk:wght@300..700' },
+  { family: 'JetBrains Mono',   file: 'ofl/jetbrainsmono/JetBrainsMono%5Bwght%5D.ttf',  css: 'JetBrains+Mono:wght@100..800' },
 ];
+
+/** Where the bundled woff2 files land. Vite copies `public/` verbatim into `dist/`. */
+const FONT_OUT = join(ROOT, 'apps', 'studio', 'public', 'fonts');
+
+/**
+ * Subsets to bundle. `latin` carries U+0000–00FF and U+2000–206F, i.e. all of
+ * Latin-1 plus every dash, quote, bullet and ellipsis we measured; `latin-ext`
+ * adds the remaining European accents. Everything else Google slices out
+ * (cyrillic, greek, vietnamese) is dropped — see docs/FONT-METRICS.md.
+ */
+const KEEP_SUBSETS = ['latin', 'latin-ext'];
+
+/** Google serves woff2 only to a browser-shaped UA; Node's default gets TTF. */
+const BROWSER_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
 /**
  * Latin-1 plus the typographic marks the editor and templates can actually
@@ -88,6 +113,73 @@ function keyLiteral(cp) {
   const ch = String.fromCodePoint(cp);
   if (cp >= 0x20 && cp <= 0x7e) return JSON.stringify(ch);
   return `"\\u${cp.toString(16).padStart(4, '0')}"`;
+}
+
+/* ── web font bundling ──────────────────────────────────────────────────────
+ *
+ * The editor must render with the same binaries we measured, offline. A CDN
+ * link fails both halves of that: the desktop shell's CSP refuses it, and if
+ * the OS substitutes a font, the measured wrap and the painted wrap disagree —
+ * which is the exact bug the metrics table exists to remove.
+ */
+
+const slug = (family) => family.toLowerCase().replace(/\s+/g, '-');
+
+/**
+ * Downloads the woff2 faces into `apps/studio/public/fonts/` and returns the
+ * `@font-face` stylesheet that points at them. Upright only: the metrics table
+ * has no italic advances, so a bundled italic would render in a face we never
+ * measured. Leaving it out makes the browser synthesize an oblique, which
+ * shears the upright and keeps its advance widths — so the wrap stays correct.
+ */
+async function bundleWebFonts() {
+  mkdirSync(FONT_OUT, { recursive: true });
+  // Drop faces from a previous run so a removed subset cannot linger in `dist/`.
+  for (const f of readdirSync(FONT_OUT)) if (f.endsWith('.woff2')) rmSync(join(FONT_OUT, f));
+
+  const css = [];
+  const files = [];
+
+  for (const { family, css: query } of FAMILIES) {
+    const url = `https://fonts.googleapis.com/css2?family=${query}&display=swap`;
+    const res = await fetch(url, { headers: { 'User-Agent': BROWSER_UA } });
+    if (!res.ok) throw new Error(`GET ${url} -> ${res.status} ${res.statusText}`);
+    const sheet = await res.text();
+
+    // Google emits `/* subset */` immediately before each @font-face block.
+    const blocks = [...sheet.matchAll(/\/\*\s*([\w-]+)\s*\*\/\s*@font-face\s*\{([^}]*)\}/g)];
+    if (!blocks.length) throw new Error(`no @font-face blocks parsed from ${url}`);
+
+    for (const subset of KEEP_SUBSETS) {
+      const block = blocks.find(([, name]) => name === subset);
+      if (!block) continue;                          // family has no such subset
+      const body = block[2];
+      const pick = (prop) => (body.match(new RegExp(`${prop}:\\s*([^;]+);`)) ?? [])[1]?.trim();
+      const style = pick('font-style');
+      if (style !== 'normal') continue;              // upright only, deliberately
+      const href = (body.match(/src:\s*url\(([^)]+)\)/) ?? [])[1];
+      if (!href) throw new Error(`no src url in the ${subset} face of ${family}`);
+
+      const woff2 = await fetch(href, { headers: { 'User-Agent': BROWSER_UA } });
+      if (!woff2.ok) throw new Error(`GET ${href} -> ${woff2.status}`);
+      const bytes = Buffer.from(await woff2.arrayBuffer());
+      const name = `${slug(family)}-${subset}.woff2`;
+      writeFileSync(join(FONT_OUT, name), bytes);
+      files.push({ family, subset, name, bytes: bytes.length });
+
+      css.push(
+        '@font-face {',
+        `  font-family: '${family}';`,
+        '  font-style: normal;',
+        `  font-weight: ${pick('font-weight')};`,
+        '  font-display: swap;',
+        `  src: url('/fonts/${name}') format('woff2');`,
+        `  unicode-range: ${pick('unicode-range')};`,
+        '}',
+      );
+    }
+  }
+  return { css: css.join('\n'), files };
 }
 
 async function main() {
@@ -139,6 +231,16 @@ async function main() {
   console.log(`wrote ${OUT}`);
   console.log(`${families.length} families, ${families.reduce((s, f) => s + f.weights.length, 0)} family+weight tables, ${total} advances, ${kb} KB`);
   for (const f of families) console.log(`  ${f.family.padEnd(18)} upm=${f.upm} weights=[${f.weights.map((w) => w.weight).join(', ')}]`);
+
+  const { css, files } = await bundleWebFonts();
+  const bytes = files.reduce((s, f) => s + f.bytes, 0);
+  console.log(`\nwrote ${files.length} woff2 faces to ${FONT_OUT} (${(bytes / 1024).toFixed(1)} KB total)`);
+  for (const f of files) console.log(`  ${f.name.padEnd(34)} ${(f.bytes / 1024).toFixed(1).padStart(6)} KB`);
+  console.log('\n' + '='.repeat(72));
+  console.log('@font-face block — append verbatim to the END of apps/studio/src/styles.css');
+  console.log('(between the ARTBOARD FONTS markers; see docs/FONT-METRICS.md)');
+  console.log('='.repeat(72));
+  console.log(css);
 }
 
 function emit(families) {

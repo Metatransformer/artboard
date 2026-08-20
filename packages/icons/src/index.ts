@@ -26,7 +26,7 @@
 import { ICONS } from './data';
 
 export { ICONS };
-export { SHAPES, polygonPath, starPath, circlePath } from './shapes';
+export { SHAPES, polygonPath, starPath, circlePath, blobPath } from './shapes';
 export type { Shape } from './shapes';
 
 /** Icon path data is authored in a 24×24 box; shapes in a 100×100 one. */

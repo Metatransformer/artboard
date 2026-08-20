@@ -327,6 +327,108 @@ await step('shortcuts stay quiet while a field is focused', async () => {
   return `${n0} nodes, unchanged`;
 });
 
+/* ── multi-selection ──────────────────────────────────────────────────── */
+group('multi-selection');
+await step('Cmd+A then Cmd+C, Cmd+V duplicates the whole page at +16', async () => {
+  await p.mouse.click(20, 500);
+  await p.waitForTimeout(200);
+  await key('Meta+a', 300);
+  const before = await snap();
+  const n0 = await layerCount();
+  await key('Meta+c', 350);
+  await key('Meta+v', 700);
+  const after = await snap();
+  const n1 = await layerCount();
+  if (n1 !== n0 * 2) throw new Error(`layers ${n0} -> ${n1}, want ${n0 * 2}`);
+  const fresh = added(before, after);
+  if (fresh.length < 1) throw new Error('nothing pasted');
+  // Every copy must sit +16/+16 from some original, and the whole set must
+  // keep its relative layout.
+  const olds = Object.values(before);
+  for (const id of fresh) {
+    const c = after[id];
+    if (!olds.some(o => Math.abs(c.x - o.x - 16) < 1.5 && Math.abs(c.y - o.y - 16) < 1.5)) {
+      throw new Error(`copy ${id} is not +16/+16 from any original`);
+    }
+  }
+  return `${n0} -> ${n1} nodes, ${fresh.length} copies all at +16/+16`;
+});
+
+await step('nudging a multi-selection is still one undo step', async () => {
+  await key('Meta+a', 300);
+  const before = await snap();
+  for (let i = 0; i < 4; i++) { await p.keyboard.press('ArrowUp'); await p.waitForTimeout(70); }
+  await p.waitForTimeout(700);
+  const moved = await snap();
+  for (const id of Object.keys(before)) eq(moved[id].y - before[id].y, -4, 0.5, `node ${id} dy`);
+  await key('Meta+z', 700);
+  const back = await snap();
+  for (const id of Object.keys(before)) {
+    eq(back[id].y, before[id].y, 0.5, `node ${id} y after one undo`);
+    eq(back[id].x, before[id].x, 0.5, `node ${id} x after one undo`);
+  }
+  return `${Object.keys(before).length} nodes moved -4px and all came back on one undo`;
+});
+
+await step('deleting a multi-selection is one undo step', async () => {
+  await key('Meta+a', 300);
+  const n0 = await layerCount();
+  await key('Backspace', 500);
+  const n1 = await layerCount();
+  await key('Meta+z', 700);
+  const n2 = await layerCount();
+  if (n1 !== 0 || n2 !== n0) throw new Error(`${n0} -> ${n1} -> ${n2}`);
+  return `${n0} -> ${n1} -> ${n2}`;
+});
+
+/* ── across documents ─────────────────────────────────────────────────── */
+group('across documents');
+await step('a copy in one document pastes into another', async () => {
+  await key('Meta+a', 300);
+  const n0 = await layerCount();
+  await key('Meta+c', 400);
+  const p2 = await ctx.newPage();
+  await p2.goto(URL, { waitUntil: 'networkidle' });
+  await p2.waitForTimeout(2500);
+  const before = await p2.locator('.layer').count();
+  await p2.mouse.click(20, 500);
+  await p2.waitForTimeout(200);
+  await p2.keyboard.press('Meta+v');
+  await p2.waitForTimeout(900);
+  const afterN = await p2.locator('.layer').count();
+  await p2.close();
+  if (afterN !== before + n0) throw new Error(`second document ${before} -> ${afterN}, want +${n0}`);
+  return `second tab: ${before} -> ${afterN} nodes`;
+});
+
+/* ── the text editor owns its keys ────────────────────────────────────── */
+group('text editor guard');
+await step('nothing fires while the canvas text editor is open', async () => {
+  const t = await p.evaluate(() => {
+    for (const e of document.querySelectorAll('.ab-paper [data-node-id]')) {
+      if (e.tagName.toLowerCase() === 'text' || e.querySelector('text')) {
+        const r = e.getBoundingClientRect();
+        if (r.width > 20 && r.height > 10) return { cx: r.x + r.width / 2, cy: r.y + r.height / 2 };
+      }
+    }
+    return null;
+  });
+  if (!t) throw new Error('no text node to edit');
+  await p.mouse.dblclick(t.cx, t.cy);
+  await p.waitForTimeout(400);
+  if (!(await p.locator('textarea.text-editor').count())) throw new Error('text editor did not open');
+  const n0 = await layerCount();
+  await p.keyboard.press('Meta+d');
+  await p.keyboard.press('ArrowRight');
+  await p.keyboard.press('Backspace');
+  await p.waitForTimeout(400);
+  const n1 = await layerCount();
+  if (n1 !== n0) throw new Error(`layers ${n0} -> ${n1} while the text editor was open`);
+  await p.keyboard.press('Escape');
+  await p.waitForTimeout(300);
+  return `${n0} nodes, unchanged while editing text`;
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (errs.length) console.log('page errors:\n' + errs.slice(0, 12).map(e => '  ' + e).join('\n'));
 await b.close();
