@@ -1,33 +1,33 @@
 {
-  "ts": "2026-08-20T21:39:38.624Z",
-  "iteration": 9,
+  "ts": "2026-08-20T21:57:27.326Z",
+  "iteration": 12,
   "gates": {
     "typecheck": {
       "pass": true,
       "output": "",
       "errors": [],
       "exitCode": 0,
-      "durationMs": 1520
+      "durationMs": 1994
     },
     "tests": {
       "pass": true,
       "failing": [],
       "noTestFiles": false,
-      "output": "RUN  v2.1.9 /Users/nickbryant/canva-clone\n\n ✓ tests/engine.test.ts (43 tests) 14ms\n ✓ tests/schema.test.ts (21 tests) 24ms\n ✓ tests/render.test.ts (39 tests) 30ms\n ✓ tests/commands.test.ts (29 tests) 93ms\n\n Test Files  4 passed (4)\n      Tests  132 passed (132)\n   Start at  15:39:38\n   Duration  381ms (transform 161ms, setup 0ms, collect 305ms, tests 160ms, environment 0ms, prepare 195ms)",
+      "output": "RUN  v2.1.9 /Users/nickbryant/canva-clone\n\n ✓ tests/schema.test.ts (21 tests) 17ms\n ✓ tests/engine.test.ts (43 tests) 19ms\n ✓ tests/render.test.ts (39 tests) 32ms\n ✓ tests/commands.test.ts (29 tests) 117ms\n\n Test Files  4 passed (4)\n      Tests  132 passed (132)\n   Start at  15:57:26\n   Duration  575ms (transform 270ms, setup 0ms, collect 395ms, tests 185ms, environment 0ms, prepare 598ms)",
       "exitCode": 0,
-      "durationMs": 746
+      "durationMs": 978
     },
     "golden": {
       "pass": true,
       "drifted": [],
       "noFixtures": false,
-      "artboards": 23,
-      "output": "golden tests/golden 23 fixtures, 23 artboards\n  PASS business-card-mono.json[0]   -> tests/golden/business-card-mono.svg\n  PASS business-card-warm.json[0]   -> tests/golden/business-card-warm.svg\n  PASS business-letterhead.json[0]  -> tests/golden/business-letterhead.svg\n  PASS business-linkedin-banner.json[0] -> tests/golden/business-linkedin-banner.svg\n  PASS deck-section-mono.json[0]    -> tests/golden/deck-section-mono.svg\n  PASS deck-stat-trio.json[0]       -> tests/golden/deck-stat-trio.svg\n  PASS deck-title-cool.json[0]      -> tests/golden/deck-title-cool.svg\n  PASS marketing-flyer-bold.json[0] -> tests/golden/marketing-flyer-bold.svg\n  PASS marketing-og-product.json[0] -> tests/golden/marketing-og-product.svg\n  PASS marketing-webinar.json[0]    -> tests/golden/marketing-webinar.svg\n  PASS marketing-yt-thumb.json[0]   -> tests/golden/marketing-yt-thumb.svg\n  PASS poster-editorial-warm.json[0] -> tests/golden/poster-editorial-warm.svg\n  PASS poster-gradient-music.json[0] -> tests/golden/poster-gradient-music.svg\n  PASS poster-swiss-grid.json[0]    -> tests/golden/poster-swiss-grid.svg\n  PASS smoke.json[0]                -> tests/golden/smoke.svg\n  PASS social-dark-podcast.json[0]  -> tests/golden/social-dark-podcast.svg\n  PASS social-editorial-quote.json[0] -> tests/golden/social-editorial-quote.svg\n  PASS social-gradient-launch.json[0] -> tests/golden/social-gradient-launch.svg\n  PASS social-mono-stat.json[0]     -> tests/golden/social-mono-stat.svg\n  PASS social-pastel-tips.json[0]   -> tests/golden/social-pastel-tips.svg\n  PASS story-dark-event.json[0]     -> tests/golden/story-dark-event.svg\n  PASS story-minimal-quote.json[0]  -> tests/golden/story-minimal-quote.svg\n  PASS story-sale-gradient.json[0]  -> tests/golden/story-sale-gradient.svg\nGOLDEN GREEN 23 artboards match their baselines",
+      "artboards": 24,
+      "output": "golden tests/golden 24 fixtures, 24 artboards\n  PASS business-card-mono.json[0]   -> tests/golden/business-card-mono.svg\n  PASS business-card-warm.json[0]   -> tests/golden/business-card-warm.svg\n  PASS business-letterhead.json[0]  -> tests/golden/business-letterhead.svg\n  PASS business-linkedin-banner.json[0] -> tests/golden/business-linkedin-banner.svg\n  PASS deck-section-mono.json[0]    -> tests/golden/deck-section-mono.svg\n  PASS deck-stat-trio.json[0]       -> tests/golden/deck-stat-trio.svg\n  PASS deck-title-cool.json[0]      -> tests/golden/deck-title-cool.svg\n  PASS effects.json[0]              -> tests/golden/effects.svg\n  PASS marketing-flyer-bold.json[0] -> tests/golden/marketing-flyer-bold.svg\n  PASS marketing-og-product.json[0] -> tests/golden/marketing-og-product.svg\n  PASS marketing-webinar.json[0]    -> tests/golden/marketing-webinar.svg\n  PASS marketing-yt-thumb.json[0]   -> tests/golden/marketing-yt-thumb.svg\n  PASS poster-editorial-warm.json[0] -> tests/golden/poster-editorial-warm.svg\n  PASS poster-gradient-music.json[0] -> tests/golden/poster-gradient-music.svg\n  PASS poster-swiss-grid.json[0]    -> tests/golden/poster-swiss-grid.svg\n  PASS smoke.json[0]                -> tests/golden/smoke.svg\n  PASS social-dark-podcast.json[0]  -> tests/golden/social-dark-podcast.svg\n  PASS social-editorial-quote.json[0] -> tests/golden/social-editorial-quote.svg\n  PASS social-gradient-launch.json[0] -> tests/golden/social-gradient-launch.svg\n  PASS social-mono-stat.json[0]     -> tests/golden/social-mono-stat.svg\n  PASS social-pastel-tips.json[0]   -> tests/golden/social-pastel-tips.svg\n  PASS story-dark-event.json[0]     -> tests/golden/story-dark-event.svg\n  PASS story-minimal-quote.json[0]  -> tests/golden/story-minimal-quote.svg\n  PASS story-sale-gradient.json[0]  -> tests/golden/story-sale-gradient.svg\nGOLDEN GREEN 24 artboards match their baselines",
       "exitCode": 0,
-      "durationMs": 151
+      "durationMs": 150
     }
   },
   "verdict": "GREEN",
   "nextActions": [],
-  "durationMs": 2417
+  "durationMs": 3123
 }

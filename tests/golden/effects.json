@@ -1,0 +1,257 @@
+{
+  "version": 1,
+  "id": "doc_effects",
+  "name": "Effects",
+  "artboards": [
+    {
+      "id": "ab_effects",
+      "name": "Effects",
+      "width": 1000,
+      "height": 820,
+      "background": {
+        "kind": "solid",
+        "color": "#111827"
+      },
+      "nodes": [
+        {
+          "id": "fx_shadow",
+          "kind": "text",
+          "name": "shadow",
+          "x": 40,
+          "y": 60,
+          "width": 280,
+          "height": 90,
+          "text": "shadow",
+          "fontSize": 40,
+          "fontWeight": 800,
+          "color": "#ffffff",
+          "align": "center",
+          "effects": [
+            {
+              "kind": "shadow",
+              "x": 6,
+              "y": 8,
+              "blur": 10,
+              "spread": 2,
+              "color": "#000000",
+              "opacity": 0.5
+            }
+          ]
+        },
+        {
+          "id": "fx_glow",
+          "kind": "text",
+          "name": "glow",
+          "x": 360,
+          "y": 60,
+          "width": 280,
+          "height": 90,
+          "text": "glow",
+          "fontSize": 40,
+          "fontWeight": 800,
+          "color": "#ffffff",
+          "align": "center",
+          "effects": [
+            {
+              "kind": "glow",
+              "blur": 16,
+              "color": "#38bdf8",
+              "opacity": 0.9
+            }
+          ]
+        },
+        {
+          "id": "fx_outline",
+          "kind": "text",
+          "name": "outline",
+          "x": 680,
+          "y": 60,
+          "width": 280,
+          "height": 90,
+          "text": "outline",
+          "fontSize": 40,
+          "fontWeight": 800,
+          "color": "#ffffff",
+          "align": "center",
+          "effects": [
+            {
+              "kind": "outline",
+              "width": 4,
+              "color": "#f43f5e"
+            }
+          ]
+        },
+        {
+          "id": "fx_echo",
+          "kind": "text",
+          "name": "echo",
+          "x": 40,
+          "y": 240,
+          "width": 280,
+          "height": 90,
+          "text": "echo",
+          "fontSize": 40,
+          "fontWeight": 800,
+          "color": "#ffffff",
+          "align": "center",
+          "effects": [
+            {
+              "kind": "echo",
+              "dx": 8,
+              "dy": 8,
+              "count": 3,
+              "color": "#a855f7",
+              "opacity": 0.5
+            }
+          ]
+        },
+        {
+          "id": "fx_blur",
+          "kind": "text",
+          "name": "blur",
+          "x": 360,
+          "y": 240,
+          "width": 280,
+          "height": 90,
+          "text": "blur",
+          "fontSize": 40,
+          "fontWeight": 800,
+          "color": "#ffffff",
+          "align": "center",
+          "effects": [
+            {
+              "kind": "blur",
+              "radius": 3
+            }
+          ]
+        },
+        {
+          "id": "fx_plate",
+          "kind": "text",
+          "name": "plate",
+          "x": 680,
+          "y": 240,
+          "width": 280,
+          "height": 90,
+          "text": "plate",
+          "fontSize": 40,
+          "fontWeight": 800,
+          "color": "#ffffff",
+          "align": "center",
+          "effects": [
+            {
+              "kind": "background",
+              "color": "#f59e0b",
+              "padding": 14,
+              "radius": 10,
+              "opacity": 1
+            }
+          ]
+        },
+        {
+          "id": "fx_curve",
+          "kind": "text",
+          "name": "curve",
+          "x": 40,
+          "y": 420,
+          "width": 280,
+          "height": 90,
+          "text": "curve",
+          "fontSize": 40,
+          "fontWeight": 800,
+          "color": "#ffffff",
+          "align": "center",
+          "effects": [
+            {
+              "kind": "curve",
+              "amount": 60
+            }
+          ]
+        },
+        {
+          "id": "fx_duotone",
+          "kind": "text",
+          "name": "duotone",
+          "x": 360,
+          "y": 420,
+          "width": 280,
+          "height": 90,
+          "text": "duotone",
+          "fontSize": 40,
+          "fontWeight": 800,
+          "color": "#ffffff",
+          "align": "center",
+          "effects": [
+            {
+              "kind": "duotone",
+              "dark": "#312e81",
+              "light": "#fbbf24"
+            }
+          ]
+        },
+        {
+          "id": "fx_vignette",
+          "kind": "text",
+          "name": "vignette",
+          "x": 680,
+          "y": 420,
+          "width": 280,
+          "height": 90,
+          "text": "vignette",
+          "fontSize": 40,
+          "fontWeight": 800,
+          "color": "#ffffff",
+          "align": "center",
+          "effects": [
+            {
+              "kind": "vignette",
+              "amount": 80,
+              "color": "#000000"
+            }
+          ]
+        },
+        {
+          "id": "fx_adjust",
+          "kind": "text",
+          "name": "adjust",
+          "x": 40,
+          "y": 600,
+          "width": 280,
+          "height": 90,
+          "text": "adjust",
+          "fontSize": 40,
+          "fontWeight": 800,
+          "color": "#ffffff",
+          "align": "center",
+          "effects": [
+            {
+              "kind": "adjust",
+              "brightness": 20,
+              "contrast": 30,
+              "saturation": -40,
+              "hue": 45,
+              "sepia": 25,
+              "invert": 10
+            }
+          ]
+        },
+        {
+          "id": "fx_blend",
+          "kind": "rect",
+          "name": "blend",
+          "x": 40,
+          "y": 700,
+          "width": 280,
+          "height": 90,
+          "fill": {
+            "kind": "solid",
+            "color": "#22d3ee"
+          },
+          "blend": "multiply"
+        }
+      ]
+    }
+  ],
+  "assets": {},
+  "diagnostics": []
+}

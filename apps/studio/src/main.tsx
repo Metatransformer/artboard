@@ -4,6 +4,7 @@ import { App } from './App';
 import { EditorProvider, documentFromTemplate, blankDocument } from './state/store';
 import { TEMPLATES } from '@artboard/templates';
 import './styles.css';
+import './shell.css';
 
 function initialDocument() {
   const list = TEMPLATES as any[];

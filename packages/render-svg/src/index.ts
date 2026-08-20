@@ -1,4 +1,4 @@
-import type { Document, Artboard, Node, Fill, Diagnostic } from '@artboard/schema';
+import type { Document, Artboard, Node, Fill, Diagnostic, Effect } from '@artboard/schema';
 import { layoutText, metricMeasurer, objectFit, round, type Measurer } from '@artboard/engine';
 
 /**
@@ -24,6 +24,8 @@ export interface RenderOptions {
   /** omit assets (data URIs) from output — used by golden tests to keep fixtures small */
   inlineAssets?: boolean;
 }
+
+import { compileEffects, curvePath } from './effects';
 
 let idSeq = 0;
 const nextGradId = (prefix: string) => `${prefix}-${(idSeq++).toString(36)}`;
@@ -144,6 +146,37 @@ function renderNode(
         diagnostics.push({ level: 'warn', code: 'TEXT_TRUNCATED', nodeId: n.id, message: 'Text too long to lay out; truncated.' });
       }
       const anchor = n.align === 'center' ? 'middle' : n.align === 'right' ? 'end' : 'start';
+
+      // Curved text rides a path, so it cannot also be wrapped into lines.
+      // We arc the first line and say so in the diagnostics rather than
+      // silently dropping the rest.
+      const curve = ((n.effects ?? []) as Effect[]).find(f => f.kind === 'curve') as
+        Extract<Effect, { kind: 'curve' }> | undefined;
+      if (curve) {
+        const first = layout.lines[0];
+        if (layout.lines.length > 1) {
+          diagnostics.push({ level: 'warn', code: 'CURVE_SINGLE_LINE', nodeId: n.id,
+            message: 'Curved text uses the first line only. Shorten the text or widen the box.' });
+        }
+        const pid = nextGradId('curve');
+        defs.push({ tag: 'path', attrs: { id: pid, d: curvePath(curve.amount, n.x, n.width, n.y + (first?.y ?? 0)), fill: 'none' } });
+        inner = { tag: 'text', attrs: clean({
+          'font-family': `${quoteFamily(n.fontFamily)}, ui-sans-serif, system-ui, sans-serif`,
+          'font-size': round(n.fontSize),
+          'font-weight': n.fontWeight,
+          'font-style': n.italic ? 'italic' : undefined,
+          'letter-spacing': n.letterSpacing || undefined,
+          fill: n.color,
+          'text-anchor': anchor,
+          'xml:space': 'preserve',
+        }), children: [{
+          tag: 'textPath',
+          attrs: clean({ href: `#${pid}`, startOffset: anchor === 'start' ? '0%' : anchor === 'end' ? '100%' : '50%' }),
+          text: first?.text ?? '',
+        }] };
+        break;
+      }
+
       inner = { tag: 'text', attrs: clean({
         x: round(n.x), y: round(n.y),
         'font-family': `${quoteFamily(n.fontFamily)}, ui-sans-serif, system-ui, sans-serif`,
@@ -183,8 +216,31 @@ function renderNode(
 
   const el: SceneNode = Array.isArray(inner) ? { tag: 'g', attrs: {}, children: inner } : inner!;
   el.nodeId = n.id;
-  if (Object.keys(wrapAttrs).length === 0) return el;
-  return { tag: 'g', attrs: wrapAttrs, children: [el], nodeId: n.id };
+
+  // Stacked effects wrap the drawn element: filtered content first, then any
+  // overlay (a vignette must not be blurred by the filter it sits above).
+  let content: SceneNode = el;
+  const fx = (n.effects ?? []) as Effect[];
+  if (fx.length) {
+    const box = { x: n.x, y: n.y, width: n.width, height: n.height };
+    const c = compileEffects(fx, box, nextGradId);
+    defs.push(...c.defs);
+    if (c.behind.length) content = { tag: 'g', attrs: {}, children: [...c.behind, content] };
+    if (c.primitives.length) {
+      const fid = nextGradId('fx');
+      defs.push({
+        tag: 'filter',
+        attrs: { id: fid, x: '-50%', y: '-50%', width: '200%', height: '200%', 'color-interpolation-filters': 'sRGB' },
+        children: c.primitives,
+      });
+      content = { tag: 'g', attrs: { filter: `url(#${fid})` }, children: [content] };
+    }
+    if (c.over.length) content = { tag: 'g', attrs: {}, children: [content, ...c.over] };
+  }
+  if (n.blend && n.blend !== 'normal') wrapAttrs.style = `mix-blend-mode:${n.blend}`;
+
+  if (content === el && Object.keys(wrapAttrs).length === 0) return el;
+  return { tag: 'g', attrs: wrapAttrs, children: [content], nodeId: n.id };
 }
 
 function placeholder(n: any): SceneNode {

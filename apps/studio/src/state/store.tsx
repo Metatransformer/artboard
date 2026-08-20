@@ -21,6 +21,7 @@ type Action =
   | { type: 'select'; ids: string[] }
   | { type: 'setDoc'; doc: Document; readOnly?: boolean }
   | { type: 'setArtboardIndex'; index: number }
+  | { type: 'renameDoc'; name: string }
   | { type: 'setZoom'; zoom: number }
   | { type: 'setPan'; pan: { x: number; y: number } }
   | { type: 'editText'; id: string | null }
@@ -46,6 +47,7 @@ function reducer(state: EditorState, action: Action): EditorState {
     case 'setDoc':
       return { ...state, doc: action.doc, history: emptyHistory(), selection: [], activeArtboard: 0,
                readOnly: action.readOnly ?? false, editingTextId: null };
+    case 'renameDoc': return { ...state, doc: { ...state.doc, name: action.name } };
     case 'setArtboardIndex': return { ...state, activeArtboard: action.index, selection: [], editingTextId: null };
     case 'setZoom': return { ...state, zoom: Math.min(8, Math.max(0.05, action.zoom)) };
     case 'setPan': return { ...state, pan: action.pan };

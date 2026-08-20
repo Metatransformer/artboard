@@ -1,0 +1,158 @@
+/* ============================================================================
+ * Shell layout: rail -> drawer -> canvas -> dock, with a page bar underneath.
+ *
+ * The zone allocation is the whole point of this file:
+ *   rail + drawer  content SOURCES  (what you bring in)   - one at a time
+ *   canvas         the work
+ *   dock           document STATE + selection PROPERTIES  - always visible
+ *   page bar       document navigation
+ * Nothing in the dock is ever swapped out by something in the drawer.
+ * ========================================================================= */
+
+:root{ --rail-w:74px; --drawer-w:302px; --dock-w:280px; --pagebar-h:44px; }
+
+.workspace{flex:1;display:flex;min-height:0;min-width:0}
+
+/* ── rail ─────────────────────────────────────────────────────────────── */
+.rail{
+  width:var(--rail-w);flex:0 0 auto;background:#12151d;border-right:1px solid var(--line);
+  display:flex;flex-direction:column;gap:2px;padding:8px 6px;overflow-y:auto;
+}
+.railbtn{
+  display:flex;flex-direction:column;align-items:center;gap:5px;padding:9px 2px 8px;
+  border-radius:10px;color:var(--fg3);transition:background .12s,color .12s;
+}
+.railbtn svg{width:21px;height:21px}
+.railbtn span{font-size:10.5px;font-weight:500;letter-spacing:.005em}
+.railbtn:hover{color:var(--fg2);background:#ffffff08}
+.railbtn.on{color:#fff;background:var(--accent)}
+
+/* ── drawer ───────────────────────────────────────────────────────────── */
+.drawer{
+  width:var(--drawer-w);flex:0 0 auto;background:var(--bg2);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;min-height:0;
+}
+.drawer-head{
+  height:42px;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
+  padding:0 8px 0 14px;border-bottom:1px solid var(--line);
+}
+.drawer-head h2{font-size:12.5px;font-weight:650;letter-spacing:-.005em}
+.drawer-body{flex:1;overflow-y:auto;padding:12px;min-height:0}
+.tool.sm{width:26px;height:26px}
+.tool.sm svg{width:15px;height:15px}
+
+.drawer-body h4{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--fg3);margin:16px 0 8px;font-weight:600}
+.drawer-body h4:first-child{margin-top:0}
+.btn.tall{height:auto;padding:11px 12px;justify-content:flex-start;text-align:left;line-height:1.25}
+.hint.tight{font-size:11.5px;padding:0 0 10px;line-height:1.5}
+.hint.pad{padding:14px}
+.hint code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;background:var(--bg);padding:1px 4px;border-radius:4px}
+
+.dropzone{
+  display:flex;flex-direction:column;align-items:center;gap:4px;padding:24px 12px;margin-bottom:10px;
+  border:1.5px dashed var(--line);border-radius:12px;color:var(--fg3);text-align:center;cursor:pointer;transition:.14s;
+}
+.dropzone:hover,.dropzone.over{border-color:var(--accent);color:var(--fg2);background:#6366f114}
+.dropzone svg{width:26px;height:26px}
+.dropzone b{font-size:13px;color:var(--fg)}
+.dropzone small{font-size:11px}
+.ugrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.ucard{aspect-ratio:1;border-radius:8px;overflow:hidden;background:var(--bg3);border:1px solid var(--line)}
+.ucard img{width:100%;height:100%;object-fit:cover;display:block}
+.ucard:hover{border-color:var(--accent)}
+.palette{margin-bottom:4px}
+.prow{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+
+/* ── right dock ───────────────────────────────────────────────────────── */
+.dock{
+  width:var(--dock-w);flex:0 0 auto;background:var(--bg2);border-left:1px solid var(--line);
+  display:flex;flex-direction:column;min-height:0;
+}
+.dockpanel{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.dockpanel.grow{flex:1 1 auto}
+.dockhead{
+  height:34px;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
+  padding:0 10px 0 12px;background:var(--bg2);border-bottom:1px solid var(--line);
+}
+.dockhead h2{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--fg3);font-weight:650}
+.dockbody{flex:1;overflow-y:auto;min-height:0}
+.disclose{display:flex;align-items:center;gap:6px;color:inherit}
+.disclose svg{width:13px;height:13px;color:var(--fg3);transition:transform .14s}
+.disclose svg.shut{transform:rotate(-90deg)}
+.count{font-size:10.5px;color:var(--fg3);font-variant-numeric:tabular-nums}
+.splitter{height:5px;flex:0 0 auto;cursor:ns-resize;background:var(--line);position:relative}
+.splitter::after{content:'';position:absolute;inset:-3px 0;}
+.splitter:hover{background:var(--accent)}
+
+.props .section:last-child{border-bottom:none}
+
+/* ── layers ───────────────────────────────────────────────────────────── */
+.layers{display:flex;flex-direction:column;padding:4px}
+.layer{
+  display:flex;align-items:center;gap:7px;padding:5px 6px;border-radius:6px;cursor:pointer;
+  font-size:12px;color:var(--fg2);
+}
+.layer:hover{background:var(--bg3);color:var(--fg)}
+.layer.on{background:var(--accent);color:#fff}
+.layer.off .lname,.layer.off .lthumb{opacity:.4}
+.lvis{width:17px;height:17px;flex:0 0 auto;opacity:.55;display:grid;place-items:center}
+.lvis svg{width:15px;height:15px}
+.layer:hover .lvis,.layer.on .lvis{opacity:1}
+.lthumb{
+  width:22px;height:22px;flex:0 0 auto;border-radius:4px;background:#ffffff12;
+  display:grid;place-items:center;overflow:hidden;
+}
+.lthumb svg{width:16px;height:16px}
+.lname{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lactions{display:none;gap:1px;flex:0 0 auto}
+.layer:hover .lactions,.layer.on .lactions{display:flex}
+.licon{width:20px;height:20px;border-radius:4px;display:grid;place-items:center;opacity:.7}
+.licon svg{width:14px;height:14px}
+.licon:hover:not(:disabled){opacity:1;background:#ffffff1f}
+.licon.danger:hover:not(:disabled){background:var(--err);color:#fff}
+
+/* ── page bar ─────────────────────────────────────────────────────────── */
+.pagebar{
+  height:var(--pagebar-h);flex:0 0 auto;display:flex;align-items:center;gap:8px;
+  padding:0 12px;background:var(--bg2);border-top:1px solid var(--line);
+}
+.pages{display:flex;align-items:center;gap:5px;flex:1;min-width:0;overflow-x:auto}
+.pagechip{
+  display:flex;align-items:center;gap:7px;height:28px;padding:0 10px;border-radius:7px;
+  background:var(--bg3);border:1px solid transparent;font-size:12px;color:var(--fg2);white-space:nowrap;
+}
+.pagechip:hover{color:var(--fg)}
+.pagechip.on{border-color:var(--accent);color:var(--fg);background:#6366f11f}
+.pagechip small{font-size:10px;color:var(--fg3);font-variant-numeric:tabular-nums}
+.zoomslider{width:118px;accent-color:var(--accent)}
+.pagebar .meta{font-size:11px;color:var(--fg3);font-variant-numeric:tabular-nums}
+
+/* ── top bar additions ────────────────────────────────────────────────── */
+.docname{
+  height:30px;max-width:230px;padding:0 9px;border-radius:7px;background:transparent;color:var(--fg);
+  border:1px solid transparent;font-size:13px;font-weight:550;min-width:80px;outline:none;
+}
+.docname:hover{background:var(--bg3)}
+.docname:focus{background:var(--bg);border-color:var(--accent)}
+.pop{position:relative}
+.pop-menu{
+  position:absolute;top:calc(100% + 6px);background:var(--bg3);border:1px solid var(--line);
+  border-radius:12px;box-shadow:var(--shadow);padding:8px;z-index:60;
+}
+.pop-menu.right{right:0}
+.pop-menu h4{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--fg3);margin:8px 4px 6px;font-weight:600}
+.pop-menu h4:first-child{margin-top:0}
+.sizelist{display:flex;flex-direction:column;gap:2px;max-height:330px;overflow-y:auto;width:262px}
+.sizerow{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;
+  padding:7px 9px;border-radius:7px;font-size:12.5px;text-align:left;
+}
+.sizerow:hover{background:var(--accent);color:#fff}
+.sizerow small{font-size:11px;color:var(--fg3);font-variant-numeric:tabular-nums}
+.sizerow:hover small{color:#ffffffb0}
+.customsize{display:flex;gap:5px;align-items:center;padding:4px}
+
+@media (max-width:1180px){
+  :root{ --drawer-w:262px; --dock-w:248px; --rail-w:66px }
+  .egrid{grid-template-columns:repeat(3,1fr)}
+}

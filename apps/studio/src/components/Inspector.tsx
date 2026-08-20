@@ -17,8 +17,8 @@ export function Inspector() {
   if (!n) {
     const bg = artboard.background as any;
     return (
-      <aside className="panel panel-right">
-        <Section title="Artboard">
+      <div className="props">
+        <Section title="Page">
           <Row label="Size">
             <Num value={artboard.width} onChange={v => abPatch({ width: Math.max(1, v) })} />
             <Num value={artboard.height} onChange={v => abPatch({ height: Math.max(1, v) })} />
@@ -40,13 +40,13 @@ export function Inspector() {
           </button>
         </Section>
         <div className="hint">Select an element to edit it. Double-click text to type.</div>
-      </aside>
+      </div>
     );
   }
 
   const multi = selected.length > 1;
   return (
-    <aside className="panel panel-right">
+    <div className="props">
       <Section title={multi ? `${selected.length} selected` : (n.name || n.kind)}>
         <Row label="Position">
           <Num value={n.x} onChange={v => patch({ x: v })} prefix="X" />
@@ -138,7 +138,7 @@ export function Inspector() {
           <button className="btn" onClick={() => patch({ y: Math.round((artboard.height - n.height) / 2) })}>Centre V</button>
         </div>
       </Section>
-    </aside>
+    </div>
   );
 }
 

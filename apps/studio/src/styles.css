@@ -215,3 +215,200 @@ select.field{cursor:pointer}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
+
+/* ── brand kit panel (BrandPanel.tsx) ────────────────────────
+   Every rule below is scoped under .bk so it can only affect the
+   brand drawer; nothing above this comment is touched. */
+.bk h4{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--fg3);margin:16px 0 8px;font-weight:600}
+.bk h4:first-child{margin-top:0}
+.bk-warn{
+  font-size:11.5px;line-height:1.45;padding:7px 9px;margin-bottom:10px;border-radius:7px;
+  background:#3a2d13;border:1px solid #7c5a19;color:#fde68a;
+}
+.bk-target{font-size:11.5px;line-height:1.45;color:var(--fg3);margin-bottom:8px}
+.bk-empty{font-size:11.5px;line-height:1.45;color:var(--fg3);margin-bottom:6px}
+
+.bk-pal{background:var(--bg3);border:1px solid var(--line);border-radius:var(--r);padding:8px}
+.bk-pal.builtin{background:transparent}
+.bk-pal-head{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-bottom:7px}
+.bk-pal-head .field{flex:1 1 90px}
+.bk-pal-name{
+  font-size:12.5px;font-weight:600;color:var(--fg);max-width:100%;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.bk-tag{
+  font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--fg3);
+  border:1px solid var(--line);border-radius:99px;padding:1px 6px;
+}
+.bk-pal-acts{display:flex;flex-wrap:wrap;gap:3px;flex:1 0 100%;justify-content:flex-end}
+
+.bk-mini{
+  height:22px;padding:0 6px;border-radius:5px;font-size:10.5px;line-height:1;
+  background:var(--bg);color:var(--fg2);border:1px solid var(--line);
+}
+.bk-mini:hover:not(:disabled){background:#272c3a;color:var(--fg)}
+.bk-mini.on{background:var(--accent);border-color:transparent;color:#fff}
+.bk-mini.go{background:var(--accent);border-color:transparent;color:#fff}
+.bk-mini.go:hover:not(:disabled){background:#585ce0}
+.bk-mini.danger{color:#fca5a5;border-color:#7f2b2b}
+.bk-mini.danger:hover:not(:disabled){background:#3b1d1d;color:#fecaca}
+
+.bk-row{display:flex;flex-wrap:wrap;gap:4px}
+.bk-sw{
+  width:28px;height:28px;border-radius:6px;border:1px solid #ffffff1a;
+  transition:transform .1s,box-shadow .1s;
+}
+.bk-sw:hover{transform:scale(1.1)}
+.bk-sw.on{box-shadow:0 0 0 2px var(--bg3),0 0 0 4px var(--accent)}
+.bk-add{
+  width:28px;height:28px;border-radius:6px;font-size:15px;line-height:1;
+  background:var(--bg);color:var(--fg2);border:1px dashed var(--line);
+}
+.bk-add:hover{color:var(--fg);border-color:var(--accent)}
+
+.bk-edit{margin-top:8px;padding-top:8px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
+.bk-edit-row{display:flex;flex-wrap:wrap;align-items:center;gap:5px}
+.bk-edit-row .field{flex:1 1 90px}
+.bk-edit input[type=color]{
+  width:29px;height:29px;flex:0 0 auto;padding:0;border:1px solid var(--line);
+  border-radius:6px;background:none;cursor:pointer;
+}
+.bk-err{font-size:11px;line-height:1.4;color:#fca5a5}
+
+.bk-new{display:flex;align-items:center;gap:4px}
+.bk-new .field{flex:1 1 auto}
+
+.bk-font{display:flex;align-items:center;gap:5px}
+.bk-font-name{
+  flex:1;min-width:0;height:32px;padding:0 10px;border-radius:var(--r);text-align:left;font-size:14px;
+  background:var(--bg3);color:var(--fg);border:1px solid var(--line);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.bk-font-name:hover{background:#272c3a;border-color:#39405280}
+.bk-addfont{display:flex;align-items:center;gap:5px}
+.bk-addfont .field{flex:1 1 auto;cursor:pointer}
+
+.bk-logos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:2px}
+.bk-logo{position:relative}
+.bk-logo-btn{
+  width:100%;aspect-ratio:1;display:grid;place-items:center;padding:5px;border-radius:8px;
+  background:
+    linear-gradient(45deg,#ffffff0d 25%,transparent 25%,transparent 75%,#ffffff0d 75%) 0 0/12px 12px,
+    linear-gradient(45deg,#ffffff0d 25%,transparent 25%,transparent 75%,#ffffff0d 75%) 6px 6px/12px 12px,
+    var(--bg3);
+  border:1px solid var(--line);transition:.12s;
+}
+.bk-logo-btn:hover{border-color:var(--accent)}
+.bk-logo-btn img{max-width:100%;max-height:100%;object-fit:contain}
+.bk-logo-del{
+  position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:5px;line-height:1;font-size:13px;
+  background:#0f1117cc;color:var(--fg2);border:1px solid var(--line);opacity:0;transition:opacity .12s;
+}
+.bk-logo:hover .bk-logo-del,.bk-logo-del:focus-visible{opacity:1}
+.bk-logo-del:hover{color:#fecaca;border-color:#7f2b2b}
+.bk-logo-confirm{
+  position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:stretch;gap:4px;
+  padding:5px;border-radius:8px;background:#0f1117ee;border:1px solid #7f2b2b;
+}
+
+/* ── projects panel (ProjectsPanel.tsx) ──────────────────── */
+.pj{display:flex;flex-direction:column;min-height:0;height:100%;background:var(--bg2)}
+.pj-top{padding:12px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.pj-saved{display:flex;align-items:center;gap:8px}
+.pj-saved-name{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.pj-saved-name b{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pj-saved-name small{font-size:11px;color:var(--fg3);font-variant-numeric:tabular-nums}
+.pj-savenew{display:flex;flex-direction:column;gap:6px}
+.pj-savenew-row{display:flex;gap:6px;align-items:stretch}
+.pj-savenew-row .field{flex:1 1 0;min-width:0}
+.pj-savenew-row .btn{flex:0 0 auto;white-space:nowrap}
+.pj-toprow{display:flex;gap:6px;flex-wrap:wrap}
+.pj-file{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.pj-warn{
+  font-size:11.5px;line-height:1.5;padding:6px 9px;border-radius:7px;
+  background:#3a2d13;border:1px solid #7c5a19;color:#fde68a;
+}
+
+.pj-main{flex:1;display:flex;min-height:0}
+.pj-folders{
+  flex:0 0 140px;min-width:110px;max-width:200px;padding:10px 8px;overflow-y:auto;
+  border-right:1px solid var(--line);display:flex;flex-direction:column;gap:4px;
+}
+.pj-tree{list-style:none;display:flex;flex-direction:column;gap:1px}
+.pj-tree .pj-tree{margin-top:1px}
+.pj-folderrow{display:flex;align-items:center;gap:1px;border-radius:6px}
+.pj-folder{
+  flex:1;min-width:0;display:flex;align-items:center;gap:6px;padding:6px 7px;border-radius:6px;
+  font-size:12px;color:var(--fg2);text-align:left;transition:background .12s,color .12s;
+}
+.pj-folder:hover{background:var(--bg3);color:var(--fg)}
+.pj-folder.on{background:var(--accent);color:#fff}
+.pj-folder-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pj-count{font-size:10px;opacity:.65;font-variant-numeric:tabular-nums}
+.pj-icon{
+  font-size:10.5px;color:var(--fg3);padding:3px 5px;border-radius:5px;white-space:nowrap;
+  transition:opacity .12s,color .12s,background .12s;
+}
+.pj-icon:hover:not(:disabled){background:var(--bg3);color:var(--fg)}
+/* Folder row actions stay in the tab order but take no space until they are
+   wanted - a 132px column has none to spare for two hidden buttons. */
+.pj-folderrow .pj-icon{opacity:0;max-width:0;padding:0;overflow:hidden;transition:max-width .12s,opacity .12s}
+.pj-folderrow:hover .pj-icon,.pj-folderrow:focus-within .pj-icon{opacity:1;max-width:60px;padding:3px 5px}
+.pj-newfolder{display:flex;flex-direction:column;gap:5px;padding:4px 0}
+.pj-inline-actions{display:flex;gap:5px;flex-wrap:wrap}
+.pj-inline-actions .btn{height:27px;padding:0 9px;font-size:12px}
+.pj-addfolder{width:100%;margin-top:4px;font-size:12px}
+.pj-danger{background:#3b1d1d;border-color:#7f2b2b;color:#fecaca}
+.pj-danger:hover:not(:disabled){background:#4a2424;border-color:#a13636}
+.pj-confirm{
+  margin:5px 0;padding:8px 9px;border-radius:8px;background:var(--bg3);border:1px solid #7f2b2b;
+  display:flex;flex-direction:column;gap:7px;
+}
+.pj-confirm p{font-size:11.5px;line-height:1.5;color:var(--fg2)}
+.pj-confirm b{color:var(--fg)}
+
+.pj-content{flex:1;min-width:0;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.pj-resume{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;border-radius:8px;
+  background:var(--bg3);border:1px solid var(--line);font-size:12px;color:var(--fg2);
+}
+.pj-resume span{flex:1;min-width:120px}
+.pj-resume b{color:var(--fg)}
+.pj-resume .btn{height:27px;padding:0 9px;font-size:12px}
+.pj-empty{padding:6px 2px;display:flex;flex-direction:column;gap:8px}
+.pj-empty p{font-size:12.5px;line-height:1.55;color:var(--fg3)}
+.pj-empty b{color:var(--fg2)}
+
+.pj-grid{list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px}
+.pj-card{
+  display:flex;flex-direction:column;gap:5px;padding:7px;border-radius:10px;
+  background:var(--bg3);border:1px solid transparent;transition:border-color .12s;
+}
+.pj-card.on{border-color:var(--accent)}
+.pj-card:hover{border-color:#39405280}
+.pj-open{display:block;width:100%;text-align:left;border-radius:7px}
+.pj-thumb{display:block}
+.pj-card:hover .pj-thumb{border-color:var(--accent)}
+.pj-nothumb{display:grid;place-items:center;background:var(--bg)}
+.pj-nothumb em{
+  position:absolute;inset:0;display:grid;place-items:center;
+  font-style:normal;font-size:11px;color:var(--fg3);
+}
+.pj-cardmeta{display:flex;flex-direction:column;gap:1px;min-width:0}
+.pj-cardname{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pj-sub{font-size:10.5px;color:var(--fg3);font-variant-numeric:tabular-nums}
+.pj-cardactions{display:flex;flex-wrap:wrap;gap:2px}
+.pj-move{height:26px;font-size:11px}
+
+.pj-foot{padding:9px 12px;border-top:1px solid var(--line)}
+.pj-storage{font-size:11px;color:var(--fg3);line-height:1.5;display:block}
+.pj-storage-warn{
+  color:#fde68a;background:#3a2d13;border:1px solid #7c5a19;
+  border-radius:7px;padding:6px 9px;
+}
+
+/* The grid sizes itself off the panel, never the viewport: this panel is as
+   happy in a 264px rail as in a full-window browser. */
+@media (max-width:1100px){
+  .pj-folders{flex-basis:120px}
+}

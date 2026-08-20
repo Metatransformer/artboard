@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Toolbar } from './components/Toolbar';
-import { LeftPanel } from './components/LeftPanel';
-import { Inspector } from './components/Inspector';
+import { LeftRail } from './components/LeftRail';
+import { RightDock } from './components/RightDock';
+import { PageBar } from './components/PageBar';
 import { Canvas } from './components/Canvas';
 
 export function App() {
@@ -23,10 +24,11 @@ export function App() {
     <div className="app">
       <Toolbar tool={tool} setTool={setTool} />
       <div className="workspace">
-        <LeftPanel />
+        <LeftRail />
         <Canvas tool={tool} onToolDone={() => setTool('select')} />
-        <Inspector />
+        <RightDock />
       </div>
+      <PageBar />
     </div>
   );
 }

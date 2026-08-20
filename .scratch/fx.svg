@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 700" width="1000" height="700">
+  <defs>
+    <filter id="fx-0" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+      <feOffset in="SourceAlpha" dx="6" dy="8" result="e1"/>
+      <feGaussianBlur in="e1" stdDeviation="5" result="e2"/>
+      <feFlood flood-color="#000000" flood-opacity="0.5" result="e3"/>
+      <feComposite in="e3" in2="e2" operator="in" result="e4"/>
+      <feMerge>
+        <feMergeNode in="e4"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="fx-1" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+      <feMorphology in="SourceAlpha" operator="dilate" radius="4" result="e1"/>
+      <feGaussianBlur in="e1" stdDeviation="8" result="e2"/>
+      <feFlood flood-color="#38bdf8" flood-opacity="0.9" result="e3"/>
+      <feComposite in="e3" in2="e2" operator="in" result="e4"/>
+      <feMerge>
+        <feMergeNode in="e4"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="fx-2" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+      <feMorphology in="SourceAlpha" operator="dilate" radius="4" result="e1"/>
+      <feFlood flood-color="#f43f5e" flood-opacity="1" result="e2"/>
+      <feComposite in="e2" in2="e1" operator="in" result="e3"/>
+      <feMerge>
+        <feMergeNode in="e3"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="fx-3" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+      <feOffset in="SourceAlpha" dx="24" dy="24" result="e1"/>
+      <feFlood flood-color="#a855f7" flood-opacity="0.5" result="e2"/>
+      <feComposite in="e2" in2="e1" operator="in" result="e3"/>
+      <feOffset in="SourceAlpha" dx="16" dy="16" result="e4"/>
+      <feFlood flood-color="#a855f7" flood-opacity="0.5" result="e5"/>
+      <feComposite in="e5" in2="e4" operator="in" result="e6"/>
+      <feOffset in="SourceAlpha" dx="8" dy="8" result="e7"/>
+      <feFlood flood-color="#a855f7" flood-opacity="0.5" result="e8"/>
+      <feComposite in="e8" in2="e7" operator="in" result="e9"/>
+      <feMerge>
+        <feMergeNode in="e3"/>
+        <feMergeNode in="e6"/>
+        <feMergeNode in="e9"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="fx-4" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3"/>
+    </filter>
+    <path id="curve-5" d="M 0 496.34 Q 140 328.34 280 496.34" fill="none"/>
+    <filter id="fx-6" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+      <feColorMatrix in="SourceGraphic" type="saturate" values="0" result="e1"/>
+      <feComponentTransfer in="e1">
+        <feFuncR type="table" tableValues="0.1922 0.9843"/>
+        <feFuncG type="table" tableValues="0.1804 0.749"/>
+        <feFuncB type="table" tableValues="0.5059 0.1412"/>
+      </feComponentTransfer>
+    </filter>
+    <radialGradient id="vig-7" cx="50%" cy="50%" r="72%">
+      <stop offset="55%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.8"/>
+    </radialGradient>
+  </defs>
+  <rect x="0" y="0" width="1000" height="700" fill="#111827"/>
+  <g>
+    <g filter="url(#fx-0)">
+      <text x="40" y="60" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="46" font-weight="800" text-anchor="middle" fill="#ffffff" xml:space="preserve">
+        <tspan x="180" y="96.34">Shadow</tspan>
+      </text>
+    </g>
+  </g>
+  <g>
+    <g filter="url(#fx-1)">
+      <text x="360" y="60" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="46" font-weight="800" text-anchor="middle" fill="#ffffff" xml:space="preserve">
+        <tspan x="500" y="96.34">Glow</tspan>
+      </text>
+    </g>
+  </g>
+  <g>
+    <g filter="url(#fx-2)">
+      <text x="680" y="60" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="46" font-weight="800" text-anchor="middle" fill="#ffffff" xml:space="preserve">
+        <tspan x="820" y="96.34">Outline</tspan>
+      </text>
+    </g>
+  </g>
+  <g>
+    <g filter="url(#fx-3)">
+      <text x="40" y="260" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="46" font-weight="800" text-anchor="middle" fill="#ffffff" xml:space="preserve">
+        <tspan x="180" y="296.34">Echo</tspan>
+      </text>
+    </g>
+  </g>
+  <g>
+    <g filter="url(#fx-4)">
+      <text x="360" y="260" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="46" font-weight="800" text-anchor="middle" fill="#ffffff" xml:space="preserve">
+        <tspan x="500" y="296.34">Blur</tspan>
+      </text>
+    </g>
+  </g>
+  <g>
+    <g>
+      <rect x="666" y="246" width="308" height="118" rx="10" fill="#f59e0b"/>
+      <text x="680" y="260" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="46" font-weight="800" text-anchor="middle" fill="#ffffff" xml:space="preserve">
+        <tspan x="820" y="296.34">Plate</tspan>
+      </text>
+    </g>
+  </g>
+  <text font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="46" font-weight="800" fill="#ffffff" text-anchor="middle" xml:space="preserve">
+    <textPath href="#curve-5" startOffset="50%">Curve up</textPath>
+  </text>
+  <g>
+    <g filter="url(#fx-6)">
+      <text x="360" y="460" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="46" font-weight="800" text-anchor="middle" fill="#ffffff" xml:space="preserve">
+        <tspan x="500" y="496.34">Duotone</tspan>
+      </text>
+    </g>
+  </g>
+  <g>
+    <g>
+      <text x="680" y="460" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="46" font-weight="800" text-anchor="middle" fill="#ffffff" xml:space="preserve">
+        <tspan x="820" y="496.34">Vignette</tspan>
+      </text>
+      <rect x="680" y="460" width="280" height="90" fill="url(#vig-7)" pointer-events="none"/>
+    </g>
+  </g>
+</svg>
