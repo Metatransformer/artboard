@@ -1,13 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" width="1080" height="1080">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" width="1080" height="1080" role="img">
+  <title>Big Number</title>
   <rect x="0" y="0" width="1080" height="1080" fill="#0a0a0a"/>
-  <rect x="0" y="0" width="1080" height="14" fill="#d9f99d"/>
+  <rect x="0" y="0" width="1080" height="14" fill="#d9f99d" aria-hidden="true"/>
   <text x="88" y="140" font-family="'JetBrains Mono', ui-sans-serif, system-ui, sans-serif" font-size="24" font-weight="500" letter-spacing="4" text-anchor="start" fill="#a3a3a3" xml:space="preserve">
     <tspan x="88" y="158.96">ANNUAL REPORT / 03</tspan>
   </text>
   <text x="88" y="300" font-family="'Space Grotesk', ui-sans-serif, system-ui, sans-serif" font-size="300" font-weight="700" letter-spacing="-12" text-anchor="start" fill="#fafafa" xml:space="preserve">
     <tspan x="88" y="537">97%</tspan>
   </text>
-  <line x1="88" y1="680" x2="992" y2="680" stroke-linecap="round" stroke="#262626" stroke-width="1"/>
+  <line x1="88" y1="680" x2="992" y2="680" stroke-linecap="round" stroke="#262626" stroke-width="1" aria-hidden="true"/>
   <text x="88" y="724" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="38" font-weight="400" text-anchor="start" fill="#d4d4d4" xml:space="preserve">
     <tspan x="88" y="754.02">of teams shipped faster after</tspan>
     <tspan x="88" y="807.22">moving to a single source of truth.</tspan>
@@ -16,7 +17,7 @@
     <tspan x="992" y="739.8">Source:</tspan>
     <tspan x="992" y="771.8">Artboard Index</tspan>
   </text>
-  <rect x="88" y="940" width="140" height="8" fill="#d9f99d"/>
+  <rect x="88" y="940" width="140" height="8" fill="#d9f99d" aria-hidden="true"/>
   <text x="88" y="976" font-family="'JetBrains Mono', ui-sans-serif, system-ui, sans-serif" font-size="22" font-weight="500" letter-spacing="2" text-anchor="start" fill="#a3a3a3" xml:space="preserve">
     <tspan x="88" y="993.38">artboard.design</tspan>
   </text>

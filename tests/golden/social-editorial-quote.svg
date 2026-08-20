@@ -1,16 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" width="1080" height="1080">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" width="1080" height="1080" role="img">
+  <title>Editorial Quote</title>
   <rect x="0" y="0" width="1080" height="1080" fill="#faf5ef"/>
-  <line x1="120" y1="120" x2="960" y2="120" stroke-linecap="round" stroke="#d6cbbb" stroke-width="2"/>
+  <line x1="120" y1="120" x2="960" y2="120" stroke-linecap="round" stroke="#d6cbbb" stroke-width="2" aria-hidden="true"/>
   <text x="120" y="152" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="22" font-weight="600" letter-spacing="6" text-anchor="start" fill="#c2410c" xml:space="preserve">
     <tspan x="120" y="169.38">FIELD NOTES</tspan>
   </text>
-  <ellipse cx="886" cy="800" rx="74" ry="74" fill="none" stroke="#d6cbbb" stroke-width="2"/>
+  <ellipse cx="886" cy="800" rx="74" ry="74" fill="none" stroke="#d6cbbb" stroke-width="2" aria-hidden="true"/>
   <text x="120" y="300" font-family="'Playfair Display', ui-sans-serif, system-ui, sans-serif" font-size="88" font-weight="400" letter-spacing="-1" text-anchor="start" fill="#1c1917" xml:space="preserve">
     <tspan x="120" y="369.52">“Good design is</tspan>
     <tspan x="120" y="475.12">as little design</tspan>
     <tspan x="120" y="580.72">as possible.”</tspan>
   </text>
-  <rect x="120" y="700" width="72" height="6" fill="#c2410c"/>
+  <rect x="120" y="700" width="72" height="6" fill="#c2410c" aria-hidden="true"/>
   <text x="120" y="744" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="30" font-weight="600" text-anchor="start" fill="#1c1917" xml:space="preserve">
     <tspan x="120" y="767.7">Dieter Rams</tspan>
   </text>
@@ -20,7 +21,7 @@
   <text x="812" y="726" font-family="'Playfair Display', ui-sans-serif, system-ui, sans-serif" font-size="46" font-weight="400" text-anchor="middle" fill="#c2410c" xml:space="preserve">
     <tspan x="886" y="808.74">10</tspan>
   </text>
-  <line x1="120" y1="944" x2="960" y2="944" stroke-linecap="round" stroke="#d6cbbb" stroke-width="2"/>
+  <line x1="120" y1="944" x2="960" y2="944" stroke-linecap="round" stroke="#d6cbbb" stroke-width="2" aria-hidden="true"/>
   <text x="120" y="968" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="22" font-weight="500" letter-spacing="4" text-anchor="start" fill="#a8a29e" xml:space="preserve">
     <tspan x="120" y="985.38">THE ARTBOARD REVIEW</tspan>
   </text>

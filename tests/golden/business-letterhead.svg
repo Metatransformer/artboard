@@ -1,4 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2480 3508" width="2480" height="3508">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2480 3508" width="2480" height="3508" role="img">
+  <title>Letterhead</title>
   <defs>
     <linearGradient id="grad-0" x1="0%" y1="50%" x2="100%" y2="50%">
       <stop offset="0" stop-color="#0f172a"/>
@@ -6,7 +7,7 @@
     </linearGradient>
   </defs>
   <rect x="0" y="0" width="2480" height="3508" fill="#ffffff"/>
-  <rect x="0" y="0" width="2480" height="24" fill="url(#grad-0)"/>
+  <rect x="0" y="0" width="2480" height="24" fill="url(#grad-0)" aria-hidden="true"/>
   <text x="220" y="240" font-family="'Space Grotesk', ui-sans-serif, system-ui, sans-serif" font-size="64" font-weight="700" letter-spacing="-2" text-anchor="start" fill="#0f172a" xml:space="preserve">
     <tspan x="220" y="290.56">Northwind</tspan>
   </text>
@@ -18,7 +19,7 @@
     <tspan x="2260" y="304.74">1016 EA Amsterdam</tspan>
     <tspan x="2260" y="348.94">hello@northwind.co</tspan>
   </text>
-  <line x1="220" y1="480" x2="2260" y2="480" stroke-linecap="round" stroke="#e2e8f0" stroke-width="3"/>
+  <line x1="220" y1="480" x2="2260" y2="480" stroke-linecap="round" stroke="#e2e8f0" stroke-width="3" aria-hidden="true"/>
   <text x="220" y="620" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="30" font-weight="400" text-anchor="start" fill="#64748b" xml:space="preserve">
     <tspan x="220" y="643.7">Amsterdam, 12 February 2026</tspan>
   </text>
@@ -36,11 +37,11 @@
     <tspan x="220" y="1310.2"></tspan>
     <tspan x="220" y="1359.7">If that sounds right, sign below and we will start on the first Monday that suits you.</tspan>
   </text>
-  <line x1="220" y1="2140" x2="920" y2="2140" stroke-linecap="round" stroke="#cbd5e1" stroke-width="2"/>
+  <line x1="220" y1="2140" x2="920" y2="2140" stroke-linecap="round" stroke="#cbd5e1" stroke-width="2" aria-hidden="true"/>
   <text x="220" y="2170" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="26" font-weight="500" text-anchor="start" fill="#475569" xml:space="preserve">
     <tspan x="220" y="2190.54">Elias Moreau · Principal</tspan>
   </text>
-  <line x1="220" y1="3260" x2="2260" y2="3260" stroke-linecap="round" stroke="#e2e8f0" stroke-width="2"/>
+  <line x1="220" y1="3260" x2="2260" y2="3260" stroke-linecap="round" stroke="#e2e8f0" stroke-width="2" aria-hidden="true"/>
   <text x="220" y="3300" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="22" font-weight="400" text-anchor="start" fill="#94a3b8" xml:space="preserve">
     <tspan x="220" y="3317.38">Northwind Studio B.V. · KvK 12345678</tspan>
   </text>

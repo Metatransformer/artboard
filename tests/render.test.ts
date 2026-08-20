@@ -30,6 +30,18 @@ const kitchenSink = (): Document => docWith(
 const flatten = (scene: SceneNode): SceneNode[] =>
   [scene, ...(scene.children ?? []).flatMap(flatten)];
 
+/**
+ * The scene's drawing children, ignoring the <defs> block and the a11y
+ * scaffolding. Tests care what got painted, not where the accessibility
+ * <title> happens to sit in the child list.
+ */
+const drawn = (scene: SceneNode): SceneNode[] =>
+  (scene.children ?? []).filter(c => c.tag !== 'defs' && c.tag !== 'title');
+
+/** The element carrying a given document node id, or undefined. */
+const elementFor = (scene: SceneNode, nodeId: string): SceneNode | undefined =>
+  flatten(scene).find(n => n.nodeId === nodeId);
+
 describe('render: determinism (the golden-test precondition)', () => {
   it('produces byte-identical output across three renders of the same document', () => {
     const doc = kitchenSink();
@@ -71,7 +83,8 @@ describe('render: visibility', () => {
     const { scene } = renderArtboard(doc, doc.artboards[0]!);
 
     // only the artboard background rect survives
-    expect(scene.children).toHaveLength(1);
+    expect(drawn(scene)).toHaveLength(1);
+    expect(drawn(scene)[0]!.nodeId).toBeUndefined();
     expect(flatten(scene).some(n => n.nodeId === 'hidden')).toBe(false);
     expect(renderToString(doc).svg).not.toContain('#abcdef');
   });
@@ -189,7 +202,7 @@ describe('render: transforms', () => {
   it('wraps the rotated element in a <g> that keeps the node id', () => {
     const doc = docWith([{ id: 'r1', kind: 'rect', x: 0, y: 0, width: 10, height: 10, rotation: 45 }]);
     const { scene } = renderArtboard(doc, doc.artboards[0]!);
-    const wrapper = scene.children![1]!;
+    const wrapper = elementFor(scene, 'r1')!;
     expect(wrapper.tag).toBe('g');
     expect(wrapper.nodeId).toBe('r1');
     expect(wrapper.attrs.transform).toBe('rotate(45 5 5)');
@@ -225,7 +238,7 @@ describe('render: forward compatibility', () => {
     const { svg, diagnostics } = renderToString(doc);
 
     // nothing drawn: only the artboard background remains
-    expect(scene.children).toHaveLength(1);
+    expect(drawn(scene)).toHaveLength(1);
     expect(flatten(scene).some(n => n.nodeId === 'o1')).toBe(false);
     expect(svg).not.toContain('lottie');
 
@@ -695,7 +708,8 @@ describe('render: paint', () => {
     const doc = loadDocument({ id: 'd', artboards: [{ id: 'ab', width: 100, height: 100,
       background: { kind: 'none' }, nodes: [] }] }).doc;
     const { scene } = renderArtboard(doc, doc.artboards[0]!);
-    expect(scene.children ?? []).toHaveLength(0);
+    expect(drawn(scene)).toHaveLength(0);
+    expect(renderToString(doc).svg).not.toContain('<rect');
   });
 });
 
@@ -735,22 +749,32 @@ describe('render: accessibility', () => {
     { id: 'i', kind: 'image', assetId: 'a', x: 0, y: 0, width: 10, height: 10, alt: 'A red barn' },
   ], { name: 'My design', assets: { a: { id: 'a', mime: 'image/png', width: 2, height: 2, data: 'data:,x' } } });
 
-  it('renders per-node alt text as a <title>, with or without the a11y option', () => {
+  it('renders per-node alt text as a <title>, whatever the a11y option', () => {
     for (const a11y of [false, true]) {
       expect(renderToString(doc(), 0, { a11y }).svg, `a11y=${a11y}`).toContain('<title>A red barn</title>');
     }
   });
 
-  it('adds role, a document title and aria-hidden on decorative shapes only under a11y', () => {
-    const off = renderToString(doc(), 0).svg;
+  it('emits role, a document title and aria-hidden by default', () => {
+    // An exported SVG usually lands in a web page, so the accessible markup is
+    // the default and opting out is the deliberate act.
+    for (const opts of [undefined, { a11y: true }]) {
+      const svg = renderToString(doc(), 0, opts).svg;
+      expect(svg, String(opts)).toContain('role="img"');
+      expect(svg, String(opts)).toContain('<title>My design</title>');
+      expect(svg, String(opts)).toContain('aria-hidden="true"');   // the unnamed rect
+      expect(checkXml(svg).ok, String(opts)).toBe(true);
+    }
+  });
+
+  it('drops the document-level scaffolding only when a11y is explicitly false', () => {
+    const off = renderToString(doc(), 0, { a11y: false }).svg;
     expect(off).not.toContain('role="img"');
     expect(off).not.toContain('aria-hidden');
-
-    const on = renderToString(doc(), 0, { a11y: true }).svg;
-    expect(on).toContain('role="img"');
-    expect(on).toContain('<title>My design</title>');
-    expect(on).toContain('aria-hidden="true"');       // the unnamed rect
-    expect(checkXml(on).ok).toBe(true);
+    expect(off).not.toContain('<title>My design</title>');
+    // per-node alt is opt-in per node already, so it survives either way
+    expect(off).toContain('<title>A red barn</title>');
+    expect(checkXml(off).ok).toBe(true);
   });
 
   it('never hides a shape that carries alt text', () => {

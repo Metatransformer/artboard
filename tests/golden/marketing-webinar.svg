@@ -1,9 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" role="img">
+  <title>Webinar Announcement</title>
   <rect x="0" y="0" width="1600" height="900" fill="#efe9e4"/>
   <g opacity="0.35">
-    <ellipse cx="1520" cy="20" rx="280" ry="280" fill="#c98b6b"/>
+    <ellipse cx="1520" cy="20" rx="280" ry="280" fill="#c98b6b" aria-hidden="true"/>
   </g>
-  <rect x="0" y="0" width="18" height="900" fill="#7c6a5a"/>
+  <rect x="0" y="0" width="18" height="900" fill="#7c6a5a" aria-hidden="true"/>
   <text x="120" y="120" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="22" font-weight="600" letter-spacing="6" text-anchor="start" fill="#b06a44" xml:space="preserve">
     <tspan x="120" y="137.38">LIVE WEBINAR</tspan>
   </text>
@@ -11,7 +12,7 @@
     <tspan x="120" y="275.84">Designing with</tspan>
     <tspan x="120" y="383.36">fewer decisions</tspan>
   </text>
-  <line x1="120" y1="540" x2="1120" y2="540" stroke-linecap="round" stroke="#d5c9bf" stroke-width="2"/>
+  <line x1="120" y1="540" x2="1120" y2="540" stroke-linecap="round" stroke="#d5c9bf" stroke-width="2" aria-hidden="true"/>
   <text x="120" y="576" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="28" font-weight="400" text-anchor="start" fill="#5b5147" xml:space="preserve">
     <tspan x="120" y="598.12">A 45-minute session on constraint-led design systems, with a</tspan>
     <tspan x="120" y="640.12">live teardown of three real products.</tspan>
@@ -19,7 +20,7 @@
   <text x="120" y="762" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="30" font-weight="600" text-anchor="start" fill="#2b2724" xml:space="preserve">
     <tspan x="120" y="785.7">Thu 12 Feb · 16:00 CET</tspan>
   </text>
-  <ellipse cx="1280" cy="360" rx="100" ry="100" fill="#7c6a5a"/>
+  <ellipse cx="1280" cy="360" rx="100" ry="100" fill="#7c6a5a" aria-hidden="true"/>
   <text x="1180" y="260" font-family="'Playfair Display', ui-sans-serif, system-ui, sans-serif" font-size="76" font-weight="400" text-anchor="middle" fill="#efe9e4" xml:space="preserve">
     <tspan x="1280" y="374.44">MO</tspan>
   </text>
@@ -29,7 +30,7 @@
   <text x="1100" y="538" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="#6b6157" xml:space="preserve">
     <tspan x="1280" y="553.8">Head of Design, Northwind</tspan>
   </text>
-  <rect x="1140" y="740" width="340" height="88" rx="44" ry="44" fill="#2b2724"/>
+  <rect x="1140" y="740" width="340" height="88" rx="44" ry="44" fill="#2b2724" aria-hidden="true"/>
   <text x="1140" y="740" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="28" font-weight="600" text-anchor="middle" fill="#f7f2ed" xml:space="preserve">
     <tspan x="1310" y="789.32">Save my seat</tspan>
   </text>

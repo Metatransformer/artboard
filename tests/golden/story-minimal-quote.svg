@@ -1,7 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" width="1080" height="1920">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" width="1080" height="1920" role="img">
+  <title>Quiet Story</title>
   <rect x="0" y="0" width="1080" height="1920" fill="#f5f3ef"/>
-  <rect x="100" y="260" width="3" height="1400" fill="#d6d3d1"/>
-  <ellipse cx="860" cy="1520" rx="120" ry="120" fill="none" stroke="#ded9d2" stroke-width="2"/>
+  <rect x="100" y="260" width="3" height="1400" fill="#d6d3d1" aria-hidden="true"/>
+  <ellipse cx="860" cy="1520" rx="120" ry="120" fill="none" stroke="#ded9d2" stroke-width="2" aria-hidden="true"/>
   <text x="148" y="260" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="22" font-weight="600" letter-spacing="6" text-anchor="start" fill="#78716c" xml:space="preserve">
     <tspan x="148" y="277.38">ISSUE TWELVE</tspan>
   </text>
@@ -12,7 +13,7 @@
     <tspan x="148" y="864.16">is the result</tspan>
     <tspan x="148" y="973.6">of care.</tspan>
   </text>
-  <rect x="148" y="1100" width="64" height="4" fill="#a8a29e"/>
+  <rect x="148" y="1100" width="64" height="4" fill="#a8a29e" aria-hidden="true"/>
   <text x="148" y="1148" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="30" font-weight="600" text-anchor="start" fill="#292524" xml:space="preserve">
     <tspan x="148" y="1171.7">Notes on making things</tspan>
   </text>

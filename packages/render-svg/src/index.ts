@@ -24,10 +24,15 @@ export interface RenderOptions {
   /** omit assets (data URIs) from output — used by golden tests to keep fixtures small */
   inlineAssets?: boolean;
   /**
-   * Emit the document-level accessibility scaffolding: `role="img"` plus a
-   * `<title>` on the root `<svg>`, and `aria-hidden="true"` on shapes that
-   * carry no `alt`. Off by default because it changes every byte of output for
-   * every existing document; per-node `alt` text always renders.
+   * Document-level accessibility scaffolding: `role="img"` plus a `<title>` on
+   * the root `<svg>`, and `aria-hidden="true"` on shapes carrying no `alt`.
+   *
+   * **On unless explicitly set to `false`.** An exported SVG usually lands in a
+   * web page, so emitting inaccessible markup by default would make every user
+   * ship an accessibility bug they never chose. Pass `false` for a raster
+   * pipeline, where the a11y tree is dead weight.
+   *
+   * Per-node `alt` text renders either way — it is opt-in per node already.
    */
   a11y?: boolean;
 }
@@ -43,6 +48,7 @@ export function renderArtboard(doc: Document, artboard: Artboard, opts: RenderOp
   idSeq = 0;                       // reset per render → deterministic ids
   const measure = opts.measure ?? metricMeasurer;
   const inlineAssets = opts.inlineAssets !== false;
+  const a11y = opts.a11y !== false;
   const diagnostics: Diagnostic[] = [];
   const defs: SceneNode[] = [];
 
@@ -55,12 +61,12 @@ export function renderArtboard(doc: Document, artboard: Artboard, opts: RenderOp
   }
 
   for (const node of artboard.nodes as Node[]) {
-    const el = renderNode(node, doc, defs, diagnostics, measure, inlineAssets, !!opts.a11y);
+    const el = renderNode(node, doc, defs, diagnostics, measure, inlineAssets, a11y);
     if (el) children.push(el);
   }
 
   const head: SceneNode[] = [];
-  if (opts.a11y) head.push({ tag: 'title', attrs: {}, text: doc.name || artboard.name || 'Untitled' });
+  if (a11y) head.push({ tag: 'title', attrs: {}, text: doc.name || artboard.name || 'Untitled' });
   if (defs.length) head.push({ tag: 'defs', attrs: {}, children: defs });
 
   const scene: SceneNode = {
@@ -70,7 +76,7 @@ export function renderArtboard(doc: Document, artboard: Artboard, opts: RenderOp
       viewBox: `0 0 ${artboard.width} ${artboard.height}`,
       width: artboard.width,
       height: artboard.height,
-      role: opts.a11y ? 'img' : undefined,
+      role: a11y ? 'img' : undefined,
     }),
     children: head.length ? [...head, ...children] : children,
   };
@@ -79,7 +85,7 @@ export function renderArtboard(doc: Document, artboard: Artboard, opts: RenderOp
 
 function renderNode(
   node: Node, doc: Document, defs: SceneNode[], diagnostics: Diagnostic[],
-  measure: Measurer, inlineAssets: boolean, a11y = false,
+  measure: Measurer, inlineAssets: boolean, a11y = true,
 ): SceneNode | null {
   const n = node as any;
   if (!n.visible) return null;
