@@ -13,8 +13,8 @@
   </text>
   <line x1="120" y1="540" x2="1120" y2="540" stroke-linecap="round" stroke="#d5c9bf" stroke-width="2"/>
   <text x="120" y="576" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="28" font-weight="400" text-anchor="start" fill="#5b5147" xml:space="preserve">
-    <tspan x="120" y="598.12">A 45-minute session on constraint-led design systems, with a live</tspan>
-    <tspan x="120" y="640.12">teardown of three real products.</tspan>
+    <tspan x="120" y="598.12">A 45-minute session on constraint-led design systems, with a</tspan>
+    <tspan x="120" y="640.12">live teardown of three real products.</tspan>
   </text>
   <text x="120" y="762" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="30" font-weight="600" text-anchor="start" fill="#2b2724" xml:space="preserve">
     <tspan x="120" y="785.7">Thu 12 Feb · 16:00 CET</tspan>

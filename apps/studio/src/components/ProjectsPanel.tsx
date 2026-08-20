@@ -129,6 +129,8 @@ export function ProjectsPanel() {
   const roots = useMemo(() => folders.filter(f => f.parentId === null || !byId.has(f.parentId)), [folders, byId]);
   const childrenOf = useCallback((id: string) => folders.filter(f => f.parentId === id), [folders]);
 
+  const selectedFolder = folderId === null ? null : byId.get(folderId) ?? null;
+
   const visible = useMemo(
     () => (folderId === null ? projects : projects.filter(p => p.folderId === folderId)),
     [projects, folderId],
@@ -341,17 +343,36 @@ export function ProjectsPanel() {
                 renaming={renamingFolder}
                 draft={folderDraft}
                 setDraft={setFolderDraft}
-                startRename={id => { setRenamingFolder(id); setFolderDraft(byId.get(id)?.name ?? ''); setConfirmFolder(null); }}
                 commitRename={commitFolderRename}
                 cancelRename={() => setRenamingFolder(null)}
-                confirming={confirmFolder}
-                askDelete={id => { setConfirmFolder(id); setRenamingFolder(null); }}
-                cancelDelete={() => setConfirmFolder(null)}
-                doDelete={removeFolder}
-                busy={busy}
               />
             ))}
           </ul>
+
+          {selectedFolder && renamingFolder !== selectedFolder.id && (
+            <div className="pj-foldertools">
+              <button
+                className="pj-icon"
+                onClick={() => { setRenamingFolder(selectedFolder.id); setFolderDraft(selectedFolder.name); setConfirmFolder(null); }}
+                aria-label={`Rename folder ${selectedFolder.name}`}
+              >Rename folder</button>
+              <button
+                className="pj-icon"
+                onClick={() => { setConfirmFolder(selectedFolder.id); setRenamingFolder(null); }}
+                aria-label={`Delete folder ${selectedFolder.name}`}
+              >Delete folder</button>
+            </div>
+          )}
+
+          {selectedFolder && confirmFolder === selectedFolder.id && (
+            <div className="pj-confirm">
+              <p>Delete <b>{selectedFolder.name}</b>? Nothing inside is lost: the designs and any folder inside it move up one level.</p>
+              <div className="pj-inline-actions">
+                <button className="btn pj-danger" onClick={() => removeFolder(selectedFolder)} disabled={busy === `del-${selectedFolder.id}`}>Delete folder</button>
+                <button className="btn btn-ghost" onClick={() => setConfirmFolder(null)} autoFocus>Keep it</button>
+              </div>
+            </div>
+          )}
 
           {newFolderOpen ? (
             <div className="pj-newfolder">
@@ -466,25 +487,23 @@ interface BranchProps {
   renaming: string | null;
   draft: string;
   setDraft: (v: string) => void;
-  startRename: (id: string) => void;
   commitRename: (id: string) => void;
   cancelRename: () => void;
-  confirming: string | null;
-  askDelete: (id: string) => void;
-  cancelDelete: () => void;
-  doDelete: (f: Folder) => void;
-  busy: string | null;
 }
 
+/**
+ * A row is only ever a folder button. Rename and Delete live in one fixed place
+ * below the tree: per-row hover buttons either reflow the rail out from under
+ * the pointer or sit on top of the very name you are trying to click, and this
+ * rail is 100px wide when the panel is docked.
+ */
 function FolderBranch(props: BranchProps) {
   const { folder, depth, children0, projects, selected, onSelect, renaming, draft, setDraft } = props;
   const count = projects.filter(p => p.folderId === folder.id).length;
-  const isRenaming = renaming === folder.id;
-  const isConfirming = props.confirming === folder.id;
 
   return (
     <li>
-      {isRenaming ? (
+      {renaming === folder.id ? (
         <div className="pj-newfolder" style={{ paddingLeft: depth * 12 }}>
           <input
             className="field"
@@ -508,22 +527,11 @@ function FolderBranch(props: BranchProps) {
             className={`pj-folder ${selected === folder.id ? 'on' : ''}`}
             onClick={() => onSelect(folder.id)}
             aria-pressed={selected === folder.id}
+            title={folder.name}
           >
             <span className="pj-folder-name">{folder.name}</span>
             <span className="pj-count">{count}</span>
           </button>
-          <button className="pj-icon" onClick={() => props.startRename(folder.id)} title={`Rename ${folder.name}`} aria-label={`Rename folder ${folder.name}`}>Rename</button>
-          <button className="pj-icon" onClick={() => props.askDelete(folder.id)} title={`Delete ${folder.name}`} aria-label={`Delete folder ${folder.name}`}>Delete</button>
-        </div>
-      )}
-
-      {isConfirming && (
-        <div className="pj-confirm" style={{ marginLeft: depth * 12 }}>
-          <p>Delete <b>{folder.name}</b>? Nothing inside is lost: the designs and any folder inside it move up one level.</p>
-          <div className="pj-inline-actions">
-            <button className="btn pj-danger" onClick={() => props.doDelete(folder)} disabled={props.busy === `del-${folder.id}`}>Delete folder</button>
-            <button className="btn btn-ghost" onClick={props.cancelDelete} autoFocus>Keep it</button>
-          </div>
         </div>
       )}
 

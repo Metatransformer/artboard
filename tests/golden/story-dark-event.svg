@@ -36,9 +36,9 @@
     <tspan x="96" y="1076.12">09:00 – 17:00 GMT</tspan>
   </text>
   <text x="96" y="1180" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="32" font-weight="400" text-anchor="start" fill="#cbd5e1" xml:space="preserve">
-    <tspan x="96" y="1205.28">Two days of talks on tokens, theming,</tspan>
-    <tspan x="96" y="1253.28">and the unglamorous work of keeping</tspan>
-    <tspan x="96" y="1301.28">a system alive.</tspan>
+    <tspan x="96" y="1205.28">Two days of talks on tokens,</tspan>
+    <tspan x="96" y="1253.28">theming, and the unglamorous work</tspan>
+    <tspan x="96" y="1301.28">of keeping a system alive.</tspan>
   </text>
   <rect x="96" y="1620" width="520" height="104" rx="12" ry="12" fill="url(#grad-2)"/>
   <text x="96" y="1620" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="34" font-weight="700" text-anchor="middle" fill="#04121f" xml:space="preserve">

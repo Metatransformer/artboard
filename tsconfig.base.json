@@ -19,7 +19,9 @@
       "@artboard/engine": ["packages/engine/src/index.ts"],
       "@artboard/render-svg": ["packages/render-svg/src/index.ts"],
       "@artboard/commands": ["packages/commands/src/index.ts"],
-      "@artboard/templates": ["packages/templates/src/index.ts"]
+      "@artboard/templates": ["packages/templates/src/index.ts"],
+      "@artboard/charts": ["packages/charts/src/index.ts"],
+      "@artboard/codes": ["packages/codes/src/index.ts"]
     }
   }
 }

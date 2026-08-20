@@ -194,7 +194,10 @@ describe('schema: defaults', () => {
     });
     const r = findNode(doc, 'r1') as any;
     expect(r.fill).toEqual({ kind: 'solid', color: '#4f46e5' });
-    expect(r.stroke).toEqual({ color: '#000000', width: 0, dash: [] });
+    // Assert the fields this test is about, not the whole object: `Stroke`
+    // gains fields over time (markers, etc.) and each one has a default that
+    // preserves this behaviour, so exact equality would rot on every addition.
+    expect(r.stroke).toMatchObject({ color: '#000000', width: 0, dash: [] });
     expect(r.radius).toBe(0);
   });
 

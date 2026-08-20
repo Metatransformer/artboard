@@ -1,4 +1,5 @@
-import type { TextNode } from '@artboard/schema';
+import type { Diagnostic, TextNode } from '@artboard/schema';
+import { DEFAULT_FAMILY, FONT_METRICS, type FamilyMetrics, type WeightMetrics } from './metrics';
 
 /**
  * The engine owns ALL geometry. Renderers only paint what it returns.
@@ -13,13 +14,117 @@ export const MAX_TEXT_CHARS = 20000;
 
 export interface Measurer { (text: string, node: TextNode): number; }
 
-/** Deterministic fallback measurer. Used in Node and for golden tests — never touches the OS. */
-const WIDTH_TABLE: Record<string, number> = { i: .28, l: .28, j: .3, t: .36, f: .34, r: .38, I: .3, '.': .28, ',': .28, "'": .22, '"': .38, ' ': .27, m: .88, w: .8, M: .86, W: .92 };
+/* ── font resolution ────────────────────────────────────────────────────────
+ *
+ * Widths come from `./metrics`, generated from the real font binaries by
+ * `npm run metrics`. Nothing here reads a file, touches the network, or asks
+ * the OS: same input, same number, on every machine.
+ */
+
+export { FONT_METRICS, DEFAULT_FAMILY, type FamilyMetrics, type WeightMetrics } from './metrics';
+
+/** How far down the fallback chain a measurement had to go. */
+export type FontFallback =
+  | 'exact'    // this family, this weight, straight from the table
+  | 'weight'   // this family, nearest weight it can supply
+  | 'family';  // family unknown → DEFAULT_FAMILY, nearest weight
+
+/** What `metricMeasurer` actually measured with. Never silent — see `layoutText`. */
+export interface FontMatch {
+  readonly requestedFamily: string;
+  readonly requestedWeight: number;
+  readonly family: string;
+  readonly weight: number;
+  readonly fallback: FontFallback;
+}
+
+interface Resolved { readonly match: FontMatch; readonly family: FamilyMetrics; readonly weight: WeightMetrics; }
+
+const DEFAULT_METRICS = FONT_METRICS[DEFAULT_FAMILY] as FamilyMetrics;
+
+/** `"Playfair Display"`, `'  playfair display '` and `"'Playfair Display', serif"` are the same font. */
+const normalise = (family: string): string =>
+  ((family ?? '').split(',')[0] ?? '').replace(/["']/g, '').trim().replace(/\s+/g, ' ').toLowerCase();
+
+const CANONICAL = new Map<string, string>(
+  Object.keys(FONT_METRICS).map(family => [normalise(family), family]),
+);
+
+/**
+ * Nearest weight the family can actually supply. Ties go to the lighter weight,
+ * which only bites at an exact midpoint (e.g. 450 between 400 and 500).
+ * DM Serif Display ships one weight, so every request there lands on 400.
+ */
+function nearestWeight(metrics: FamilyMetrics, requested: number): number {
+  const available = Object.keys(metrics.weights).map(Number).sort((a, b) => a - b);
+  let best = available[0] ?? 400, bestDistance = Math.abs(best - requested);
+  for (const weight of available) {
+    const distance = Math.abs(weight - requested);
+    if (distance < bestDistance) { best = weight; bestDistance = distance; }
+  }
+  return best;
+}
+
+const resolveCache = new Map<string, Resolved>();
+
+function resolve(fontFamily: string, fontWeight: number): Resolved {
+  const key = `${fontFamily} ${fontWeight}`;
+  const cached = resolveCache.get(key);
+  if (cached) return cached;
+
+  const canonical = CANONICAL.get(normalise(fontFamily));
+  const family = canonical ?? DEFAULT_FAMILY;
+  const familyMetrics = FONT_METRICS[family] ?? DEFAULT_METRICS;
+  const weight = nearestWeight(familyMetrics, fontWeight);
+
+  const resolved: Resolved = {
+    match: {
+      requestedFamily: fontFamily, requestedWeight: fontWeight,
+      family, weight,
+      fallback: canonical === undefined ? 'family' : weight === fontWeight ? 'exact' : 'weight',
+    },
+    family: familyMetrics,
+    weight: familyMetrics.weights[weight] as WeightMetrics,
+  };
+  resolveCache.set(key, resolved);
+  return resolved;
+}
+
+/** Which family+weight a given request would actually be measured with. */
+export function resolveFont(fontFamily: string, fontWeight: number): FontMatch {
+  return resolve(fontFamily, fontWeight).match;
+}
+
+/**
+ * Real ascender / descender / lineGap for the family that would be used, as a
+ * multiple of the font size. `naturalLineHeight` is what the font itself asks
+ * for; `layoutText` still honours `node.lineHeight`, but a caller that wants an
+ * "auto" line height now has a measured number instead of a guess.
+ */
+export function fontVerticalMetrics(fontFamily: string, fontWeight: number): {
+  ascender: number; descender: number; lineGap: number; naturalLineHeight: number;
+} {
+  const { family } = resolve(fontFamily, fontWeight);
+  return {
+    ascender: family.ascender, descender: family.descender,
+    lineGap: family.lineGap, naturalLineHeight: family.naturalLineHeight,
+  };
+}
+
+/**
+ * Deterministic measurer. Used in Node and for golden tests — never touches the OS.
+ *
+ * Advances are real per-glyph widths from the shipped fonts, as a fraction of
+ * the em, so the weight is already baked in and there is no fudge factor left.
+ * Codepoints outside the sampled set (Latin-1 plus the typographic marks the
+ * app can produce) fall back to the family's mean advance. Kerning is out of
+ * scope — see docs/FONT-METRICS.md.
+ */
 export const metricMeasurer: Measurer = (text, node) => {
-  let units = 0;
-  for (const ch of text) units += WIDTH_TABLE[ch] ?? (ch >= 'A' && ch <= 'Z' ? .66 : .53);
-  const weightFactor = 1 + (node.fontWeight - 400) * 0.00018;
-  return units * node.fontSize * weightFactor + Math.max(0, text.length - 1) * node.letterSpacing;
+  const { advances, fallbackWidth } = resolve(node.fontFamily, node.fontWeight).weight;
+  let em = 0, glyphs = 0;
+  for (const ch of text) { em += advances[ch] ?? fallbackWidth; glyphs++; }
+  return em * node.fontSize + Math.max(0, glyphs - 1) * node.letterSpacing;
 };
 
 export interface TextLine { text: string; width: number; x: number; y: number; }
@@ -28,12 +133,27 @@ export interface TextLayout {
   lineHeightPx: number;
   blockHeight: number;
   truncated: boolean;
+  /** The family+weight the widths came from. `fallback !== 'exact'` means a substitution happened. */
+  font: FontMatch;
+  /** `FONT_SUBSTITUTED` when the requested family has no metrics at all. Renderers forward these. */
+  diagnostics: Diagnostic[];
 }
 
 export function layoutText(node: TextNode, measure: Measurer = metricMeasurer): TextLayout {
   let source = node.uppercase ? node.text.toUpperCase() : node.text;
   let truncated = false;
   if (source.length > MAX_TEXT_CHARS) { source = source.slice(0, MAX_TEXT_CHARS); truncated = true; }
+
+  // A missing weight is routine (DM Serif Display has one); a missing family
+  // means the wrap is a guess, and the user deserves to be told.
+  const font = resolveFont(node.fontFamily, node.fontWeight);
+  const diagnostics: Diagnostic[] = [];
+  if (font.fallback === 'family') {
+    diagnostics.push({
+      level: 'warn', code: 'FONT_SUBSTITUTED', nodeId: node.id,
+      message: `No metrics for "${node.fontFamily}"; measured with ${font.family} ${font.weight}. Lines may wrap differently in the browser.`,
+    });
+  }
 
   const lineHeightPx = round(node.fontSize * node.lineHeight);
   const maxWidth = Math.max(1, node.width);           // degenerate box → clamp, never divide by zero
@@ -65,7 +185,7 @@ export function layoutText(node: TextNode, measure: Measurer = metricMeasurer): 
     ln.y = round(vOffset + i * lineHeightPx + node.fontSize * 0.79);
   });
 
-  return { lines, lineHeightPx, blockHeight, truncated };
+  return { lines, lineHeightPx, blockHeight, truncated, font, diagnostics };
 }
 
 /* ── transforms & hit testing ───────────────────────────────────────────── */

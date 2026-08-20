@@ -26,8 +26,8 @@
     <tspan x="730" y="667.38">FILES OPEN CLEAN</tspan>
   </text>
   <text x="730" y="700" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="24" font-weight="400" text-anchor="start" fill="#64748b" xml:space="preserve">
-    <tspan x="730" y="718.96">Documents from older builds load with</tspan>
-    <tspan x="730" y="754.96">no repair step.</tspan>
+    <tspan x="730" y="718.96">Documents from older builds load</tspan>
+    <tspan x="730" y="754.96">with no repair step.</tspan>
   </text>
   <line x1="1320" y1="420" x2="1790" y2="420" stroke-linecap="round" stroke="#e2e8f0" stroke-width="2"/>
   <text x="1320" y="460" font-family="'Space Grotesk', ui-sans-serif, system-ui, sans-serif" font-size="132" font-weight="700" letter-spacing="-4" text-anchor="start" fill="#0f172a" xml:space="preserve">

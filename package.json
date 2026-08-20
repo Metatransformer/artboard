@@ -15,6 +15,7 @@
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
     "golden": "node packages/cli/bin/artboard.mjs golden",
+    "metrics": "node tools/gen-font-metrics.mjs",
     "gauntlet": "node tools/gauntlet/loop.mjs"
   },
   "devDependencies": {

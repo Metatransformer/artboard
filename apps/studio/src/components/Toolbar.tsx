@@ -13,7 +13,8 @@ const TOOLS = [
   { id: 'hand', label: 'Pan', key: 'H', icon: 'M8 13V6a1.5 1.5 0 013 0v5m0-1a1.5 1.5 0 013 0v1m0 0a1.5 1.5 0 013 0v4a6 6 0 01-6 6h-1a6 6 0 01-6-6v-3' },
 ];
 
-export function Toolbar({ tool, setTool }: { tool: string; setTool: (t: string) => void }) {
+export function Toolbar({ tool, setTool, onPresent, onShortcuts }:
+  { tool: string; setTool: (t: string) => void; onPresent: () => void; onShortcuts: () => void }) {
   const { state, dispatch, run, artboard } = useEditor();
   const [busy, setBusy] = useState<string | null>(null);
   const [open, setOpen] = useState<'resize' | 'export' | null>(null);
@@ -142,6 +143,9 @@ export function Toolbar({ tool, setTool }: { tool: string; setTool: (t: string) 
           <svg viewBox="0 0 24 24"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </button>
       </div>
+
+      <button className="btn" onClick={onShortcuts} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">?</button>
+      <button className="btn" onClick={onPresent} title="Present (Cmd Shift P)">Present</button>
 
       <input ref={fileRef} type="file" accept=".json,application/json" hidden
              onChange={e => { const f = e.target.files?.[0]; if (f) openFile(f); e.target.value = ''; }} />

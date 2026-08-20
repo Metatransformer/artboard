@@ -15,6 +15,70 @@ interface Drag {
   originPan: { x: number; y: number };
   drawKind?: string;
   moved: boolean;
+  /** Snap lines to test against, captured once when the drag starts. */
+  targets?: Targets;
+}
+
+/* ── smart guides ─────────────────────────────────────────────────────────
+ * Everything a moving selection can latch onto: the page's own edges and
+ * centre, plus the edges and centres of every other visible object. Captured
+ * once per drag, because they cannot change while you are dragging.
+ * ---------------------------------------------------------------------- */
+
+export interface Guide { axis: 'x' | 'y'; at: number }
+interface Targets { xs: number[]; ys: number[] }
+const EMPTY_TARGETS: Targets = { xs: [], ys: [] };
+/** Screen pixels, divided by zoom at use so the feel is constant at any zoom. */
+const SNAP_TOL = 7;
+
+function unionBox(boxes: Box[]): { x: number; y: number; width: number; height: number } | null {
+  if (!boxes.length) return null;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const b of boxes) {
+    x0 = Math.min(x0, b.x); y0 = Math.min(y0, b.y);
+    x1 = Math.max(x1, b.x + b.width); y1 = Math.max(y1, b.y + b.height);
+  }
+  return { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
+}
+
+function collectTargets(others: Node[], page: { width: number; height: number }): Targets {
+  const xs = [0, page.width / 2, page.width];
+  const ys = [0, page.height / 2, page.height];
+  for (const o of others) {
+    const b = o as any;
+    if (b.visible === false) continue;
+    xs.push(b.x, b.x + b.width / 2, b.x + b.width);
+    ys.push(b.y, b.y + b.height / 2, b.y + b.height);
+  }
+  return { xs, ys };
+}
+
+/**
+ * Find the smallest nudge that puts one of the box's three x-anchors (and one
+ * of its three y-anchors) onto a target. Each axis is solved independently, so
+ * a box can snap horizontally without being dragged vertically.
+ */
+function solveSnap(
+  box: { x: number; y: number; width: number; height: number },
+  targets: Targets,
+  tol: number,
+): { dx: number; dy: number; guides: Guide[] } {
+  const guides: Guide[] = [];
+  const axis = (anchors: number[], candidates: number[]) => {
+    let best = 0, bestGap = tol, at: number | null = null;
+    for (const a of anchors) {
+      for (const c of candidates) {
+        const gap = Math.abs(c - a);
+        if (gap < bestGap) { bestGap = gap; best = c - a; at = c; }
+      }
+    }
+    return { delta: at === null ? 0 : best, at };
+  };
+  const h = axis([box.x, box.x + box.width / 2, box.x + box.width], targets.xs);
+  const v = axis([box.y, box.y + box.height / 2, box.y + box.height], targets.ys);
+  if (h.at !== null) guides.push({ axis: 'x', at: h.at });
+  if (v.at !== null) guides.push({ axis: 'y', at: v.at });
+  return { dx: h.delta, dy: v.delta, guides };
 }
 
 export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => void }) {
@@ -23,6 +87,7 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
   const dragRef = useRef<Drag | null>(null);
   const [marquee, setMarquee] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [draft, setDraft] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [guides, setGuides] = useState<Guide[]>([]);
 
   const { scene, diagnostics } = renderArtboard(state.doc, artboard);
   const nodes = artboard.nodes as Node[];
@@ -90,6 +155,7 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
     dragRef.current = {
       mode: 'move', startX: x, startY: y, originPan: state.pan, moved: false,
       origin: Object.fromEntries(picked.map(n => [n.id, boxOf(n)])),
+      targets: collectTargets(nodes.filter(n => !ids.includes(n.id)), artboard),
     };
     (e.currentTarget as Element).setPointerCapture(e.pointerId);
   };
@@ -111,8 +177,19 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
     if (d.mode === 'draw') { setDraft({ x: Math.min(d.startX, x), y: Math.min(d.startY, y), w: Math.abs(dx), h: Math.abs(dy) }); return; }
 
     if (d.mode === 'move') {
+      // Smart guides: nudge the whole selection so one of its edges or centres
+      // lands exactly on an edge or centre of the page or another object.
+      // Hold Alt to move freely.
+      const boxes = Object.values(d.origin);
+      const union = unionBox(boxes.map(b => ({ ...b, x: b.x + dx, y: b.y + dy })));
+      const fit = e.altKey || !union
+        ? { dx: 0, dy: 0, guides: [] as Guide[] }
+        : solveSnap(union, d.targets ?? EMPTY_TARGETS, SNAP_TOL / state.zoom);
+      setGuides(fit.guides);
+
       const cmds: Command[] = Object.entries(d.origin).map(([id, b]) => ({
-        type: 'updateNode', nodeId: id, patch: { x: snap(b.x + dx, grid), y: snap(b.y + dy, grid) },
+        type: 'updateNode', nodeId: id,
+        patch: { x: snap(b.x + dx + fit.dx, grid), y: snap(b.y + dy + fit.dy, grid) },
       }));
       runTransient({ type: 'batch', label: 'move', commands: cmds });
       return;
@@ -150,6 +227,7 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
   };
 
   const onPointerUp = (e: React.PointerEvent) => {
+    setGuides([]);
     const d = dragRef.current;
     dragRef.current = null;
     if (!d) return;
@@ -280,6 +358,12 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
           <svg className="ab-overlay" viewBox={`0 0 ${artboard.width} ${artboard.height}`}
                style={{ width: artboard.width * state.zoom, height: artboard.height * state.zoom }}>
             {selected.map(n => <SelectionBox key={n.id} box={boxOf(n)} zoom={state.zoom} single={selected.length === 1} />)}
+            {guides.map((g, i) => (
+              <line key={i}
+                x1={g.axis === 'x' ? g.at : 0} x2={g.axis === 'x' ? g.at : artboard.width}
+                y1={g.axis === 'y' ? g.at : 0} y2={g.axis === 'y' ? g.at : artboard.height}
+                stroke="#ec4899" strokeWidth={1 / state.zoom} strokeDasharray={`${5 / state.zoom} ${4 / state.zoom}`} />
+            ))}
             {marquee && <rect x={marquee.x} y={marquee.y} width={marquee.w} height={marquee.h}
               fill="#4f46e51a" stroke="#4f46e5" strokeWidth={1 / state.zoom} />}
             {draft && <rect x={draft.x} y={draft.y} width={draft.w} height={draft.h}

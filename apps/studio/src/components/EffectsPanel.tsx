@@ -64,7 +64,7 @@ const PRESETS: Preset[] = [
   {
     id: 'lift', name: 'Lift',
     effects: [{ kind: 'shadow', x: 0, y: 10, blur: 26, spread: 0, color: '#000000', opacity: 0.28 }],
-    glyph: { textShadow: '0 5px 7px rgba(0,0,0,.45)' },
+    glyph: { textShadow: '0 4px 6px rgba(0,0,0,.45)' },
   },
   {
     id: 'outline', name: 'Outline',
@@ -74,7 +74,7 @@ const PRESETS: Preset[] = [
   {
     id: 'echo', name: 'Echo',
     effects: [{ ...DEFAULTS.echo }],
-    glyph: { textShadow: '3px 3px 0 rgba(17,17,17,.45), 6px 6px 0 rgba(17,17,17,.26)' },
+    glyph: { textShadow: '2px 2px 0 rgba(17,17,17,.45), 4px 4px 0 rgba(17,17,17,.26)' },
   },
   {
     id: 'glitch', name: 'Glitch',
@@ -264,7 +264,7 @@ export function EffectsPanel() {
                     title={p.name}
                     onClick={() => applyPreset(p)}
                   >
-                    <span className="fx-preset-art" style={p.tile}>
+                    <span className="fx-preset-art" style={p.tile} aria-hidden="true">
                       <span className="fx-preset-glyph" style={p.glyph}>Ag</span>
                     </span>
                     <span className="fx-preset-name">{p.name}</span>
@@ -494,7 +494,13 @@ function FxRange({ label, value, min, max, step, display, disabled, title, onInp
   onInput: (v: number) => void; onDone: () => void;
 }) {
   const armed = useRef(false);
-  const end = () => { if (!armed.current) return; armed.current = false; onDone(); };
+  const idle = useRef<number | null>(null);
+  const stop = () => { if (idle.current !== null) { window.clearTimeout(idle.current); idle.current = null; } };
+  const end = () => { stop(); if (!armed.current) return; armed.current = false; onDone(); };
+  // A burst of arrow keys is one edit, not one per keystroke: commit once the
+  // keyboard goes quiet, or immediately on blur / pointer-up.
+  const endWhenIdle = () => { stop(); idle.current = window.setTimeout(end, 400); };
+  useEffect(() => stop, []);
   return (
     <div className="row">
       <label>{label}<span className="fx-value">{display}</span></label>
@@ -505,11 +511,12 @@ function FxRange({ label, value, min, max, step, display, disabled, title, onInp
           onChange={e => {
             const v = parseFloat(e.target.value);
             if (!Number.isFinite(v)) return;
+            stop();
             armed.current = true;
             onInput(v);
           }}
           onPointerDown={() => window.addEventListener('pointerup', end, { once: true })}
-          onKeyUp={end}
+          onKeyUp={endWhenIdle}
           onBlur={end}
         />
       </div>

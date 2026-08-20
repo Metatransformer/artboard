@@ -1,5 +1,7 @@
 import React from 'react';
 import { useEditor } from '../state/store';
+import { EffectsPanel } from './EffectsPanel';
+import { ArrangePanel } from './ArrangePanel';
 
 const FONTS = ['Inter', 'Playfair Display', 'DM Serif Display', 'Space Grotesk', 'JetBrains Mono'];
 const SWATCHES = ['#111111', '#ffffff', '#4f46e5', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#8b5cf6', '#64748b', '#f1f5f9', '#fbbf24'];
@@ -116,28 +118,9 @@ export function Inspector() {
         </Section>
       )}
 
-      <Section title="Effects">
-        <label className="check">
-          <input type="checkbox" checked={!!n.shadow}
-                 onChange={e => patch({ shadow: e.target.checked ? { x: 0, y: 8, blur: 24, color: '#00000033' } : null })} />
-          Drop shadow
-        </label>
-        {n.shadow && (
-          <Row label="Offset / blur">
-            <Num value={n.shadow.y} onChange={v => patch({ shadow: { ...n.shadow, y: v } })} />
-            <Num value={n.shadow.blur} onChange={v => patch({ shadow: { ...n.shadow, blur: Math.max(0, v) } })} />
-          </Row>
-        )}
-      </Section>
+      <EffectsPanel />
 
-      <Section title="Arrange">
-        <div className="btn-grid">
-          <button className="btn" onClick={() => run({ type: 'reorder', artboardId: artboard.id, nodeId: n.id, to: 9999 })}>Front</button>
-          <button className="btn" onClick={() => run({ type: 'reorder', artboardId: artboard.id, nodeId: n.id, to: 0 })}>Back</button>
-          <button className="btn" onClick={() => patch({ x: Math.round((artboard.width - n.width) / 2) })}>Centre H</button>
-          <button className="btn" onClick={() => patch({ y: Math.round((artboard.height - n.height) / 2) })}>Centre V</button>
-        </div>
-      </Section>
+      <ArrangePanel />
     </div>
   );
 }

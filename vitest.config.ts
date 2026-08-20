@@ -12,6 +12,8 @@ export default defineConfig({
       '@artboard/render-svg': pkg('render-svg'),
       '@artboard/commands': pkg('commands'),
       '@artboard/templates': pkg('templates'),
+      '@artboard/charts': pkg('charts'),
+      '@artboard/codes': pkg('codes'),
     },
   },
   test: {

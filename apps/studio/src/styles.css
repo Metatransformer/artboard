@@ -330,15 +330,17 @@ select.field{cursor:pointer}
 }
 
 .pj-main{flex:1;display:flex;min-height:0}
+/* A percentage basis sizes the rail off the PANEL, not the window, so the same
+   component works in a 264px tool rail and in a full-width browser view. */
 .pj-folders{
-  flex:0 1 140px;min-width:96px;max-width:200px;padding:10px 8px;overflow-y:auto;
+  flex:0 1 clamp(102px,24%,168px);min-width:0;padding:10px 8px;overflow-y:auto;
   border-right:1px solid var(--line);display:flex;flex-direction:column;gap:4px;
 }
 .pj-tree{list-style:none;display:flex;flex-direction:column;gap:1px}
 .pj-tree .pj-tree{margin-top:1px}
-.pj-folderrow{display:flex;flex-wrap:wrap;align-items:center;gap:1px;border-radius:6px}
+.pj-folderrow{position:relative;display:flex;align-items:center;border-radius:6px}
 .pj-folder{
-  flex:1 1 100%;min-width:0;display:flex;align-items:center;gap:6px;padding:6px 7px;border-radius:6px;
+  flex:1;min-width:0;display:flex;align-items:center;gap:6px;padding:6px 7px;border-radius:6px;
   font-size:12px;color:var(--fg2);text-align:left;transition:background .12s,color .12s;
 }
 .pj-folder:hover{background:var(--bg3);color:var(--fg)}
@@ -352,12 +354,17 @@ select.field{cursor:pointer}
 .pj-icon:hover:not(:disabled){background:var(--bg3);color:var(--fg)}
 /* Folder row actions stay in the tab order but take no space until they are
    wanted - a 132px column has none to spare for two hidden buttons. */
-.pj-folderrow .pj-icon{opacity:0;max-width:0;height:0;padding:0;overflow:hidden;transition:opacity .12s}
-.pj-folderrow:hover .pj-icon,.pj-folderrow:focus-within .pj-icon{opacity:1;max-width:none;height:auto;padding:3px 5px}
+/* Actions for the selected folder: one fixed place, no hover reveal, so nothing
+   in the rail ever moves or gets covered. */
+.pj-foldertools{display:flex;flex-wrap:wrap;gap:3px;padding:3px 0 5px}
+.pj-foldertools .pj-icon{
+  flex:1 1 auto;text-align:left;padding:4px 7px;background:var(--bg3);
+  border:1px solid var(--line);color:var(--fg2);
+}
 .pj-newfolder{display:flex;flex-direction:column;gap:5px;padding:4px 0}
 .pj-inline-actions{display:flex;gap:5px;flex-wrap:wrap}
 .pj-inline-actions .btn{height:27px;padding:0 9px;font-size:12px}
-.pj-addfolder{width:100%;margin-top:4px;font-size:12px}
+.pj-addfolder{width:100%;margin-top:4px;font-size:11.5px;padding:0 6px;white-space:nowrap}
 .pj-danger{background:#3b1d1d;border-color:#7f2b2b;color:#fecaca}
 .pj-danger:hover:not(:disabled){background:#4a2424;border-color:#a13636}
 .pj-confirm{
@@ -367,7 +374,7 @@ select.field{cursor:pointer}
 .pj-confirm p{font-size:11.5px;line-height:1.5;color:var(--fg2)}
 .pj-confirm b{color:var(--fg)}
 
-.pj-content{flex:1 1 auto;min-width:0;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.pj-content{flex:1 1 0;min-width:0;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
 .pj-resume{
   display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;border-radius:8px;
   background:var(--bg3);border:1px solid var(--line);font-size:12px;color:var(--fg2);
@@ -412,6 +419,4 @@ select.field{cursor:pointer}
 
 /* The grid sizes itself off the panel, never the viewport: this panel is as
    happy in a 264px rail as in a full-window browser. */
-@media (max-width:1100px){
-  .pj-folders{flex-basis:120px}
-}
+

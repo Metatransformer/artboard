@@ -1,0 +1,1 @@
+{ "name": "@artboard/charts", "version": "0.1.0", "license": "MIT", "type": "module", "main": "src/index.ts", "types": "src/index.ts", "dependencies": { "@artboard/schema": "*" } }

@@ -7,7 +7,14 @@ export const Hex = z.string().regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F
 
 export const Gradient = z.object({
   kind: z.literal('gradient'),
+  /** `linear` reads `angle`; `radial` reads `cx`/`cy`/`r`. Defaults to linear so
+   *  every gradient written before v1.2 keeps rendering exactly as it did. */
+  type: z.enum(['linear', 'radial']).default('linear'),
   angle: z.number().default(90),
+  /** Radial centre and radius, as a fraction of the painted object's box. */
+  cx: z.number().default(0.5),
+  cy: z.number().default(0.5),
+  r: z.number().min(0).default(0.5),
   stops: z.array(z.object({ offset: z.number().min(0).max(1), color: Hex })).min(2),
 });
 export const SolidFill = z.object({ kind: z.literal('solid'), color: Hex });
@@ -15,10 +22,16 @@ export const NoFill = z.object({ kind: z.literal('none') });
 export const Fill = z.discriminatedUnion('kind', [SolidFill, Gradient, NoFill]);
 export type Fill = z.infer<typeof Fill>;
 
+/** Line/path end decorations. Rendered as real `<marker>` defs. */
+export const MarkerShape = z.enum(['none', 'arrow', 'dot', 'bar']);
+export type MarkerShape = z.infer<typeof MarkerShape>;
+
 export const Stroke = z.object({
   color: Hex.default('#000000'),
   width: z.number().min(0).default(0),
   dash: z.array(z.number()).default([]),
+  markerStart: MarkerShape.default('none'),
+  markerEnd: MarkerShape.default('none'),
 });
 
 export const Shadow = z.object({
@@ -109,6 +122,11 @@ const NodeBase = {
   visible: z.boolean().default(true),
   locked: z.boolean().default(false),
   shadow: Shadow.nullable().default(null),
+  /** Mirror about the node's own centre, applied before `rotation`. */
+  flipX: z.boolean().default(false),
+  flipY: z.boolean().default(false),
+  /** Accessible name. Non-empty emits a `<title>`; empty means decorative. */
+  alt: z.string().default(''),
   /** Stacked, ordered effects. Empty for every document written before v1.1. */
   effects: z.array(Effect).default([]),
   blend: BlendMode.default('normal'),
@@ -127,6 +145,9 @@ export const TextNode = z.object({
   align: z.enum(['left', 'center', 'right']).default('left'),
   valign: z.enum(['top', 'middle', 'bottom']).default('top'),
   color: Hex.default('#111111'),
+  /** Optional paint that wins over `color` — gradient or none. `color` stays
+   *  the simple path and keeps every existing document rendering unchanged. */
+  fill: Fill.optional(),
   uppercase: z.boolean().default(false),
 });
 
@@ -161,6 +182,10 @@ export const ImageNode = z.object({
   assetId: z.string(),
   fit: z.enum(['cover', 'contain', 'fill']).default('cover'),
   radius: z.number().min(0).default(0),
+  /** The shape the photo is poured into. 'path' uses `frameD` in `frameBox` space. */
+  frame: z.enum(['rect', 'ellipse', 'path']).default('rect'),
+  frameD: z.string().default(''),
+  frameBox: z.tuple([z.number(), z.number()]).default([24, 24]),
 });
 
 export const GroupNode: z.ZodType<any> = z.lazy(() => z.object({
@@ -221,6 +246,20 @@ export const Document = z.object({
 export type Document = z.infer<typeof Document>;
 export type Artboard = z.infer<typeof Artboard>;
 export type Asset = z.infer<typeof Asset>;
+
+/**
+ * Build a node from a partial literal, letting the schema fill every default.
+ *
+ * Hand-written node literals rot: every field added to NodeBase breaks each one
+ * at a different call site. Going through the parser means a caller only ever
+ * writes what it actually cares about, and new fields arrive for free.
+ * Throws `DocumentParseError` when what is left is genuinely not a node.
+ */
+export function buildNode(input: Record<string, unknown>): Node {
+  const r = Node.safeParse(input);
+  if (!r.success) throw new DocumentParseError(`Invalid ${String(input.kind)} node: ${r.error.issues[0]?.message ?? 'unknown'}`);
+  return r.data as Node;
+}
 export type TextNode = z.infer<typeof TextNode>;
 export type RectNode = z.infer<typeof RectNode>;
 export type EllipseNode = z.infer<typeof EllipseNode>;

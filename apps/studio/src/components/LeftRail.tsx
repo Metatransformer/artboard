@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { uid } from '@artboard/commands';
+import { buildNode } from '@artboard/schema';
 import { renderArtboard, serialize } from '@artboard/render-svg';
 import { TEMPLATES, CATEGORIES } from '@artboard/templates';
 import { useEditor, documentFromTemplate } from '../state/store';
@@ -240,10 +241,11 @@ function Uploads() {
   const place = (asset: any) => {
     const w = Math.round(artboard.width * 0.6);
     const h = Math.round(w * (asset.height / asset.width));
-    const node = {
-      ...makeNode('rect', Math.round((artboard.width - w) / 2), Math.round((artboard.height - h) / 2), w, h),
-      kind: 'image', assetId: asset.id, fit: 'cover', radius: 0, name: 'Image',
-    };
+    const node = buildNode({
+      id: uid('n'), kind: 'image', name: 'Image',
+      x: Math.round((artboard.width - w) / 2), y: Math.round((artboard.height - h) / 2),
+      width: w, height: h, assetId: asset.id, fit: 'cover',
+    });
     run({ type: 'addNode', artboardId: artboard.id, node });
     dispatch({ type: 'select', ids: [node.id] });
   };

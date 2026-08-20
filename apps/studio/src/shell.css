@@ -158,3 +158,200 @@
   :root{ --drawer-w:262px; --dock-w:248px; --rail-w:66px }
   .egrid{grid-template-columns:repeat(3,1fr)}
 }
+
+/* ── effects panel (EffectsPanel.tsx) ──────────────────────────────────────
+   Every rule is scoped under an .fx- prefix so the panel can only style
+   itself; the field primitives it uses (.row/.field/.slider/.colorfield)
+   are the shared Inspector ones and are deliberately not redefined here.
+   ------------------------------------------------------------------------ */
+.fx-presets{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:10px}
+.fx-preset{
+  display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 3px 5px;
+  border-radius:8px;border:1px solid var(--line);background:var(--bg);
+  transition:background .12s,border-color .12s;
+}
+.fx-preset:hover{background:var(--bg3)}
+.fx-preset.on{border-color:var(--accent);background:#6366f11f}
+.fx-preset-art{
+  width:100%;height:30px;display:grid;place-items:center;overflow:hidden;
+  border-radius:5px;background:#e8eaf0;
+}
+.fx-preset-glyph{font-size:15px;font-weight:800;line-height:1.15;color:#111111;letter-spacing:-.01em}
+.fx-preset-name{
+  font-size:10px;color:var(--fg3);max-width:100%;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.fx-preset.on .fx-preset-name{color:var(--fg)}
+
+.fx-stack{display:flex;flex-direction:column;gap:5px}
+.fx-item{border:1px solid var(--line);border-radius:8px;background:var(--bg);overflow:hidden}
+.fx-item.open{border-color:#39405280}
+.fx-head{display:flex;align-items:center;gap:1px;padding:3px 4px 3px 7px}
+.fx-toggle{
+  flex:1;min-width:0;height:26px;display:flex;align-items:center;gap:7px;
+  font-size:12.5px;color:var(--fg2);text-align:left;
+}
+.fx-toggle:hover{color:var(--fg)}
+.fx-chev{width:11px;height:11px;flex:0 0 auto;color:var(--fg3);transition:transform .12s}
+.fx-item.open .fx-chev{transform:rotate(90deg)}
+.fx-order{flex:0 0 auto;font-size:10px;color:var(--fg3);font-variant-numeric:tabular-nums}
+.fx-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fx-icon{
+  width:22px;height:22px;flex:0 0 auto;border-radius:5px;
+  display:grid;place-items:center;color:var(--fg3);
+}
+.fx-icon svg{width:13px;height:13px}
+.fx-icon:hover:not(:disabled){background:#ffffff1f;color:var(--fg)}
+.fx-icon.danger:hover:not(:disabled){background:var(--err);color:#fff}
+
+.fx-body{padding:9px 9px 1px;border-top:1px solid var(--line);background:#ffffff05}
+.fx-body .row:last-child{margin-bottom:9px}
+.fx-body input:disabled{opacity:.4}
+.fx-value{float:right;color:var(--fg2);font-variant-numeric:tabular-nums}
+.fx-note{font-size:11px;line-height:1.35;color:var(--warn);margin-bottom:9px}
+.fx-empty{font-size:11.5px;line-height:1.4;color:var(--fg3);padding:2px 0 4px}
+.fx-add{margin-top:9px}
+.fx-mixed{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.fx-mixed p{font-size:12.5px;color:var(--fg2)}
+.fx-mixed small{font-size:11px;color:var(--fg3)}
+
+/* ============================================================================
+ * Presentation mode (Present.tsx) and the shortcuts sheet (Shortcuts.tsx).
+ * Both are full-viewport layers that sit above every part of the shell, so
+ * every rule below is scoped under .pm-* or .sc-* and touches nothing above.
+ * ========================================================================= */
+
+/* ── presentation overlay ─────────────────────────────────────────────── */
+.pm-overlay{
+  position:fixed;inset:0;z-index:300;background:#05060a;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;
+}
+.pm-overlay:focus{outline:none}
+.pm-idle{cursor:none}                       /* the pointer goes away with the controls */
+
+/* the page itself: fitted, letterboxed, never cropped */
+.pm-page{
+  position:relative;flex:0 0 auto;
+  box-shadow:0 0 0 1px #ffffff12, 0 24px 90px rgba(0,0,0,.7);
+}
+.pm-page>svg{display:block;width:100%;height:100%}
+
+.pm-bar{
+  position:fixed;left:50%;bottom:26px;transform:translateX(-50%);
+  display:flex;align-items:center;gap:4px;padding:5px 7px;border-radius:999px;
+  background:#161923e8;border:1px solid var(--line);box-shadow:var(--shadow);
+  opacity:0;pointer-events:none;transition:opacity .25s ease;
+}
+.pm-bar.pm-on{opacity:1;pointer-events:auto}
+.pm-nav{
+  width:34px;height:34px;border-radius:999px;display:grid;place-items:center;color:var(--fg2);
+  transition:background .12s,color .12s;
+}
+.pm-nav svg{width:18px;height:18px}
+.pm-nav:hover:not(:disabled){background:#ffffff14;color:var(--fg)}
+.pm-count{
+  min-width:66px;text-align:center;font-size:12.5px;color:var(--fg2);
+  font-variant-numeric:tabular-nums;
+}
+.pm-sep{width:1px;height:20px;background:var(--line);margin:0 4px}
+.pm-exit{
+  height:30px;padding:0 12px;border-radius:999px;font-size:12.5px;color:var(--fg2);
+  transition:background .12s,color .12s;
+}
+.pm-exit:hover{background:#ffffff14;color:var(--fg)}
+@media (prefers-reduced-motion:reduce){
+  .pm-bar{transition:none}
+}
+
+/* ── shortcuts sheet ──────────────────────────────────────────────────── */
+.sc-backdrop{
+  position:fixed;inset:0;z-index:400;background:#05060ac7;
+  display:flex;align-items:center;justify-content:center;padding:24px;
+}
+.sc-panel{
+  width:min(880px,100%);max-height:min(820px,calc(100vh - 48px));
+  display:flex;flex-direction:column;background:var(--bg2);
+  border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;
+}
+.sc-panel:focus{outline:none}
+.sc-head{
+  flex:0 0 auto;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+  padding:14px 14px 13px 18px;border-bottom:1px solid var(--line);
+}
+.sc-title{font-size:14px;font-weight:650;letter-spacing:-.01em}
+.sc-sub{font-size:11.5px;color:var(--fg3);margin-top:2px}
+.sc-close{
+  width:30px;height:30px;flex:0 0 auto;border-radius:8px;display:grid;place-items:center;color:var(--fg3);
+  transition:background .12s,color .12s;
+}
+.sc-close svg{width:15px;height:15px}
+.sc-close:hover{background:var(--bg3);color:var(--fg)}
+
+.sc-body{
+  flex:1;min-height:0;overflow-y:auto;padding:6px 18px 18px;
+  columns:2;column-gap:30px;                 /* flows, so the two columns pack evenly */
+}
+.sc-section{min-width:0;break-inside:avoid;-webkit-column-break-inside:avoid}
+.sc-section:first-child h3{margin-top:8px}
+.sc-section h3{
+  font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--fg3);
+  font-weight:600;margin:13px 0 3px;
+}
+.sc-row{
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 14px;
+  padding:5px 0;border-bottom:1px solid #ffffff0a;
+}
+/* A long key list drops to its own line rather than squeezing the label into a column of words. */
+.sc-label{font-size:12.5px;line-height:1.35;color:var(--fg2);flex:1 1 auto;min-width:110px}
+.sc-keys{display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:3px;flex:0 1 auto}
+.sc-keys kbd{
+  min-width:22px;height:22px;padding:0 6px;display:inline-grid;place-items:center;
+  font-family:inherit;font-size:11px;font-weight:500;color:var(--fg);
+  background:var(--bg3);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;
+}
+.sc-plus{font-size:10px;color:var(--fg3)}
+.sc-or{font-size:10.5px;color:var(--fg3);padding:0 3px}
+.sc-note{font-size:11px;line-height:1.4;color:var(--fg3);padding-top:8px}
+
+@media (max-width:700px){
+  .sc-backdrop{padding:16px}
+  .sc-panel{max-height:calc(100vh - 32px)}
+  .sc-body{columns:1}
+}
+
+/* ── arrange panel (ArrangePanel.tsx) ──────────────────────────────────────
+   Scoped under .arr / .arr-* so the panel can only style itself. It reuses the
+   shared .section / .btn / .btn-grid primitives from styles.css and adds only
+   the icon-button grid, which nothing else in the dock needs.
+   ------------------------------------------------------------------------ */
+.arr .section:last-child{border-bottom:none}
+
+.arr-grid{display:grid;gap:5px}
+.arr-grid-6{grid-template-columns:repeat(6,1fr)}
+.arr-grid-4{grid-template-columns:repeat(4,1fr)}
+.arr-grid-3{grid-template-columns:repeat(3,1fr)}
+
+.arr-btn{
+  /* Fixed height, not aspect-ratio: the 6-, 4- and 3-column rows sit in the
+     same dock, and a square button would make each row a different height. */
+  height:32px;min-width:0;display:grid;place-items:center;
+  border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--fg2);
+  transition:background .12s,border-color .12s,color .12s;
+}
+.arr-btn svg{width:16px;height:16px;pointer-events:none}
+.arr-btn:hover:not(:disabled){background:var(--bg3);border-color:#39405280;color:var(--fg)}
+.arr-btn:active:not(:disabled){background:var(--accent);border-color:transparent;color:#fff}
+.arr-btn:disabled{opacity:.35;cursor:not-allowed}
+/* The global :focus-visible ring is drawn outside the button; keep it clear of
+   the neighbour by matching the button's own radius. */
+.arr-btn:focus-visible{border-radius:7px}
+
+.arr-hint{
+  font-size:11px;line-height:1.45;color:var(--fg3);
+  margin-top:8px;
+}
+.arr .btn-grid .btn:disabled{opacity:.4;cursor:not-allowed}
+
+@media (max-width:1180px){
+  .arr-btn svg{width:15px;height:15px}
+}

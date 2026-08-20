@@ -1,3 +1,4 @@
+import { buildNode } from '@artboard/schema';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useEditor } from '../state/store';
 import {
@@ -217,13 +218,11 @@ export function BrandPanel() {
     const asset = existing ?? { id: vaultId('asset'), mime: logo.mime, width: logo.width, height: logo.height, data: logo.data };
     const w = Math.max(1, Math.round(artboard.width * 0.3));
     const h = Math.max(1, Math.round(w * (logo.height / (logo.width || 1))));
-    const node = {
-      id: vaultId('n'), kind: 'image' as const, name: 'Logo',
+    const node = buildNode({
+      id: vaultId('n'), kind: 'image', name: 'Logo',
       x: Math.round((artboard.width - w) / 2), y: Math.round((artboard.height - h) / 2),
-      width: w, height: h, rotation: 0, opacity: 1, visible: true, locked: false, shadow: null,
-      effects: [], blend: 'normal' as const,
-      assetId: asset.id, fit: 'contain' as const, radius: 0,
-    };
+      width: w, height: h, assetId: asset.id, fit: 'contain',
+    });
     if (!existing) run({ type: 'addAsset', asset });
     run({ type: 'addNode', artboardId: artboard.id, node });
     dispatch({ type: 'select', ids: [node.id] });
