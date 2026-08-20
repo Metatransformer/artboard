@@ -83,9 +83,9 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
   const dimensions = (() => {
     const first = doc.artboards[selection.pages[0] ?? state.activeArtboard] ?? artboard;
     const w = first.width * effectiveScale, h = first.height * effectiveScale;
-    if (raster) return `${Math.round(w)} x ${Math.round(h)} px`;
-    if (format === 'pdf') return `${(w * 0.75 / 72).toFixed(2)} x ${(h * 0.75 / 72).toFixed(2)} in at 96 dpi`;
-    if (format === 'svg') return `viewBox ${first.width} x ${first.height}, drawn at ${Math.round(w)} x ${Math.round(h)}`;
+    if (raster) return `${Math.round(w)} \u00d7 ${Math.round(h)} px`;
+    if (format === 'pdf') return `${(w * 0.75 / 72).toFixed(2)} \u00d7 ${(h * 0.75 / 72).toFixed(2)} in at 96 dpi`;
+    if (format === 'svg') return `viewBox ${first.width} \u00d7 ${first.height}, drawn at ${Math.round(w)} \u00d7 ${Math.round(h)}`;
     return 'the document, unchanged';
   })();
 
