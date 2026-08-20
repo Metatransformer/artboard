@@ -30,6 +30,12 @@ export const Stroke = z.object({
   color: Hex.default('#000000'),
   width: z.number().min(0).default(0),
   dash: z.array(z.number()).default([]),
+  /** SVG stroke-linecap / stroke-linejoin. Defaults are the SVG defaults, so a
+   *  stroke that never asks for them emits nothing. Outline icon sets (Lucide)
+   *  need `round`/`round`: they draw dots as zero-length segments, which a butt
+   *  cap renders as nothing at all. */
+  cap: z.enum(['butt', 'round', 'square']).default('butt'),
+  join: z.enum(['miter', 'round', 'bevel']).default('miter'),
   markerStart: MarkerShape.default('none'),
   markerEnd: MarkerShape.default('none'),
 });

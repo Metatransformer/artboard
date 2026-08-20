@@ -30,11 +30,11 @@ This document is the threat model for that, plus the decisions taken in response
 | T4 | XXE / entity expansion | DTD, `<!ENTITY>`, billion-laughs, external entity referencing a local file | Local file disclosure, memory exhaustion | DTDs and entities rejected outright at SVG parse (§3) | Specified |
 | T5 | Decompression / decode bomb | A 40KB PNG that decodes to 60000×60000, a zip-bomb-style asset | Memory exhaustion, process kill, denial of service | Header-first inspection with dimension and byte budgets, before any decode (§4) | Specified |
 | T6 | Path traversal via document reference | An asset field pointing at `../../.ssh/id_rsa` | Local file disclosure, and it ships when the doc is shared | `Asset.data` is a data URI. The schema has no filesystem path field (§2) | **Implemented** |
-| T7 | Path traversal on export | An export filename derived from an attacker-supplied document or artboard name | Arbitrary file write | Output paths come from CLI arguments only, never from document content (§4) | Specified |
+| T7 | Path traversal on export | An export filename derived from an attacker-supplied document or artboard name | Arbitrary file write | Output paths come from CLI arguments or a native dialog, never from document content; content-derived names are reduced to a leaf (§4, §7) | **Implemented** |
 | T8 | API key theft | A BYO model key stored in the document, in `localStorage`, or printed to a log | Attacker bills the user's account; key leaks when the file is shared | OS keychain, never in the document, redacted from logs (§5) | Specified |
 | T9 | Prompt injection through document text | Text in an imported design that instructs the AI assistant | Whatever the AI layer is allowed to do | The AI layer returns validated document commands and holds no tools (§6) | Specified |
 | T10 | Renderer / DOM escape | Unescaped node content reaching the DOM or the SVG serializer | XSS from a crafted layer name or text run | Renderer emits data, not markup strings; `serialize` escapes `& < > "` (§2) | **Implemented** |
-| T11 | Desktop privilege escalation | A compromised renderer process reaching Node APIs | RCE with the user's privileges | Electron hardening defaults (§7) | Specified |
+| T11 | Desktop privilege escalation | A compromised renderer process reaching Node APIs | RCE with the user's privileges | Electron hardening defaults (§7) | **Implemented** |
 | T12 | Malicious dependency | A compromised transitive npm package | Anything, at build or run time | Small dependency surface; lockfile committed; see §8 | Partial |
 | T13 | Corrupted design shipped as correct | A missing asset or dropped node that produces a wrong-but-plausible export | Wrong artwork printed at scale | `doc.diagnostics[]` is schema-level and CI-enforceable (§9) | **Implemented** |
 
@@ -302,8 +302,21 @@ injected text could write one, and the blast radius would stop being cosmetic.
 
 ## 7. Electron hardening defaults
 
-**Status: specified. There is no desktop shell in the repo yet. These are the
-non-negotiable defaults for the PR that adds one.**
+**Status: implemented in `apps/desktop`, and checked at runtime rather than
+asserted.** `npm run verify -w @artboard/desktop` launches the app and
+interrogates the live renderer — `require`/`process`/`Buffer`/`module` absent,
+the bridge exposing exactly its verb list, a secure `app://artboard` origin,
+`eval` throwing, and a renderer-initiated navigation to an external origin
+failing to move the window. 17/17 at the time of writing.
+
+Two things the implementation learned that the spec below did not know:
+
+* Serving over `file://` would have defeated both the navigation pin and the
+  CSP, because a `file://` page has an opaque origin. The shell registers a
+  standard, secure `app://` scheme instead.
+* `URL.origin` is the string `"null"` for any non-special scheme, so comparing
+  origins would have blocked *legitimate* in-app navigation. Compare on scheme
+  plus host.
 
 ```js
 new BrowserWindow({

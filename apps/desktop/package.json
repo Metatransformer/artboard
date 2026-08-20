@@ -1,0 +1,17 @@
+{
+  "name": "@artboard/desktop",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "description": "Artboard desktop shell \u2014 the same editor, running locally, with real files.",
+  "main": "src/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "dev": "ARTBOARD_DEV=1 electron .",
+    "shot": "ARTBOARD_SHOT=1 electron .",
+    "verify": "ARTBOARD_VERIFY=1 electron ."
+  },
+  "devDependencies": {
+    "electron": "^33.2.1"
+  }
+}

@@ -14,6 +14,7 @@ export default defineConfig({
       '@artboard/templates': pkg('templates'),
       '@artboard/charts': pkg('charts'),
       '@artboard/codes': pkg('codes'),
+      '@artboard/icons': pkg('icons'),
     },
   },
   test: {

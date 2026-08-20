@@ -321,11 +321,17 @@ function placeholder(n: any): SceneNode {
 
 function strokeAttrs(stroke: any, required = false): Record<string, string | number | undefined> {
   if (!stroke || (!stroke.width && !required)) return {};
-  return {
+  const out: Record<string, string | number | undefined> = {
     stroke: stroke.color,
     'stroke-width': round(stroke.width || 0),
     'stroke-dasharray': stroke.dash?.length ? stroke.dash.join(' ') : undefined,
   };
+  // Only present when they differ from the SVG default — the key must stay
+  // absent rather than be set to undefined, or it would spread over the cap a
+  // caller set before it (the `line` case does exactly that).
+  if (stroke.cap && stroke.cap !== 'butt') out['stroke-linecap'] = stroke.cap;
+  if (stroke.join && stroke.join !== 'miter') out['stroke-linejoin'] = stroke.join;
+  return out;
 }
 
 const quoteFamily = (f: string) => (/[^a-zA-Z0-9-]/.test(f) ? `'${f.replace(/'/g, '')}'` : f);

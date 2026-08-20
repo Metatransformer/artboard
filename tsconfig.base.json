@@ -21,7 +21,8 @@
       "@artboard/commands": ["packages/commands/src/index.ts"],
       "@artboard/templates": ["packages/templates/src/index.ts"],
       "@artboard/charts": ["packages/charts/src/index.ts"],
-      "@artboard/codes": ["packages/codes/src/index.ts"]
+      "@artboard/codes": ["packages/codes/src/index.ts"],
+      "@artboard/icons": ["packages/icons/src/index.ts"]
     }
   }
 }

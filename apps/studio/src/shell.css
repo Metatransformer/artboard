@@ -355,3 +355,16 @@
 @media (max-width:1180px){
   .arr-btn svg{width:15px;height:15px}
 }
+
+/* ── desktop shell ────────────────────────────────────────────────────────
+ * macOS uses `titleBarStyle: 'hiddenInset'`, which floats the traffic lights
+ * over the top-left of the page. The toolbar's brand block moves out from
+ * under them, and the whole bar becomes a drag region so the window can still
+ * be moved — with the interactive children opted back out, or the buttons
+ * stop taking clicks.
+ */
+.app-desktop .toolbar { -webkit-app-region: drag; padding-left: 78px; }
+.app-desktop .toolbar button,
+.app-desktop .toolbar input,
+.app-desktop .toolbar select,
+.app-desktop .toolbar .pop { -webkit-app-region: no-drag; }

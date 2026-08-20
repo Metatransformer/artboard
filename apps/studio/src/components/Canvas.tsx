@@ -4,6 +4,9 @@ import { hitTest, snap, type Box } from '@artboard/engine';
 import type { Node } from '@artboard/schema';
 import { uid, type Command } from '@artboard/commands';
 import { Scene } from '../lib/scene';
+import {
+  PASTE_OFFSET, cloneNodes, nextPasteOffset, readClipboard, textNodeFromText, writeNodes,
+} from '../lib/clipboard';
 import { useEditor } from '../state/store';
 
 type Handle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'rot';
@@ -30,6 +33,16 @@ interface Targets { xs: number[]; ys: number[] }
 const EMPTY_TARGETS: Targets = { xs: [], ys: [] };
 /** Screen pixels, divided by zoom at use so the feel is constant at any zoom. */
 const SNAP_TOL = 7;
+
+/**
+ * How long a run of arrow-key nudges stays open before it is committed as one
+ * undo step. Long enough to cover key-repeat and deliberate tapping, short
+ * enough that the entry is on the stack before the user reaches for Cmd+Z.
+ */
+const NUDGE_IDLE_MS = 400;
+
+/** One open run of arrow-key nudges: where it started and how far it has gone. */
+interface Nudge { ids: string[]; origin: Record<string, { x: number; y: number }>; dx: number; dy: number }
 
 function unionBox(boxes: Box[]): { x: number; y: number; width: number; height: number } | null {
   if (!boxes.length) return null;
@@ -111,8 +124,43 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
     return null;
   };
 
+  /* ── nudge coalescing ───────────────────────────────────────────────────
+   * Arrow keys repeat, and tapping ArrowRight twenty times is ONE gesture in
+   * the user's head — it must be one entry in the undo stack, not twenty.
+   *
+   * So a burst is applied transiently (no history at all) while it is open,
+   * and an idle timer closes it: the selection is reverted to where the burst
+   * started and the final positions are then committed as a single command.
+   * That is the same revert-then-commit trick `onPointerUp` uses to turn a
+   * hundred pointermove frames into one undo step, and it means `invert` sees
+   * exactly one before/after pair, so undo restores the document exactly.
+   *
+   * The burst is also flushed the moment anything else happens — another key,
+   * a pointer press, a selection change, unmount — so the undo stack can never
+   * be one gesture behind what is on screen.
+   * -------------------------------------------------------------------- */
+  const nudgeRef = useRef<Nudge | null>(null);
+  const nudgeTimer = useRef<number | null>(null);
+
+  const flushNudge = useCallback(() => {
+    if (nudgeTimer.current !== null) { window.clearTimeout(nudgeTimer.current); nudgeTimer.current = null; }
+    const n = nudgeRef.current;
+    nudgeRef.current = null;
+    if (!n || (n.dx === 0 && n.dy === 0)) return;
+    const at = (fn: (p: { x: number; y: number }) => { x: number; y: number }): Command => ({
+      type: 'batch', label: 'nudge',
+      commands: Object.entries(n.origin).map(([id, p]) => ({ type: 'updateNode', nodeId: id, patch: fn(p) })),
+    });
+    runTransient(at(p => ({ x: p.x, y: p.y })));
+    run(at(p => ({ x: p.x + n.dx, y: p.y + n.dy })));
+  }, [run, runTransient]);
+
+  /* A burst left open when the component goes away would be lost from history. */
+  useEffect(() => flushNudge, [flushNudge]);
+
   /* ── pointer handling ─────────────────────────────────────────────────── */
   const onPointerDown = (e: React.PointerEvent) => {
+    flushNudge();
     if (e.button === 1 || e.altKey || tool === 'hand') {
       dragRef.current = { mode: 'pan', startX: e.clientX, startY: e.clientY, origin: {}, originPan: state.pan, moved: false };
       (e.target as Element).setPointerCapture?.(e.pointerId);
@@ -283,40 +331,134 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
 
   /* ── keyboard ─────────────────────────────────────────────────────────── */
   useEffect(() => {
+    const ARROWS: Record<string, [number, number]> = {
+      ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1],
+    };
+    /* Pressing Shift for a 10px nudge fires its own keydown first. Treating
+       that as "some other key" would end the burst before the arrow that
+       follows it, so Shift+Arrow could never coalesce at all. */
+    const MODIFIERS = new Set(['Shift', 'Meta', 'Control', 'Alt', 'CapsLock']);
+
     const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement;
-      if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable) {
+      const t = e.target as HTMLElement | null;
+      const typing = !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+      // Never take a key away from a field, and never from the canvas text
+      // editor. `editingTextId` is checked as well as the target, so that a
+      // stray focus loss mid-edit cannot turn Backspace into "delete the node".
+      if (typing || state.editingTextId) {
         if (e.key === 'Escape') dispatch({ type: 'editText', id: null });
         return;
       }
+
+      const dir = ARROWS[e.key];
+      if (!dir && !MODIFIERS.has(e.key)) flushNudge();
+
       const meta = e.metaKey || e.ctrlKey;
-      if (meta && e.key.toLowerCase() === 'z') { e.preventDefault(); dispatch({ type: e.shiftKey ? 'redo' : 'undo' }); return; }
-      if (meta && e.key.toLowerCase() === 'd' && selected.length) {
+      const key = e.key.toLowerCase();
+      /** Gate on read-only, with the same message the store would have given. */
+      const mutable = (): boolean => {
+        if (!state.readOnly) return true;
+        dispatch({ type: 'toast', toast: { level: 'warn', message: 'This document is read-only.' } });
+        return false;
+      };
+
+      if (meta && key === 'z') { e.preventDefault(); dispatch({ type: e.shiftKey ? 'redo' : 'undo' }); return; }
+
+      if (meta && key === 'a') {
         e.preventDefault();
-        const copies = selected.map(n => ({ ...(n as any), id: uid('n'), x: (n as any).x + 24, y: (n as any).y + 24 }));
-        run({ type: 'batch', label: 'duplicate', commands: copies.map(c => ({ type: 'addNode', artboardId: artboard.id, node: c })) });
-        dispatch({ type: 'select', ids: copies.map(c => c.id) });
+        dispatch({ type: 'select', ids: nodes.filter(n => !(n as any).locked).map(n => n.id) });
         return;
       }
-      if (meta && e.key.toLowerCase() === 'a') { e.preventDefault(); dispatch({ type: 'select', ids: nodes.filter(n => !(n as any).locked).map(n => n.id) }); return; }
+
+      /* Copy / cut. Copying is not a mutation, so it works read-only too. */
+      if (meta && (key === 'c' || key === 'x')) {
+        if (!selected.length) return;
+        e.preventDefault();
+        void writeNodes(selected);
+        if (key === 'x' && mutable()) {
+          run({ type: 'batch', label: 'cut',
+                commands: selected.map(n => ({ type: 'removeNode', artboardId: artboard.id, nodeId: n.id })) });
+          dispatch({ type: 'select', ids: [] });
+        }
+        return;
+      }
+
+      /* Paste. Async, because reading the system clipboard is async — which is
+         also what lets a paste come from another page, document or tab. */
+      if (meta && key === 'v') {
+        e.preventDefault();
+        if (!mutable()) return;
+        const page = { id: artboard.id, width: artboard.width, height: artboard.height };
+        void (async () => {
+          const read = await readClipboard();
+          if (!read) return;
+          const offset = nextPasteOffset(read.sig);
+          const fresh = read.kind === 'nodes'
+            ? cloneNodes(read.nodes, offset, offset)
+            : ([textNodeFromText(read.text, page, offset)].filter(Boolean) as Node[]);
+          if (!fresh.length) return;
+          run({ type: 'batch', label: 'paste',
+                commands: fresh.map(n => ({ type: 'addNode', artboardId: page.id, node: n })) });
+          dispatch({ type: 'select', ids: fresh.map(n => n.id) });
+        })();
+        return;
+      }
+
+      /* Duplicate — copy+paste without touching the system clipboard. The new
+         copies become the selection, so holding Cmd+D cascades on its own. */
+      if (meta && key === 'd') {
+        e.preventDefault();
+        if (!selected.length || !mutable()) return;
+        const copies = cloneNodes(selected, PASTE_OFFSET, PASTE_OFFSET);
+        if (!copies.length) return;
+        run({ type: 'batch', label: 'duplicate',
+              commands: copies.map(n => ({ type: 'addNode', artboardId: artboard.id, node: n })) });
+        dispatch({ type: 'select', ids: copies.map(n => n.id) });
+        return;
+      }
+
       if ((e.key === 'Delete' || e.key === 'Backspace') && selected.length) {
         e.preventDefault();
-        run({ type: 'batch', label: 'delete', commands: selected.map(n => ({ type: 'removeNode', artboardId: artboard.id, nodeId: n.id })) });
+        if (!mutable()) return;
+        run({ type: 'batch', label: 'delete',
+              commands: selected.map(n => ({ type: 'removeNode', artboardId: artboard.id, nodeId: n.id })) });
         dispatch({ type: 'select', ids: [] });
         return;
       }
+
       if (e.key === 'Escape') { dispatch({ type: 'select', ids: [] }); return; }
-      const step = e.shiftKey ? 10 : 1;
-      const deltas: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
-      const d = deltas[e.key];
-      if (d && selected.length) {
+
+      if (dir && selected.length) {
         e.preventDefault();
-        run({ type: 'batch', label: 'nudge', commands: selected.map(n => ({ type: 'updateNode', nodeId: n.id, patch: { x: (n as any).x + d[0], y: (n as any).y + d[1] } })) });
+        if (!mutable()) return;
+        const step = e.shiftKey ? 10 : 1;
+        const ids = selected.map(n => n.id);
+        const open = nudgeRef.current;
+        // A burst belongs to one selection; selecting something else ends it.
+        if (!open || open.ids.length !== ids.length || open.ids.some((id, i) => id !== ids[i])) {
+          flushNudge();
+          nudgeRef.current = {
+            ids, dx: 0, dy: 0,
+            origin: Object.fromEntries(selected.map(n => [n.id, { x: (n as any).x, y: (n as any).y }])),
+          };
+        }
+        const burst = nudgeRef.current!;
+        burst.dx += dir[0] * step;
+        burst.dy += dir[1] * step;
+        runTransient({
+          type: 'batch', label: 'nudge',
+          commands: Object.entries(burst.origin).map(([id, p]) => ({
+            type: 'updateNode', nodeId: id, patch: { x: p.x + burst.dx, y: p.y + burst.dy },
+          })),
+        });
+        if (nudgeTimer.current !== null) window.clearTimeout(nudgeTimer.current);
+        nudgeTimer.current = window.setTimeout(flushNudge, NUDGE_IDLE_MS);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selected, nodes, artboard.id, run, dispatch]);
+  }, [selected, nodes, artboard.id, artboard.width, artboard.height,
+      state.readOnly, state.editingTextId, run, runTransient, dispatch, flushNudge]);
 
   /* fit the artboard to the viewport on mount and whenever its size changes */
   const fitKey = `${artboard.id}:${artboard.width}x${artboard.height}`;
