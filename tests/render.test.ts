@@ -395,28 +395,90 @@ describe('render: serialization', () => {
   });
 });
 
-describe('render: known bugs', () => {
-  const portraitInSquare = (fit: string) => renderToString(docWith(
-    [{ id: 'i1', kind: 'image', assetId: 'a', x: 0, y: 0, width: 100, height: 100, fit }],
-    { assets: { a: { id: 'a', mime: 'image/png', width: 100, height: 200, data: 'data:,x' } } },
-  )).svg.match(/<image[^>]*>/)![0];
+describe('render: object fit', () => {
+  /*
+   * REGRESSION GUARD. `renderNode`'s `case 'image'` used to derive a single
+   * scale from the crop WIDTH alone. Since `objectFit` returns the whole source
+   * rect for both 'contain' and 'fill', both fits rendered at the source aspect
+   * scaled to the box width — contain never letterboxed and fill never
+   * stretched, so all three fits produced near-identical pixels. It was silent:
+   * the markup stayed well-formed and every golden still matched, because no
+   * golden fixture contains an image node at all. Fixed by scaling each axis
+   * separately and centring the result.
+   */
+  const imageEl = (fit: string, box: { w: number; h: number }, src: { w: number; h: number }) =>
+    renderToString(docWith(
+      [{ id: 'i', kind: 'image', assetId: 'a', x: 0, y: 0, width: box.w, height: box.h, fit }],
+      { assets: { a: { id: 'a', mime: 'image/png', width: src.w, height: src.h, data: 'data:,x' } } },
+    )).svg.match(/<image[^>]*>/)![0];
 
-  // BUG: `renderNode`'s `case 'image'` derives its scale from the crop WIDTH
-  // alone (`const scale = n.width / crop.width`). `objectFit` returns the full source rect for both 'contain' and 'fill', so both
-  // fits render at the source aspect ratio scaled to the box width — 'contain'
-  // never letterboxes and 'fill' never stretches. Only 'cover' behaves as named.
-  // Fix: scale by min(dw/cw, dh/ch) for contain, and by each axis for fill.
-  it.fails('contain letterboxes a portrait source so it fits inside the box', () => {
-    // 100×200 source in a 100×100 box should draw 50×100
-    expect(portraitInSquare('contain')).toContain('height="100"');   // actual: height="200"
+  const geom = (el: string) => {
+    const num = (k: string) => Number(el.match(new RegExp(`${k}="(-?[\\d.]+)"`))![1]);
+    return { x: num('x'), y: num('y'), width: num('width'), height: num('height') };
+  };
+
+  const PORTRAIT = { w: 100, h: 200 };
+  const LANDSCAPE = { w: 200, h: 100 };
+  const SQUARE_BOX = { w: 100, h: 100 };
+
+  it('contain letterboxes a portrait source so the whole image fits inside the box', () => {
+    const g = geom(imageEl('contain', SQUARE_BOX, PORTRAIT));
+    expect(g).toEqual({ x: 25, y: 0, width: 50, height: 100 });   // pillarboxed, centred
   });
 
-  it.fails('fill stretches a portrait source to exactly the box', () => {
-    expect(portraitInSquare('fill')).toContain('height="100"');      // actual: height="200"
+  it('contain letterboxes a landscape source too', () => {
+    const g = geom(imageEl('contain', SQUARE_BOX, LANDSCAPE));
+    expect(g).toEqual({ x: 0, y: 25, width: 100, height: 50 });   // letterboxed, centred
   });
 
-  it.fails('renders contain and fill differently from each other', () => {
-    expect(portraitInSquare('contain')).not.toBe(portraitInSquare('fill'));
+  it('contain never overflows the box, and preserves the source aspect ratio', () => {
+    for (const src of [PORTRAIT, LANDSCAPE, { w: 640, h: 480 }, { w: 33, h: 400 }]) {
+      const g = geom(imageEl('contain', SQUARE_BOX, src));
+      expect(g.width, JSON.stringify(src)).toBeLessThanOrEqual(SQUARE_BOX.w + 0.01);
+      expect(g.height, JSON.stringify(src)).toBeLessThanOrEqual(SQUARE_BOX.h + 0.01);
+      expect(g.width / g.height).toBeCloseTo(src.w / src.h, 1);
+      // and it touches at least one edge — it is scaled up to fit, not shrunk arbitrarily
+      expect(Math.max(g.width / SQUARE_BOX.w, g.height / SQUARE_BOX.h)).toBeCloseTo(1, 2);
+    }
+  });
+
+  it('fill stretches the source to exactly the box, distorting it', () => {
+    expect(geom(imageEl('fill', SQUARE_BOX, PORTRAIT))).toEqual({ x: 0, y: 0, width: 100, height: 100 });
+    expect(geom(imageEl('fill', SQUARE_BOX, LANDSCAPE))).toEqual({ x: 0, y: 0, width: 100, height: 100 });
+  });
+
+  it('cover fills the box and overflows, keeping the source aspect ratio', () => {
+    const g = geom(imageEl('cover', SQUARE_BOX, PORTRAIT));
+    expect(g.width).toBeCloseTo(100, 2);
+    expect(g.height).toBeCloseTo(200, 2);          // overflows vertically, then gets clipped
+    expect(g.width / g.height).toBeCloseTo(PORTRAIT.w / PORTRAIT.h, 2);
+    // covers the box completely
+    expect(g.x).toBeLessThanOrEqual(0);
+    expect(g.y).toBeLessThanOrEqual(0);
+    expect(g.x + g.width).toBeGreaterThanOrEqual(SQUARE_BOX.w);
+    expect(g.y + g.height).toBeGreaterThanOrEqual(SQUARE_BOX.h);
+  });
+
+  it('renders all three fits differently from one another', () => {
+    const [cover, contain, fill] = ['cover', 'contain', 'fill'].map(f => imageEl(f, SQUARE_BOX, PORTRAIT));
+    expect(new Set([cover, contain, fill]).size).toBe(3);
+  });
+
+  it('leaves a source that already matches the box aspect identical under every fit', () => {
+    const els = ['cover', 'contain', 'fill'].map(f => geom(imageEl(f, SQUARE_BOX, { w: 50, h: 50 })));
+    for (const g of els) expect(g).toEqual({ x: 0, y: 0, width: 100, height: 100 });
+  });
+
+  it('stays deterministic and well-formed for every fit', () => {
+    for (const fit of ['cover', 'contain', 'fill']) {
+      const doc = docWith(
+        [{ id: 'i', kind: 'image', assetId: 'a', x: 10, y: 20, width: 100, height: 80, fit }],
+        { assets: { a: { id: 'a', mime: 'image/png', width: 300, height: 200, data: 'data:,x' } } },
+      );
+      const runs = [renderToString(doc).svg, renderToString(doc).svg, renderToString(doc).svg];
+      expect(new Set(runs).size, fit).toBe(1);
+      expect(checkXml(runs[0]!).ok, fit).toBe(true);
+    }
   });
 });
 
@@ -442,8 +504,7 @@ describe('render: node identity', () => {
 
     for (const extra of decorations) {
       const doc = docWith([{ id: 'n1', kind: 'rect', x: 0, y: 0, width: 10, height: 10, ...extra }]);
-      const ids = idsIn(doc);
-      expect(ids.filter(id => id === 'n1'), JSON.stringify(extra)).toHaveLength(1);
+      expect(idsIn(doc).filter(id => id === 'n1'), JSON.stringify(extra)).toHaveLength(1);
     }
   });
 
@@ -623,11 +684,11 @@ describe('render: paint', () => {
     ])).svg;
     expect(plain).not.toContain('stroke-linejoin');
 
-    const round = renderToString(docWith([
+    const rounded = renderToString(docWith([
       { id: 'r', kind: 'rect', x: 0, y: 0, width: 10, height: 10, stroke: { width: 2, cap: 'round', join: 'round' } },
     ])).svg;
-    expect(round).toContain('stroke-linecap="round"');
-    expect(round).toContain('stroke-linejoin="round"');
+    expect(rounded).toContain('stroke-linecap="round"');
+    expect(rounded).toContain('stroke-linejoin="round"');
   });
 
   it('draws nothing at all for a none background, leaving the export transparent', () => {
@@ -651,8 +712,7 @@ describe('render: image frames', () => {
   });
 
   it('clips to an ellipse centred on the node box', () => {
-    const svg = framed({ frame: 'ellipse' });
-    expect(svg).toMatch(/<ellipse cx="60" cy="60" rx="50" ry="40"\/>/);
+    expect(framed({ frame: 'ellipse' })).toMatch(/<ellipse cx="60" cy="60" rx="50" ry="40"\/>/);
   });
 
   it('clips to a scaled path in frameBox space', () => {
@@ -677,8 +737,7 @@ describe('render: accessibility', () => {
 
   it('renders per-node alt text as a <title>, with or without the a11y option', () => {
     for (const a11y of [false, true]) {
-      const svg = renderToString(doc(), 0, { a11y }).svg;
-      expect(svg, `a11y=${a11y}`).toContain('<title>A red barn</title>');
+      expect(renderToString(doc(), 0, { a11y }).svg, `a11y=${a11y}`).toContain('<title>A red barn</title>');
     }
   });
 

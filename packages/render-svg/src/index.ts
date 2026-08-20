@@ -150,13 +150,26 @@ function renderNode(
         break;
       }
       const crop = objectFit(asset.width, asset.height, n.width, n.height, n.fit);
-      const scale = n.width / crop.width;
+      // One scale PER AXIS. `cover` and `contain` lock the two together so the
+      // photo is never distorted — cover fills the box and overflows, contain
+      // fits inside it and letterboxes — while `fill` scales each axis on its
+      // own, which is the entire point of it. Deriving a single `scale` from
+      // the width alone (what this did before) made contain and fill render
+      // identically to cover: a portrait photo in a square box overflowed and
+      // was clipped instead of being letterboxed. `objectFit` hands back the
+      // whole source rect for both, so the fit has to be honoured HERE.
+      const fitX = n.width / crop.width, fitY = n.height / crop.height;
+      const sx = n.fit === 'fill' ? fitX : n.fit === 'contain' ? Math.min(fitX, fitY) : Math.max(fitX, fitY);
+      const sy = n.fit === 'fill' ? fitY : sx;
+      // Centre the scaled crop in the node box. Zero for cover and fill, which
+      // both cover the box exactly; the letterbox margin for contain.
+      const ox = (n.width - crop.width * sx) / 2, oy = (n.height - crop.height * sy) / 2;
       const clipId = nextGradId('clip');
       defs.push({ tag: 'clipPath', attrs: { id: clipId }, children: [frameShape(n)] });
       inner = { tag: 'g', attrs: { 'clip-path': `url(#${clipId})` }, children: [
         { tag: 'image', attrs: {
-          x: round(n.x - crop.x * scale), y: round(n.y - crop.y * scale),
-          width: round(asset.width * scale), height: round(asset.height * scale),
+          x: round(n.x + ox - crop.x * sx), y: round(n.y + oy - crop.y * sy),
+          width: round(asset.width * sx), height: round(asset.height * sy),
           href: inlineAssets ? asset.data : `asset:${asset.id}`,
           preserveAspectRatio: 'none',
         }},
