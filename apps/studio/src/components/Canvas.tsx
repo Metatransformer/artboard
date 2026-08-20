@@ -102,7 +102,16 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
   const [draft, setDraft] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [guides, setGuides] = useState<Guide[]>([]);
 
-  const { scene, diagnostics } = renderArtboard(state.doc, artboard);
+  // a11y OFF for the editing surface, deliberately, and it is the one caller
+  // that wants it off. The scaffolding is written for an exported SVG that
+  // lands in a page: `role="img"` collapses the graphic to a single named
+  // image, which is right for a picture and wrong for the canvas somebody is
+  // working in — it hides from assistive tech the very structure they are
+  // editing, and the Layers panel is that structure's accessible surface.
+  // The visible half matters more: a `<title>` child of the canvas <svg> is a
+  // native browser tooltip, so leaving it on makes the whole artboard sprout
+  // "Launch Week" under the pointer while you drag things around it.
+  const { scene, diagnostics } = renderArtboard(state.doc, artboard, { a11y: false });
   const nodes = artboard.nodes as Node[];
 
   /* screen → artboard coordinates */
