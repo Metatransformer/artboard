@@ -25,7 +25,12 @@ export type CodeFill =
   | { kind: 'solid'; color: string }
   | { kind: 'none' };
 
-export interface CodeStroke { color: string; width: number; dash: number[] }
+export interface CodeStroke {
+  color: string; width: number; dash: number[];
+  cap: 'butt' | 'round' | 'square';
+  join: 'miter' | 'round' | 'bevel';
+  markerStart: 'none'; markerEnd: 'none';
+}
 
 interface NodeBase {
   id: string;
@@ -39,6 +44,9 @@ interface NodeBase {
   shadow: null;
   effects: never[];
   blend: 'normal';
+  flipX: false;
+  flipY: false;
+  alt: string;
 }
 
 export interface CodePathNode extends NodeBase {
@@ -73,7 +81,10 @@ export interface CodeTextNode extends NodeBase {
 
 export type Node = CodePathNode | CodeRectNode | CodeTextNode;
 
-const NO_STROKE: CodeStroke = { color: '#000000', width: 0, dash: [] };
+const NO_STROKE: CodeStroke = {
+  color: '#000000', width: 0, dash: [],
+  cap: 'butt', join: 'miter', markerStart: 'none', markerEnd: 'none',
+};
 
 /** Golden tests diff SVG strings, so every coordinate lands on 3 decimals. */
 const round = (n: number): number => Math.round(n * 1000) / 1000;
@@ -85,6 +96,7 @@ const base = (id: string, name: string, x: number, y: number, width: number, hei
   width: round(width), height: round(height),
   rotation: 0, opacity: 1, visible: true, locked: false,
   shadow: null, effects: [], blend: 'normal',
+  flipX: false, flipY: false, alt: '',
 });
 
 /** Hands out `${prefix}-0`, `${prefix}-1`, ... in emission order. */
