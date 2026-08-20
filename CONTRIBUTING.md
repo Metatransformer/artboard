@@ -184,6 +184,35 @@ the expected result.
 5. **Adding a fixture is cheap and welcome.** A new feature should arrive with one.
    Keep it minimal: the smallest document that exercises the thing.
 
+### Finding what the oracle never looks at
+
+`artboard golden` proves the renderer draws today what it drew yesterday — but only
+along paths some fixture actually walks. A feature with no fixture behind it is not
+passing, it is **unobserved**, and a green oracle reads downstream as "checked". Three
+regressions in this project shipped through exactly that gap.
+
+```bash
+node tools/golden-coverage.mjs
+```
+
+The checklist is derived from the schema by introspection, not hand-listed: add
+`z.enum([...])` to a node and both values appear in the next run with nobody
+remembering to update anything. Anything it cannot classify is printed under
+UNCLASSIFIED rather than silently dropped.
+
+Two things to know before reading the number:
+
+- **It is a report, not a gate.** It always exits 0. Uncovered paths are a prompt to
+  judge whether a fixture earns its keep, and often it does not — seven blend modes
+  down one `mix-blend-mode` emission buy nothing the first one did not.
+- **The denominator counts per node kind**, so `rect.blend=screen` and
+  `ellipse.blend=screen` are two entries for one code path. Read the list, not the
+  ratio; the ratio is pessimistic by construction.
+
+The "thinnest coverage" section at the bottom is the more actionable half — paths
+riding on a single fixture, where deleting that one fixture silently stops testing
+them.
+
 ### The golden output is an API
 
 Treat the status labels (`PASS`, `FAIL`, `NEW`, `UPD`, `SAME`) and the exit codes
