@@ -84,21 +84,23 @@ Stroke width is expressed in **viewBox units** on purpose. The renderer scales a
 path node by `width / viewBox`, so the stroke grows with the icon instead of
 thinning to a hairline at poster size.
 
-### Known limitation: flat line caps
+### Round caps and joins
 
 Lucide is authored for `stroke-linecap="round" stroke-linejoin="round"`, and
-Artboard's `Stroke` type cannot express either — it is
-`{ color, width, dash, markerStart, markerEnd }`, and `strokeAttrs` in
-`packages/render-svg` emits no cap or join. Two consequences:
+`iconNodeStyle()` sets `cap: 'round', join: 'round'` on the node's stroke. This
+is not decoration. Lucide draws small dots as near-zero-length segments —
+`circle-alert`'s exclamation dot is `M12 16 L12.01 16` — and a butt cap renders
+those as **nothing at all**, so `circle-alert`, `circle-help`, `info`, `wifi`
+and about sixteen others lose their dot and read as broken. `Stroke` gained
+`cap`/`join` for this, both defaulting to the SVG defaults (`butt`/`miter`) so
+no existing document changed and the 24 goldens stayed byte-identical.
 
-1. Line ends are flat rather than rounded. Subtle at icon size.
-2. Lucide draws small dots as near-zero-length segments (`circle-alert`'s
-   exclamation dot is `M12 16 L12.01 16`). With butt caps these render as a
-   hairline sliver instead of a round dot, on roughly twenty icons.
+The drawer previews carry the same `strokeLinecap`/`strokeLinejoin`, so a tile
+never promises a rounder icon than the canvas delivers.
 
-A `cap`/`join` pair on `Stroke`, defaulting to `butt`/`miter` so no existing
-document changes, would fix both. It has been raised with the renderer owner;
-until it lands, `iconNodeStyle()` is the single place that would need updating.
+Inserted icons also set `alt` to the icon name, which makes the renderer emit a
+`<title>` — an exported SVG of a shopping-cart icon says so to a screen reader.
+Geometric shapes deliberately leave `alt` empty: "Blob" is not information.
 
 ## Categories
 
