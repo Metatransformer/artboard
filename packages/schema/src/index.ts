@@ -261,6 +261,33 @@ export type Asset = z.infer<typeof Asset>;
  * writes what it actually cares about, and new fields arrive for free.
  * Throws `DocumentParseError` when what is left is genuinely not a node.
  */
+/**
+ * The field names a node of this kind may carry, straight from the schema.
+ *
+ * Callers validating a patch must ask the schema, not the node in hand: a
+ * field can be legitimately absent from an instance and still be settable
+ * (`TextNode.fill` is the live example -- optional, missing by default, and
+ * exactly what "give this text a gradient" has to set). Checking `k in node`
+ * would reject that edit.
+ *
+ * An unknown kind returns undefined -- an opaque node round-trips verbatim and
+ * has no field list to police.
+ */
+const NODE_SHAPES: Record<string, z.ZodRawShape> = {
+  text: TextNode.shape, rect: RectNode.shape, ellipse: EllipseNode.shape,
+  line: LineNode.shape, path: PathNode.shape, image: ImageNode.shape,
+  group: (GroupNode as any).schema.shape,
+};
+export function nodeFields(kind: string): Set<string> | undefined {
+  const shape = NODE_SHAPES[kind];
+  return shape ? new Set(Object.keys(shape)) : undefined;
+}
+
+/** The field names an artboard may carry. Same reasoning as `nodeFields`. */
+export function artboardFields(): Set<string> {
+  return new Set(Object.keys(Artboard.shape));
+}
+
 export function buildNode(input: Record<string, unknown>): Node {
   const r = Node.safeParse(input);
   if (!r.success) throw new DocumentParseError(`Invalid ${String(input.kind)} node: ${r.error.issues[0]?.message ?? 'unknown'}`);

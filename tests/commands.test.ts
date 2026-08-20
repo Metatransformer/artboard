@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { buildNode, loadDocument, findNode, type Document, type Node } from '@artboard/schema';
 import {
-  apply, invert, commit, undo, redo, emptyHistory, StaleCommandError, MAX_HISTORY,
+  apply, invert, commit, undo, redo, emptyHistory, MAX_HISTORY,
+  StaleCommandError, StaleArtboardError, InvalidCommandError,
   type Command, type History,
 } from '@artboard/commands';
 import { mulberry32, pick, int } from './helpers';
@@ -599,28 +600,137 @@ describe('commands: group / ungroup', () => {
   });
 });
 
-describe('commands: known bugs', () => {
-  // BUG: `invert()`'s `case 'reorder'` uses findIndex without checking the
-  // -1 result, so a missing node yields a
-  // reorder to index -1 instead of the StaleCommandError every sibling case
-  // throws. The failure is deferred to apply(), one step further from the cause.
-  // Fix: `if (from < 0) throw new StaleCommandError(cmd.nodeId);`
-  it.fails('invert(reorder) throws StaleCommandError for a node that is gone', () => {
+describe('commands: silent no-ops (regression guards)', () => {
+  // REGRESSION GUARD: every one of these used to succeed while changing
+  // nothing. That is survivable in the editor -- a person notices the shape
+  // did not move -- but the MCP server drives this same command layer with no
+  // one watching, and a no-op that returns a Document is indistinguishable
+  // from a write. Each of these must now be loud.
+
+  it.each(['addNode', 'removeNode', 'reorder', 'setArtboard', 'group', 'ungroup'] as const)(
+    'apply(%s) throws rather than no-op when the artboard is gone', type => {
+      const doc = freshDoc();
+      const cmd = {
+        addNode:     { type, artboardId: 'ghost-ab', node: buildNode({ id: 'n', kind: 'rect', x: 0, y: 0, width: 1, height: 1 }), index: 0 },
+        removeNode:  { type, artboardId: 'ghost-ab', nodeId: 'r1', index: 0, node: findNode(doc, 'r1') },
+        reorder:     { type, artboardId: 'ghost-ab', nodeId: 'r1', to: 0 },
+        setArtboard: { type, artboardId: 'ghost-ab', patch: { width: 10 } },
+        group:       { type, artboardId: 'ghost-ab', nodeIds: ['r1'], groupId: 'G' },
+        ungroup:     { type, artboardId: 'ghost-ab', groupId: 'g1', indices: [0] },
+      }[type] as unknown as Command;
+
+      expect(() => apply(doc, cmd)).toThrow(StaleCommandError);
+    });
+
+  it.each(['addNode', 'removeNode', 'setArtboard'] as const)(
+    'invert(%s) throws rather than returning a command that will no-op', type => {
+      const doc = freshDoc();
+      const cmd = {
+        addNode:     { type, artboardId: 'ghost-ab', node: buildNode({ id: 'n', kind: 'rect', x: 0, y: 0, width: 1, height: 1 }), index: 0 },
+        removeNode:  { type, artboardId: 'ghost-ab', nodeId: 'r1', index: 0, node: findNode(doc, 'r1') },
+        setArtboard: { type, artboardId: 'ghost-ab', patch: { width: 10 } },
+      }[type] as unknown as Command;
+
+      expect(() => invert(doc, cmd)).toThrow(StaleCommandError);
+    });
+
+  it('rejects an addNode that would duplicate an existing node id', () => {
     const doc = freshDoc();
-    expect(() => invert(doc, { type: 'reorder', artboardId: AB, nodeId: 'ghost', to: 0 }))
-      .toThrow(StaleCommandError);                 // actual: returns { to: -1 }
+    const clash = buildNode({ id: 'r1', kind: 'ellipse', x: 0, y: 0, width: 1, height: 1 });
+
+    // Two nodes sharing an id is silent corruption, not a visible error:
+    // findNode picks one of them, updateNode patches both, removeNode
+    // deletes both. Nothing downstream can tell it happened.
+    expect(() => apply(doc, { type: 'addNode', artboardId: AB, node: clash, index: 0 }))
+      .toThrow(InvalidCommandError);
   });
 
-  // BUG: `invert()`'s `case 'updateNode'` copies `node[k]` for every patch
-  // key, so a key the node never had comes back as an
-  // explicit `undefined`. Undo then re-adds the key rather than removing it.
-  // Fix: only capture (and later re-apply) keys where `k in node`.
-  it.fails('updateNode invert removes a key the node never had, rather than setting it undefined', () => {
+  // REGRESSION GUARD: `invert()`'s `case 'reorder'` used findIndex without
+  // checking the -1 result, so a missing node yielded a reorder to index -1
+  // instead of the StaleCommandError every sibling case throws -- deferring
+  // the failure to apply(), one step further from the cause.
+  it('invert(reorder) throws StaleCommandError for a node that is gone', () => {
     const doc = freshDoc();
-    const cmd: Command = { type: 'updateNode', nodeId: 'r1', patch: { phantom: 7 } };
+    expect(() => invert(doc, { type: 'reorder', artboardId: AB, nodeId: 'ghost', to: 0 }))
+      .toThrow(StaleCommandError);
+  });
+
+  // REGRESSION GUARD: `invert()`'s `case 'updateNode'` copied `node[k]` for
+  // every patch key, so a key the node never had came back as an explicit
+  // `undefined` and undo re-added the key rather than removing it. The fix is
+  // upstream of invert: a patch key the node does not have is not a valid
+  // edit, so apply rejects it and there is nothing to invert.
+  it('rejects an updateNode patch naming a field the node does not have', () => {
+    const doc = freshDoc();
+    const cmd: Command = { type: 'updateNode', nodeId: 'r1', patch: { phantom: 7 } as any };
+
+    expect(() => apply(doc, cmd)).toThrow(InvalidCommandError);
+    expect('phantom' in (findNode(doc, 'r1') as any)).toBe(false);
+  });
+
+  it('rejects a setArtboard patch naming a field the artboard does not have', () => {
+    const doc = freshDoc();
+    expect(() => apply(doc, { type: 'setArtboard', artboardId: AB, patch: { hieght: 10 } as any }))
+      .toThrow(InvalidCommandError);
+  });
+
+  it('lets undo drop a command whose artboard was deleted, but not a malformed one', () => {
+    // The two failures need opposite handling, which is why they are separate
+    // classes: an artboard that vanished is ordinary history rot and undo
+    // should quietly discard the entry, whereas a patch naming a field that
+    // does not exist is a caller bug and must not be swallowed by an undo.
+    const doc = freshDoc();
+    const stale: Command = { type: 'setArtboard', artboardId: 'ghost-ab', patch: { width: 10 } };
+    expect(() => apply(doc, stale)).toThrow(StaleArtboardError);
+    expect(new StaleArtboardError('x')).toBeInstanceOf(StaleCommandError);
+    expect(new InvalidCommandError('x')).not.toBeInstanceOf(StaleCommandError);
+
+    const history = { past: [stale], future: [] } as History;
+    expect(undo(doc, history)).toEqual({ doc, history: { past: [], future: [] } });
+  });
+
+  it('accepts a patch setting an optional field the node does not yet have', () => {
+    // `TextNode.fill` is optional and absent by default, so "give this text a
+    // gradient" patches a key that is genuinely not on the node. Validating
+    // the patch against the instance instead of the schema would reject it.
+    const doc = freshDoc();
+    const fill = { kind: 'gradient', type: 'linear', angle: 0,
+      stops: [{ offset: 0, color: '#000000' }, { offset: 1, color: '#ffffff' }] };
+    const cmd: Command = { type: 'updateNode', nodeId: 't1', patch: { fill } };
+
+    expect(findNode(doc, 't1')).not.toHaveProperty('fill');
+    expect(findNode(apply(doc, cmd), 't1')).toMatchObject({ fill });
+  });
+
+  it('removes the key again when that patch is undone, rather than setting it undefined', () => {
+    const doc = freshDoc();
+    const fill = { kind: 'solid', color: '#ff0000' };
+    const cmd: Command = { type: 'updateNode', nodeId: 't1', patch: { fill } };
     const restored = apply(apply(doc, cmd), invert(doc, cmd));
 
-    expect('phantom' in (findNode(restored, 'r1') as any)).toBe(false);   // actual: true, = undefined
+    // `{...node, fill: undefined}` is a different document from one with no
+    // `fill`: it survives a save/load as an extra key and breaks equality.
+    expect('fill' in (findNode(restored, 't1') as any)).toBe(false);
+    expect(restored.artboards).toStrictEqual(doc.artboards);
+    expect(loadDocument(JSON.parse(JSON.stringify(restored))).doc.artboards).toStrictEqual(doc.artboards);
+  });
+
+  it('round-trips the same optional field through the real undo stack', () => {
+    const doc = freshDoc();
+    const cmd: Command = { type: 'updateNode', nodeId: 't1', patch: { fill: { kind: 'none' } } };
+    const committed = commit(doc, emptyHistory(), cmd);
+    const undone = undo(committed.doc, committed.history);
+
+    expect(undone.doc.artboards).toStrictEqual(doc.artboards);
+    expect(redo(undone.doc, undone.history).doc.artboards).toStrictEqual(committed.doc.artboards);
+  });
+
+  it('still applies a well-formed patch on both', () => {
+    const doc = freshDoc();
+    expect(findNode(apply(doc, { type: 'updateNode', nodeId: 'r1', patch: { x: 42 } }), 'r1'))
+      .toMatchObject({ x: 42 });
+    expect(apply(doc, { type: 'setArtboard', artboardId: AB, patch: { width: 42 } }).artboards[0])
+      .toMatchObject({ width: 42 });
   });
 });
 

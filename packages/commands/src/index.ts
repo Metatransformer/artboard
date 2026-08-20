@@ -1,10 +1,33 @@
-import { buildNode, type Document, type Node } from '@artboard/schema';
+import { buildNode, nodeFields, artboardFields, type Document, type Node } from '@artboard/schema';
 import { aabb } from '@artboard/engine';
 
 /** Immutable command layer. apply(doc, cmd) -> newDoc. invert(cmd) -> undo cmd. */
 
 export class StaleCommandError extends Error {
   constructor(public nodeId: string) { super(`Command targets a node that no longer exists (${nodeId}).`); this.name = 'StaleCommandError'; }
+}
+
+/**
+ * The artboard itself is gone. Extends StaleCommandError on purpose: undo and
+ * redo drop a stale entry rather than exploding, and an artboard that vanished
+ * is the same kind of staleness as a node that did.
+ */
+export class StaleArtboardError extends StaleCommandError {
+  constructor(public artboardId: string) {
+    super(artboardId);
+    this.message = `Command targets an artboard that no longer exists (${artboardId}).`;
+    this.name = 'StaleArtboardError';
+  }
+}
+
+/**
+ * The command is malformed against this document — a patch naming a field the
+ * target does not have, or an id that is already taken. Deliberately NOT a
+ * StaleCommandError: nothing here is stale, the command is wrong, and undo must
+ * not quietly swallow it. `invert` never produces one of these.
+ */
+export class InvalidCommandError extends Error {
+  constructor(detail: string) { super(detail); this.name = 'InvalidCommandError'; }
 }
 
 export type Command =
@@ -35,6 +58,12 @@ export function apply(doc: Document, cmd: Command): Document {
       return cmd.commands.reduce((d, c) => apply(d, c), doc);
 
     case 'addNode':
+      // A duplicate id is silent corruption rather than a no-op: findNode picks
+      // whichever it sees last, updateNode patches both, removeNode deletes
+      // both. Cheap to refuse, impossible to unpick later.
+      if (findAny(doc, cmd.node.id)) {
+        throw new InvalidCommandError(`A node with id "${cmd.node.id}" is already in the document.`);
+      }
       return mapArtboard(doc, cmd.artboardId, ab => {
         const nodes = [...ab.nodes];
         nodes.splice(cmd.index ?? nodes.length, 0, cmd.node);
@@ -54,14 +83,23 @@ export function apply(doc: Document, cmd: Command): Document {
       });
 
     case 'updateNode': {
-      let hit = false;
-      const next = mapNodes(doc, n => {
-        if (n.id !== cmd.nodeId) return n;
-        hit = true;
-        return { ...n, ...cmd.patch } as Node;
-      });
-      if (!hit) throw new StaleCommandError(cmd.nodeId);
-      return next;
+      // A key the node does not have is not an edit: the schema strips unknown
+      // keys on the next parse, so the caller is told the change landed and
+      // nothing about the document differs. A misspelled field name has to be
+      // loud, or an unattended writer will keep sending it.
+      const target = findAny(doc, cmd.nodeId);
+      if (!target) throw new StaleCommandError(cmd.nodeId);
+      // Ask the schema which fields exist, not the node in hand: an optional
+      // field is absent from the instance and still perfectly settable --
+      // `TextNode.fill` is exactly that, and `k in node` would reject the
+      // command that puts a gradient on a piece of text.
+      const fields = nodeFields((target as any).kind);
+      const unknown = fields ? Object.keys(cmd.patch).filter(k => !fields.has(k)) : [];
+      if (unknown.length) {
+        throw new InvalidCommandError(
+          `Node "${cmd.nodeId}" (${(target as any).kind}) has no field ${unknown.map(k => `"${k}"`).join(', ')}.`);
+      }
+      return mapNodes(doc, n => (n.id === cmd.nodeId ? patchNode(n, cmd.patch) : n));
     }
 
     case 'reorder':
@@ -128,7 +166,15 @@ export function apply(doc: Document, cmd: Command): Document {
       });
 
     case 'setArtboard':
-      return mapArtboard(doc, cmd.artboardId, ab => ({ ...ab, ...cmd.patch }));
+      return mapArtboard(doc, cmd.artboardId, ab => {
+        const fields = artboardFields();
+        const unknown = Object.keys(cmd.patch).filter(k => !fields.has(k));
+        if (unknown.length) {
+          throw new InvalidCommandError(
+            `Artboard "${cmd.artboardId}" has no field ${unknown.map(k => `"${k}"`).join(', ')}.`);
+        }
+        return { ...ab, ...cmd.patch };
+      });
 
     case 'addAsset':
       return { ...doc, assets: { ...doc.assets, [cmd.asset.id]: cmd.asset } };
@@ -159,12 +205,14 @@ export function invert(doc: Document, cmd: Command): Command {
     }
 
     case 'addNode':
+      if (!doc.artboards.some(a => a.id === cmd.artboardId)) throw new StaleArtboardError(cmd.artboardId);
       return { type: 'removeNode', artboardId: cmd.artboardId, nodeId: cmd.node.id };
 
     case 'removeNode': {
       const ab = doc.artboards.find(a => a.id === cmd.artboardId);
-      const index = ab ? ab.nodes.findIndex((n: Node) => n.id === cmd.nodeId) : 0;
-      const node = ab?.nodes[index];
+      if (!ab) throw new StaleArtboardError(cmd.artboardId);
+      const index = ab.nodes.findIndex((n: Node) => n.id === cmd.nodeId);
+      const node = ab.nodes[index];
       if (!node) throw new StaleCommandError(cmd.nodeId);
       return { type: 'addNode', artboardId: cmd.artboardId, node: node as Node, index };
     }
@@ -172,6 +220,10 @@ export function invert(doc: Document, cmd: Command): Command {
     case 'updateNode': {
       const node = findAny(doc, cmd.nodeId);
       if (!node) throw new StaleCommandError(cmd.nodeId);
+      // A key the node does not currently have is captured as `undefined`,
+      // which `patchNode` reads as "remove it again". Recording the absence
+      // any other way makes undo *add* the key back as an explicit undefined,
+      // so a document stops matching itself across a set + undo.
       const before: Record<string, unknown> = {};
       for (const k of Object.keys(cmd.patch)) before[k] = (node as any)[k];
       return { type: 'updateNode', nodeId: cmd.nodeId, patch: before };
@@ -179,7 +231,12 @@ export function invert(doc: Document, cmd: Command): Command {
 
     case 'reorder': {
       const ab = doc.artboards.find(a => a.id === cmd.artboardId);
-      const from = ab ? ab.nodes.findIndex((n: Node) => n.id === cmd.nodeId) : 0;
+      if (!ab) throw new StaleArtboardError(cmd.artboardId);
+      // An unchecked findIndex made this return a reorder to index -1, so the
+      // failure surfaced later inside apply, one step from its cause — while
+      // every sibling case threw here.
+      const from = (ab.nodes as Node[]).findIndex((n: Node) => n.id === cmd.nodeId);
+      if (from < 0) throw new StaleCommandError(cmd.nodeId);
       return { type: 'reorder', artboardId: cmd.artboardId, nodeId: cmd.nodeId, to: from };
     }
 
@@ -210,8 +267,9 @@ export function invert(doc: Document, cmd: Command): Command {
 
     case 'setArtboard': {
       const ab = doc.artboards.find(a => a.id === cmd.artboardId);
+      if (!ab) throw new StaleArtboardError(cmd.artboardId);
       const before: Record<string, unknown> = {};
-      for (const k of Object.keys(cmd.patch)) before[k] = (ab as any)?.[k];
+      for (const k of Object.keys(cmd.patch)) before[k] = (ab as any)[k];
       return { type: 'setArtboard', artboardId: cmd.artboardId, patch: before };
     }
 
@@ -257,7 +315,31 @@ export function redo(doc: Document, history: History): { doc: Document; history:
 }
 
 /* ── helpers ────────────────────────────────────────────────────────────── */
+/**
+ * Every artboard-scoped command routes through here, so an id that matches
+ * nothing used to be a silent success for all six of them: addNode, removeNode,
+ * reorder, group, ungroup and setArtboard each returned the document untouched
+ * and reported that the edit had happened. Survivable in the editor, where the
+ * artboard id comes from the thing you clicked; not survivable for an
+ * unattended caller that only sees the return value.
+ */
+/**
+ * Apply a patch to a node. An `undefined` value removes the field rather than
+ * setting it: that is the only way undo can restore a node that legitimately
+ * did not have an optional field, and `{...n, fill: undefined}` is not the
+ * same document as one with no `fill` at all.
+ */
+function patchNode(n: Node, patch: Record<string, unknown>): Node {
+  const next: Record<string, unknown> = { ...(n as any) };
+  for (const [k, v] of Object.entries(patch)) {
+    if (v === undefined) delete next[k];
+    else next[k] = v;
+  }
+  return next as Node;
+}
+
 function mapArtboard(doc: Document, id: string, fn: (ab: any) => any): Document {
+  if (!doc.artboards.some(ab => ab.id === id)) throw new StaleArtboardError(id);
   return { ...doc, artboards: doc.artboards.map(ab => (ab.id === id ? fn(ab) : ab)) };
 }
 function mapNodes(doc: Document, fn: (n: Node) => Node): Document {
