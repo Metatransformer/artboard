@@ -19,6 +19,26 @@
  * rather than a file edit. The tests that run are the REAL ones -- no
  * transcription of the code under test into a scratch harness, which would test
  * the transcription as much as the code.
+ *
+ * THE MUTANT MUST BE FAITHFUL, and this is the easiest thing to get wrong --
+ * it cost me a claim within an hour of writing this script. Reinstating a
+ * removed rule, I wrote `valign: 'top' -> y: 'top'` unconditionally. The rule
+ * actually removed in `df31bd5` was guarded: `a.y !== 'middle' ? a.y : ...`,
+ * overriding only a CENTRED reading, exactly as the surviving x half does.
+ *
+ *   faithful (guard kept)     1 red   :433
+ *   unconditional (dropped)   3 red   :433, :149, :159
+ *
+ * A strictly stronger mutant breaks things the real rule never touched -- here
+ * it ate a stretch anchor, which is separately decided with its own test. The
+ * two extra reds were artifacts, and one of them (`:159`) is a CONTROL whose
+ * premise the mutant destroyed: it needs `sy != k`, and a node that stops
+ * stretching makes `sy == k`. A control going red is the harness losing its
+ * power to discriminate, NOT the mutant being caught -- read every new failure
+ * before counting it, because a bigger number looks like a stronger result.
+ *
+ * So: reconstruct from `git show <commit>^:<path>`, never from memory of what
+ * the rule did.
  */
 import { spawnSync } from 'node:child_process';
 import { copyFileSync, mkdtempSync, writeFileSync } from 'node:fs';
