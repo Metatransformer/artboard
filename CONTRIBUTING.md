@@ -400,11 +400,24 @@ This came up three times in one day and meant something different each time. The
 sentence is identical; the correct response is not, and pattern-matching one case
 onto another is how a real gap gets waved through.
 
-Ask one question first: **can you construct an input that makes the branch decide
-something observable?**
+The discriminator is **not** constructibility, which is where this section first
+got it wrong. All three branches below are constructible — including the one
+filed as unanswerable, whose construction is named in case 1 and pinned in the
+suite. Ask two questions instead: **does the corpus reach it, and is the right
+answer determined by what the code is for?**
 
-1. **No — the corpus cannot answer the question.** The `valign` half of
-   `textAware` fired on nothing. The control that settled it was forcing
+```
+                     corpus reaches   answer determined
+1  valign                  no                no  -- judgement call
+2  stretch-stack guard     yes               yes -- already right
+3  rotated && !uniform     no                yes -- untested
+```
+
+Cases 1 and 3 both go unreached by the corpus, and both are constructible by
+hand. The last column is the only thing separating them.
+
+1. **Unreached, and undetermined — the corpus cannot answer the question.**
+   The `valign` half of `textAware` fired on nothing. The control that settled it was forcing
    `y: 'top'` unconditionally, which *also* changed nothing across 120
    fixture/target combinations: the corpus could not distinguish any rule on
    that axis from any other. A zero there is a fact about the corpus, not about
@@ -434,19 +447,26 @@ something observable?**
    assertion. Prefer the first kind. Write the second when the failure can brief
    the person who causes it.
 
-2. **Yes, and it is already decided correctly.** The stretch-stack guard was
+2. **Reached, and already decided correctly.** The stretch-stack guard was
    right, and the test written for it was never going to fail. Write it anyway:
    stating the mechanism out loud is what exposed a comment beside it claiming
    the guard prevented something it cannot prevent. A comment can never be red;
    the assertion that forces you to say why is the only thing that checks one.
 
-3. **Yes, and nothing has ever exercised it.** `rotated && !uniform` is trivially
+3. **Unreached, but determined.** `rotated && !uniform` is trivially
    reachable by construction — the corpus merely happens not to contain a
    rotated group in a resized page. That is an ordinary coverage gap. Build the
    case and pin it.
 
-The trap is reading (3) as (1): "no fixture reaches it" sounds like "the question
-is unanswerable here" and is usually just "nobody has written the fixture".
+The trap is reading (3) as (1), and reachability is not what tells them apart —
+it is identical for both. The mistake is about **determinacy**: treating a
+settled question as an open one because no fixture happens to answer it. The
+stretch guard exists to stop a parallelogram and `rotated && !uniform` exists to
+stop a shear, so their right answers are fixed by what the code is for and a
+test merely records them. Valign's is not — 860 and 970 are both defensible for
+a lone caption — which is the real reason a test there freezes a decision
+instead of pinning a fact. Ask what the branch is *for* before concluding the
+corpus's silence means anything.
 
 ### Verify what you are about to commit, not what you were editing
 
