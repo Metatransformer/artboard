@@ -649,11 +649,12 @@ describe('render: curved text', () => {
     // `effects.json` carries curved text but sets neither rule, so this branch
     // had no coverage of any kind while its sibling CURVE_SINGLE_LINE did.
     //
-    // The golden oracle COULD hold it -- `golden` writes a .diag baseline
-    // beside the .svg and reports "diagnostics drifted" when one disappears.
-    // But no fixture in the corpus emits any diagnostic at all (zero .diag
-    // files across 29 fixtures), so that half of the oracle has never fired.
-    // Asserting it here does not wait on a fixture being added.
+    // No golden can hold it as things stand: a diagnostic is not in the SVG,
+    // and the committed `golden` compares nothing else. A .diag baseline that
+    // WOULD hold one exists only in an uncommitted working tree, so measuring
+    // it by running the CLI reports on code that is not in the repository.
+    // If that lands, this assertion is still the cheaper place to pin level
+    // and nodeId, and it does not wait on a fixture being written.
     const doc = docWith([{ id: 't', kind: 'text', x: 0, y: 0, width: 400, height: 100,
       text: 'Arched', fontSize: 20, underline: true,
       effects: [{ kind: 'curve', amount: 60 }] }]);
