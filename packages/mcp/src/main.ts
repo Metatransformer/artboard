@@ -58,8 +58,28 @@ const fail = (e: unknown) => {
  * either here would create a second definition to keep in sync, and the first
  * time they disagreed the server would reject edits the editor accepts.
  */
+/**
+ * Every `Command['type']`, listed once so the compiler can check the list.
+ *
+ * The `satisfies` is the whole point and the reason this is not a bare array:
+ * `Record<Command['type'], true>` fails to typecheck the moment the union grows
+ * a member this object lacks, so adding a command to `@artboard/commands` and
+ * forgetting the server is a build error rather than a runtime rejection an
+ * agent discovers at the boundary. The previous version hand-copied these into
+ * a `z.enum` under a comment promising not to duplicate the union — the comment
+ * was right and the code under it was the duplication.
+ *
+ * Values are `true` only because an object is what `satisfies Record<...>` can
+ * check; the keys are the payload.
+ */
+const COMMAND_TYPES = {
+  addNode: true, removeNode: true, updateNode: true, reorder: true,
+  group: true, ungroup: true, setArtboard: true, translate: true,
+  addAsset: true, batch: true,
+} satisfies Record<Command['type'], true>;
+
 const CommandInput = z.object({
-  type: z.enum(['addNode', 'removeNode', 'updateNode', 'reorder', 'group', 'ungroup', 'setArtboard']),
+  type: z.enum(Object.keys(COMMAND_TYPES) as [Command['type'], ...Command['type'][]]),
   artboardId: z.string().optional(),
   nodeId: z.string().optional(),
   nodeIds: z.array(z.string()).optional(),
@@ -68,6 +88,8 @@ const CommandInput = z.object({
   patch: z.record(z.unknown()).optional(),
   index: z.number().optional(),
   to: z.number().optional(),
+  dx: z.number().optional(),
+  dy: z.number().optional(),
 }).passthrough();
 
 export function main(argv: readonly string[]): Promise<void> {
@@ -80,7 +102,7 @@ export function main(argv: readonly string[]): Promise<void> {
     { instructions: [
       'Artboard documents are declarative JSON: every node has an id, a kind, and an x/y/width/height box in artboard coordinates.',
       'Read with open_document (an outline) or get_node (one node in full); change with edit_document, which takes the same commands the editor uses.',
-      'Coordinates are absolute within an artboard, including for a group\'s children -- moving a group does not move what is inside it, so move the members too.',
+      'Coordinates are absolute within an artboard, including for a group\'s children. Move things with the "translate" command (dx/dy), which shifts a whole subtree; patching x/y with updateNode moves a group\'s bounds without its children and is refused.',
       `Paths are relative to the workspace root: ${ws.root}`,
       readOnly ? 'This server is READ-ONLY: edit_document will refuse.' : '',
     ].filter(Boolean).join('\n') },
@@ -158,7 +180,8 @@ export function main(argv: readonly string[]): Promise<void> {
     description: [
       'Apply commands to a document and save it. Commands run in order and either ALL apply or none do.',
       '',
-      'move/resize/restyle : {"type":"updateNode","nodeId":"t1","patch":{"x":40,"y":80}}',
+      'move                : {"type":"translate","nodeIds":["t1"],"dx":40,"dy":80}',
+      'resize/restyle      : {"type":"updateNode","nodeId":"t1","patch":{"width":200}}',
       'add                 : {"type":"addNode","artboardId":"ab","node":{"kind":"rect","x":0,"y":0,"width":80,"height":40}}',
       'delete              : {"type":"removeNode","artboardId":"ab","nodeId":"r2"}',
       'restack             : {"type":"reorder","artboardId":"ab","nodeId":"r2","to":0}',
@@ -245,11 +268,37 @@ export function main(argv: readonly string[]): Promise<void> {
  * every edit burns a round trip to learn something the server already knows.
  * Same for generated ids.
  */
+/**
+ * The command types that actually carry an `artboardId`, derived from the union.
+ *
+ * `normalize` phrased this as a denylist -- `type !== 'updateNode'`, then
+ * `&& type !== 'translate'` once translate landed -- i.e. a hand-made claim
+ * that every OTHER command is artboard-scoped. `batch` and `addAsset` are not,
+ * so that test threw "needs an artboardId" at commands with no such field on
+ * any document with more than one artboard, and the list needed a human to
+ * remember it each time the union grew. The `satisfies` makes both halves the
+ * compiler's problem: a new artboard-scoped command missing from this list
+ * fails to build, and a name here that is not artboard-scoped is an
+ * excess-property error.
+ */
+const NEEDS_ARTBOARD = {
+  addNode: true, removeNode: true, reorder: true,
+  setArtboard: true, group: true, ungroup: true,
+} satisfies Record<Extract<Command, { artboardId: string }>['type'], true>;
+
 function normalize(raw: z.infer<typeof CommandInput>, doc: Document): Command {
   const cmd: any = { ...raw };
   const boards = (doc as any).artboards;
 
-  if (cmd.artboardId === undefined && cmd.type !== 'updateNode') {
+  if (cmd.type === 'batch') {
+    // Sub-commands are commands. Without this they skip artboardId inference
+    // and the buildNode pass below, so a batch was a way to smuggle in exactly
+    // the raw literals the rest of this function exists to prevent.
+    cmd.commands = (cmd.commands ?? []).map((c: any) => normalize(c, doc));
+    return cmd as Command;
+  }
+
+  if (cmd.artboardId === undefined && cmd.type in NEEDS_ARTBOARD) {
     if (boards.length === 1) cmd.artboardId = boards[0].id;
     else if (cmd.nodeId || cmd.nodeIds?.length) {
       const probe = cmd.nodeId ?? cmd.nodeIds[0];
@@ -280,7 +329,10 @@ function describeCommand(cmd: any): string {
     case 'reorder': return `↕ ${cmd.nodeId} -> index ${cmd.to}`;
     case 'group': return `▣ grouped ${cmd.nodeIds.join(', ')} as ${cmd.groupId}`;
     case 'ungroup': return `▢ ungrouped ${cmd.groupId}`;
+    case 'translate': return `→ moved ${cmd.nodeIds.join(', ')} by (${cmd.dx}, ${cmd.dy})`;
     case 'setArtboard': return `⬚ artboard ${cmd.artboardId}: ${Object.entries(cmd.patch ?? {}).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(' ')}`;
+    case 'batch': return `[${cmd.label}] ${(cmd.commands ?? []).map(describeCommand).join('; ')}`;
+    case 'addAsset': return `+ asset ${cmd.asset.id} (${cmd.asset.mime} ${cmd.asset.width}x${cmd.asset.height})`;
     default: return cmd.type;
   }
 }
