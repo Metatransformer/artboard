@@ -25,6 +25,7 @@ import {
   PageRangeError, type ExportFormat,
 } from './format/options.js';
 import { zipStore } from './format/zip.js';
+import { DataError, fillTemplate, findPlaceholders, nameRows, parseData } from './bulk/data.js';
 
 import {
   bold, cyan, describeError, dim, formatDiagnostic, green, hasErrors,
@@ -52,7 +53,7 @@ export class ArtboardRangeError extends Error {
 }
 
 /* -- argv ----------------------------------------------------------------- */
-const VALUE_FLAGS = new Set(['out', 'artboard', 'dir', 'format', 'scale', 'pages', 'quality']);
+const VALUE_FLAGS = new Set(['out', 'artboard', 'dir', 'format', 'scale', 'pages', 'quality', 'data', 'name', 'limit', 'delimiter']);
 
 interface Argv { command: string; positionals: string[]; flags: Record<string, string | boolean> }
 
@@ -300,6 +301,121 @@ function writeBytes(path: string, bytes: Uint8Array): void {
   writeFileSync(path, bytes);
 }
 
+/* -- bulk ------------------------------------------------------------------
+ *
+ * One template, one row of data, one file out. This is the CLI's reason to
+ * exist: a hundred certificates or name badges is a loop over the export path
+ * that nobody wants to run by hand in an editor.
+ *
+ * Every row is a full parse. That costs more than substituting into a
+ * pre-parsed document, and it buys the thing that matters -- a row whose data
+ * makes an invalid document is named and skipped instead of quietly rendering
+ * a default in place of the value.
+ * ------------------------------------------------------------------------ */
+async function cmdBulk(argv: Argv): Promise<number> {
+  const file = argv.positionals[0];
+  if (file === undefined) throw new UsageError('bulk needs a template: artboard bulk <template.json> --data rows.csv [--out dir]');
+
+  const dataFlag = argv.flags.data;
+  if (typeof dataFlag !== 'string') throw new UsageError('bulk needs data: artboard bulk <template.json> --data rows.csv');
+
+  const rawFormat = argv.flags.format === undefined ? 'svg' : String(argv.flags.format).toLowerCase();
+  if (!isFormat(rawFormat)) throw new UsageError(`--format must be one of ${HEADLESS_FORMATS.join(', ')} (got "${rawFormat}").`);
+  const format: ExportFormat = rawFormat;
+  if (!HEADLESS_FORMATS.includes(format)) {
+    throw new UsageError(`${format.toUpperCase()} needs a canvas to rasterise, which a headless CLI has not got. Use --format svg, pdf or json.`);
+  }
+
+  const scale = argv.flags.scale === undefined ? 1 : Number(argv.flags.scale);
+  if (!Number.isFinite(scale) || scale <= 0 || scale > 10) throw new UsageError(`--scale must be between 0 and 10, got "${String(argv.flags.scale)}".`);
+
+  const transparent = argv.flags.transparent === true ? true
+    : argv.flags['no-transparent'] === true ? false
+    : undefined;
+
+  const template = readSource(file);
+  const data = readSource(dataFlag);
+
+  const placeholders = findPlaceholders(template.raw);
+  if (!placeholders.length) {
+    throw new UsageError(`${rel(template.path)} has no {{placeholders}}, so every row would render the same file. Put {{column}} where the per-row values go.`);
+  }
+
+  const { columns, rows: allRows } = parseData(data.raw, data.path, typeof argv.flags.delimiter === 'string' ? argv.flags.delimiter : undefined);
+
+  // Named up front, against the columns, rather than one row at a time: a
+  // typo'd {{placeholder}} should fail before the first file is written, not
+  // on row 1 of 500 with 0 written and a half-explained error.
+  const unresolved = placeholders.filter(p => !columns.includes(p));
+  if (unresolved.length) {
+    throw new UsageError(
+      `${unresolved.map(p => `{{${p}}}`).join(', ')} ${unresolved.length === 1 ? 'has no column' : 'have no columns'} in ${rel(data.path)}.\n` +
+      `        columns: ${columns.join(', ')}`);
+  }
+
+  const limit = argv.flags.limit === undefined ? allRows.length : Number(argv.flags.limit);
+  if (!Number.isInteger(limit) || limit < 1) throw new UsageError(`--limit must be a positive integer, got "${String(argv.flags.limit)}".`);
+  const rows = allRows.slice(0, limit);
+
+  const nameColumn = typeof argv.flags.name === 'string' ? argv.flags.name : undefined;
+  const stems = nameRows(rows, fileStem(template.path.split('/').pop()?.replace(/\.json$/i, '')), nameColumn);
+
+  const out = typeof argv.flags.out === 'string' ? argv.flags.out : '.';
+  const known = existsSync(out) && statSync(out).isDirectory();
+  if (!known && /\.[a-z0-9]+$/i.test(out)) {
+    throw new UsageError(`bulk writes one file per row, so --out names a directory. Drop the extension from "${out}".`);
+  }
+  const dir = resolve(process.cwd(), out);
+  const dryRun = argv.flags['dry-run'] === true;
+
+  const unused = columns.filter(c => !placeholders.includes(c) && c !== nameColumn);
+
+  let written = 0;
+  let bytes = 0;
+  const failures: { row: number; stem: string; why: string }[] = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i]!;
+    const stem = stems[i]!;
+    try {
+      const filled = fillTemplate(template.raw, row);
+      const { doc, diagnostics } = parseDocument(filled);
+      if (hasErrors(diagnostics)) {
+        // Deduped: one bad {{assetId}} is reported once by every image node
+        // that used it, and eight copies of a sentence read as eight problems.
+        const why = [...new Set(diagnostics.filter(d => d.level === 'error').map(d => d.message))];
+        failures.push({ row: i + 1, stem, why: why.join('; ') });
+        continue;
+      }
+      const pages = parsePages(argv.flags.pages === undefined ? 'all' : String(argv.flags.pages), doc.artboards.length);
+      const { files } = await buildVectorExport(doc, { format, scale, transparent, pages, quality: 0.92 }, stem);
+      for (const f of files) {
+        const target = join(dir, f.name);
+        const data = toBytes(f.data);
+        if (!dryRun) writeBytes(target, data);
+        bytes += data.byteLength;
+        written += 1;
+      }
+    } catch (e) {
+      failures.push({ row: i + 1, stem, why: describeError(e) });
+    }
+  }
+
+  for (const f of failures.slice(0, 5)) {
+    process.stderr.write(`${red('row ' + f.row)} ${dim(f.stem)} ${f.why}\n`);
+  }
+  if (failures.length > 5) process.stderr.write(`${red('...')} and ${failures.length - 5} more failed rows\n`);
+  if (unused.length) process.stderr.write(`${yellow('note')} unused column${unused.length === 1 ? '' : 's'}: ${unused.join(', ')}\n`);
+  if (limit < allRows.length) process.stderr.write(`${yellow('note')} --limit ${limit} of ${allRows.length} rows; ${allRows.length - limit} not rendered\n`);
+
+  const verb = dryRun ? 'would write' : 'wrote';
+  process.stdout.write(
+    `${failures.length ? yellow('BULK PARTIAL') : green('BULK OK')} ${verb} ${written} file${written === 1 ? '' : 's'} ` +
+    `${dim(`(${bytes} bytes)`)} from ${rows.length - failures.length}/${rows.length} rows into ${rel(dir)}\n`);
+
+  return failures.length ? FAILED : OK;
+}
+
 /* -- golden (the oracle) --------------------------------------------------- */
 type CaseStatus = 'pass' | 'fail' | 'created' | 'updated' | 'unchanged';
 
@@ -478,6 +594,15 @@ ${bold('COMMANDS')}
       --no-transparent              Force an opaque white behind a page that has none.
       --zip                         Bundle the output into one stored .zip.
       --out <path>                  File to write (single output) or directory (several).
+  bulk     <template.json>          Render one file per data row: mail merge for designs.
+      --data <file>                 csv, tsv, or json array of objects. Its columns fill {{placeholders}}.
+      --out <dir>                   Directory for the output (default the working directory).
+      --name <column>               Name each file after this column instead of numbering them.
+      --format <fmt>                svg (default), pdf, or json. Same renderer as export.
+      --scale <n> --pages <spec>    As export. --transparent / --no-transparent too.
+      --delimiter <char>            Override the separator (default , or a tab for .tsv).
+      --limit <n>                   Only the first n rows -- check the shape before rendering 500.
+      --dry-run                     Report what would be written without writing it.
   info     <file.json>              Artboard count, node counts by kind, asset count, diagnostics.
 
 ${bold('OPTIONS')}
@@ -524,6 +649,7 @@ export async function run(rawArgv: readonly string[]): Promise<number> {
     golden: cmdGolden,
     info: cmdInfo,
     export: cmdExport,
+    bulk: cmdBulk,
   };
   const handler = commands[argv.command];
   if (!handler) {
@@ -535,6 +661,6 @@ export async function run(rawArgv: readonly string[]): Promise<number> {
     return await handler(argv);
   } catch (e) {
     process.stderr.write(`${red('error')} ${describeError(e)}\n`);
-    return e instanceof UsageError || e instanceof PageRangeError ? USAGE : FAILED;
+    return e instanceof UsageError || e instanceof PageRangeError || e instanceof DataError ? USAGE : FAILED;
   }
 }

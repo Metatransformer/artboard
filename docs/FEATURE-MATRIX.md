@@ -829,7 +829,7 @@ in this block requires a raster/temporal pipeline that would double the codebase
 | Chart styling | Colours, labels, legend, gridlines, axis format, data labels, markers, trend lines | `NATIVE` | L | P1 | The bulk of the work. Cap the v1 at bar/line/pie/donut/area + scatter. |
 | Live data connection | Google Sheets etc. | `SERVER` | — | P3 | |
 | Animated / interactive charts | Bar race, hover tooltips | `CSS`/`NATIVE` SMIL | L | P3 | |
-| Bulk Create / Data Autofill | Generate N designs from a CSV/XLSX by mapping columns to elements | `NATIVE` | M | P2 | **A perfect fit for the CLI.** `artboard bulk --data rows.csv --template t.json --out ./out/` is a handful of lines over the existing render path, and it is arguably the single most compelling reason for this project to have a CLI at all. https://www.canva.com/help/bulk-create-data-autofill/ |
+| Bulk Create / Data Autofill | Generate N designs from a CSV/XLSX by mapping columns to elements | `NATIVE` | M | — | **SHIPPED** (`artboard bulk <template.json> --data rows.csv --out dir`). csv/tsv/json in; svg/pdf/json out, through the same `buildVectorExport` as `export`. Mapping is `{{column}}` anywhere in the template, substituted into the raw text BEFORE parsing so a placeholder may sit in a schema-constrained field (`"color": "{{accent}}"`, `"x": {{left}}`). XLSX is not read: it is a zip of XML and a wrong-but-plausible reader is worse than none -- export to CSV. No editor UI yet. https://www.canva.com/help/bulk-create-data-autofill/ |
 | Magic Charts / Magic Insights | AI picks a chart type and writes the takeaway | `SERVER` | — | P3 | |
 
 ## R. Tables
@@ -1118,7 +1118,7 @@ E, F and G are mutually parallel once the font work lands. E and the font work a
 | O | Eyedropper + photo-colour extraction | M | Editor only. |
 | P | Bundled icon/shape library (MIT/CC0) | S | Pure data; fully disjoint. |
 | Q | Full-screen presentation mode | S | Editor shell; fully disjoint. |
-| R | Bulk Create in the CLI (CSV → N renders) | M | `cli` only; fully disjoint. High marketing value. |
+| R | ~~Bulk Create in the CLI (CSV → N renders)~~ | M | **DONE.** `artboard bulk`, `packages/cli/src/bulk/data.ts`. |
 
 H/J share the effects builder. I owns the image-filter builder. K owns paint. Everything else in
 this block (L, M, N, O, P, Q, R) touches its own files and can go in parallel.
