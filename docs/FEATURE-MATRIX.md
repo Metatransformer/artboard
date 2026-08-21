@@ -1050,6 +1050,15 @@ rule, value and label spread out. Step 5 is the mitigation and it already works 
 against its own derived bounds and moves as one unit — so the guidance is that tightly-related
 elements should be grouped. Worth stating in the UI when the command lands, not discovered.
 
+**Resize is lossy in the return direction, on purpose.** `k = min(...)` means widening a square
+into a story shrinks nothing (`k = 1`), which is the motivating case; the return trip is
+`k = 0.5625`, so square → story → square lands at 56%. That loss is inherent — content that filled
+1920 of height cannot also fill 1080 — and `min` is simply what "nothing overflows" means. The
+reversible path is a different one: the command captures the nodes it replaced, so **undo restores
+them exactly** rather than recomputing a reciprocal that drifts a hundredth per round trip. Making
+resize itself reversible means remembering an original frame on the document, which is real state
+for a modest gain. Worked out by the `tests` session before shipping rather than after a bug report.
+
 **What naive resize actually costs**, measured on `deck-stat-trio` at 1920×1080 → 1080×1920: it does
 not merely leave dead space, it **crops the third column off the page entirely**. Content loss, not
 just bad composition.

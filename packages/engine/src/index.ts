@@ -310,6 +310,32 @@ export function classifyAnchors(
  * The uniform factor sizes take. Positions do NOT use it -- they resolve by
  * anchor -- because scaling a position by k is what turns a 1:1 into a 9:16 by
  * leaving everything in the top square, which is the bug this feature is for.
+ *
+ * `min` is deliberate and it makes resize LOSSY IN THE RETURN DIRECTION. That
+ * is a decision, not an oversight, so it is written here rather than left for a
+ * user to report:
+ *
+ *     1080x1080 -> 1080x1920    k = 1        nothing shrinks, which is the point
+ *     1080x1920 -> 1080x1080    k = 0.5625   content must fit a shorter frame
+ *     net, there and back                    0.5625
+ *
+ * `min` is what "nothing overflows the new frame" means, and the motivating
+ * direction is exactly the one it gets right: widening a square into a story
+ * leaves every element at its original size. The return trip genuinely has to
+ * shrink -- content that filled 1920 of height cannot also fill 1080 -- so the
+ * loss is inherent to relayout and not an artefact of this factor.
+ *
+ * What makes it acceptable is that the reversible path exists and is a
+ * different one: the resize command captures the nodes it replaced, so UNDO
+ * restores them exactly rather than recomputing a reciprocal that would drift a
+ * hundredth per round trip. "Try a story, dislike it, go back" is Cmd+Z, not a
+ * second resize. Making resize itself reversible would mean remembering an
+ * original frame on the document -- real state for a modest gain -- and if
+ * anyone takes that on, this comment is the record that they are changing a
+ * documented behaviour rather than fixing an unnoticed one.
+ *
+ * Found by the `tests` session, who worked out the arithmetic before the
+ * feature shipped rather than after a user hit it.
  */
 export function resizeFactor(from: { width: number; height: number }, to: { width: number; height: number }): number {
   if (from.width <= 0 || from.height <= 0) return 1;
