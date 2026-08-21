@@ -1,0 +1,4 @@
+warn CURVE_NO_RULES diag-curve-underline Curved text cannot be underlined or struck through; the rule would not follow the arc.
+warn CURVE_SINGLE_LINE diag-curve-wrapped Curved text uses the first line only. Shorten the text or widen the box.
+warn FONT_SUBSTITUTED diag-unknown-family No metrics for "Gerstner Programm"; measured with Inter 400. Lines may wrap differently in the browser.
+warn TEXT_TOO_SMALL diag-tiny "below the floor" is set at 6px, below the 8px floor for legible text.

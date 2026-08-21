@@ -232,6 +232,12 @@ function renderNode(
 
     case 'text': {
       const layout = layoutText(n, measure);
+      // TextLayout.diagnostics is documented "Renderers forward these", and
+      // for a long time this one did not -- so FONT_SUBSTITUTED was raised on
+      // every unmeasured family and reached nobody. Found by asking which
+      // diagnostic codes no fixture had ever provoked, which is a question
+      // only tools/golden-coverage.mjs can ask.
+      diagnostics.push(...layout.diagnostics);
       if (layout.truncated) {
         diagnostics.push({ level: 'warn', code: 'TEXT_TRUNCATED', nodeId: n.id, message: 'Text too long to lay out; truncated.' });
       }

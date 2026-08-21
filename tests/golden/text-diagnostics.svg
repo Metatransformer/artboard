@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 700" width="1000" height="700" role="img">
+  <title>Text diagnostics</title>
+  <defs>
+    <path id="curve-0" d="M 60 173.14 Q 500 -20.46 940 173.14" fill="none"/>
+    <path id="curve-1" d="M 60 194.86 Q 260 258.86 460 194.86" fill="none"/>
+  </defs>
+  <rect x="0" y="0" width="1000" height="700" fill="#ffffff"/>
+  <text font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="46" font-weight="700" fill="#111111" text-anchor="middle" xml:space="preserve"><textPath href="#curve-0" startOffset="50%">Arced and underlined</textPath></text>
+  <text font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="34" font-weight="500" fill="#111111" text-anchor="middle" xml:space="preserve"><textPath href="#curve-1" startOffset="50%">This sentence is far too</textPath></text>
+  <text x="60" y="400" font-family="'Gerstner Programm', ui-sans-serif, system-ui, sans-serif" font-size="38" font-weight="400" text-anchor="start" fill="#111111" xml:space="preserve"><tspan x="60" y="430.02">Set in a family this build has never measured</tspan></text>
+  <text x="60" y="520" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="6" font-weight="400" text-anchor="start" fill="#111111" xml:space="preserve"><tspan x="60" y="524.74">Legal line set at six pixels</tspan></text>
+</svg>

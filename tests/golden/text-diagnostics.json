@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "id": "doc-text-diagnostics",
+  "name": "Text diagnostics",
+  "artboards": [
+    {
+      "id": "ab-text-diagnostics",
+      "name": "Text diagnostics",
+      "width": 1000,
+      "height": 700,
+      "background": { "kind": "solid", "color": "#ffffff" },
+      "nodes": [
+        {
+          "id": "diag-curve-underline",
+          "kind": "text",
+          "name": "curve + underline",
+          "x": 60, "y": 40, "width": 880, "height": 120,
+          "text": "Arced and underlined",
+          "fontFamily": "Inter", "fontSize": 46, "fontWeight": 700,
+          "color": "#111111", "align": "center", "underline": true,
+          "effects": [{ "kind": "curve", "amount": 55 }]
+        },
+        {
+          "id": "diag-curve-wrapped",
+          "kind": "text",
+          "name": "curve + wrap",
+          "x": 60, "y": 200, "width": 400, "height": 160,
+          "text": "This sentence is far too long to sit on a single arc and so it wraps",
+          "fontFamily": "Inter", "fontSize": 34, "fontWeight": 500,
+          "color": "#111111", "align": "center",
+          "effects": [{ "kind": "curve", "amount": -40 }]
+        },
+        {
+          "id": "diag-unknown-family",
+          "kind": "text",
+          "name": "no metrics",
+          "x": 60, "y": 400, "width": 880, "height": 90,
+          "text": "Set in a family this build has never measured",
+          "fontFamily": "Gerstner Programm", "fontSize": 38, "fontWeight": 400,
+          "color": "#111111", "align": "left"
+        },
+        {
+          "id": "diag-tiny",
+          "kind": "text",
+          "name": "below the floor",
+          "x": 60, "y": 520, "width": 880, "height": 40,
+          "text": "Legal line set at six pixels",
+          "fontFamily": "Inter", "fontSize": 6, "fontWeight": 400,
+          "color": "#111111", "align": "left"
+        }
+      ]
+    }
+  ]
+}
