@@ -228,31 +228,6 @@ describe('scale: scalars', () => {
     expect(get(after, 't').fontSize).toBe(60);
   });
 
-  it('does not take a font size from the HORIZONTAL factor', () => {
-    /*
-     * DELIBERATELY A DISJUNCTION, because the rule is undecided.
-     *
-     * A font size is one number and a non-uniform scale supplies two, so it is
-     * either the vertical factor sy (a font size is a vertical measure; a
-     * sideways stretch should widen the frame and reflow the text, not enlarge
-     * the glyphs) or the geometric mean sqrt(sx*sy) (it preserves area ratio
-     * and is continuous). Both are defensible and the choice is renderer-wins'
-     * to make.
-     *
-     * What is NOT defensible is sx: taking a vertical measure from the
-     * horizontal factor. This pins that, and nothing else, so the live decision
-     * stays open and a wrong answer still cannot land quietly.
-     */
-    const sx = 4, sy = 1.21;
-    const after = apply(withText(), scale(['t'], { sx, sy, ox: 0, oy: 0 }));
-    const got = get(after, 't').fontSize;
-    const candidates = { sy: 20 * sy, geometricMean: 20 * Math.sqrt(sx * sy) };
-    expect(
-      Object.values(candidates).some(c => Math.abs(got - c) <= 0.011),
-      `fontSize became ${got}; expected the vertical factor (${candidates.sy}) or the geometric mean (${candidates.geometricMean}), not the horizontal factor (${20 * sx})`,
-    ).toBe(true);
-  });
-
   it('floors a font size at 1 and stays reloadable', () => {
     // The schema floors fontSize at 1, so an aggressive shrink would otherwise
     // produce a node that cannot be read back from disk. Intended, not a
@@ -431,16 +406,27 @@ describe('scale: every scalar agrees under a uniform scale', () => {
 
   it('takes a font size from sy and letter spacing from sx under a non-uniform scale', () => {
     /*
-     * The decision, now settled and measured (35efc25). This is the ONE place
-     * it is pinned exactly; the disjunction test above is the permanent guard
-     * that survives the rule changing again, this one is the current answer.
+     * WHY sy AND NOT THE GEOMETRIC MEAN, which was the committed rule until
+     * 35efc25 and is the considered alternative:
      *
-     * Why sy and not the geometric mean: under the mean, a horizontal stretch
-     * enlarges the glyphs AND widens the frame, so the reflow the stretch was
-     * meant to cause partly cancels itself. Under sy a horizontal stretch is
-     * purely a reflow, which is what every design tool does. Browser-measured:
-     * an east drag at sx=1.3548 sy=1.0001 leaves the glyphs at x1.0000, where
-     * the geometric mean predicted x1.1640.
+     * Under the mean, a horizontal stretch enlarges the glyphs AND widens the
+     * frame, so the reflow the stretch was meant to cause partly cancels
+     * itself. Under sy a horizontal stretch is purely a reflow, which is what
+     * every design tool does. The definitional argument -- a font size is a
+     * vertical measure -- is true but weaker; it says what the number is
+     * rather than what the behaviour becomes.
+     *
+     * Browser-measured, with each drag chosen so the two rules predict
+     * different numbers: an east drag at sx=1.3548 sy=1.0001 leaves the glyphs
+     * at x1.0000, where the mean predicted x1.1640; a south drag at sx=1.0002
+     * sy=1.4276 gives x1.4277 against the mean's x1.1949.
+     *
+     * This was written as a DISJUNCTION over both candidate rules while the
+     * decision was open, which was the right instrument then and the wrong one
+     * now: with the rule settled, a revert to the mean is a regression rather
+     * than a revision, and a 16% font-size error on a non-uniform scale is
+     * nobody's idea of eyeball-detectable. Same conversion the earlier
+     * `it.fails` pin earned once its question closed.
      */
     let doc = blank();
     doc = apply(doc, { type: 'addNode', artboardId: AB, node: buildNode({
