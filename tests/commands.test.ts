@@ -47,16 +47,18 @@ function randomNode(rng: () => number): Node {
 /**
  * Keys that exist on the node and are safe to patch (never structural).
  *
- * `x`/`y` are dropped for a group: `apply` refuses them now, because a group's
- * x/y is bounds metadata that no child draws from, and patching it moved the
- * selection handles while every child stayed put. The generator has to stop
- * producing the command that is now correctly rejected -- and `translate`,
- * which replaces it, is generated as its own kind below so the round-trip
- * invariant still covers moving a group.
+ * `x`/`y`/`width`/`height` are all dropped for a group: `apply` refuses them
+ * now, because a group's box is bounds metadata that no child draws from, and
+ * patching it moved or resized the selection handles while every child stayed
+ * put. The generator has to stop producing the command that is now correctly
+ * rejected -- and `translate`, which replaces the x/y half, is generated as its
+ * own kind below so the round-trip invariant still covers moving a group.
+ * Nothing replaces the width/height half yet; scaling a subtree is unbuilt, so
+ * a group's size is simply not generated. Put them back when it lands.
  */
 function patchableKeys(node: any): string[] {
   const common = node.kind === 'group'
-    ? ['width', 'height', 'rotation', 'opacity', 'visible', 'locked', 'name']
+    ? ['rotation', 'opacity', 'visible', 'locked', 'name']
     : ['x', 'y', 'width', 'height', 'rotation', 'opacity', 'visible', 'locked', 'name'];
   const perKind: Record<string, string[]> = {
     rect: ['radius'], ellipse: [], text: ['text', 'fontSize', 'align', 'uppercase'], group: [],

@@ -125,10 +125,22 @@ export function apply(doc: Document, cmd: Command): Document {
       // actually CHANGE the position is refused: the drag commit sends x/y
       // unchanged alongside `rotation`, which a group does honour.
       if ((target as any).kind === 'group') {
-        const moves = (['x', 'y'] as const).filter(k => k in cmd.patch && cmd.patch[k] !== (target as any)[k]);
-        if (moves.length) {
-          throw new InvalidCommandError(
-            `Node "${cmd.nodeId}" is a group, so patching ${moves.map(k => `"${k}"`).join(' and ')} would move its bounds but none of its children. Use a "translate" command instead.`);
+        const changes = (k: 'x' | 'y' | 'width' | 'height') => k in cmd.patch && cmd.patch[k] !== (target as any)[k];
+        const moves = (['x', 'y'] as const).filter(changes);
+        const sizes = (['width', 'height'] as const).filter(changes);
+        // Size is refused for the same reason as position and with no
+        // alternative to offer: there is no command that scales a subtree yet,
+        // because deciding whether font sizes and stroke widths scale with the
+        // box is a design question rather than a bug fix. Refusing says the gap
+        // exists; succeeding says the group was resized, which is a lie the
+        // renderer never repeats. Delete this half when scaling lands.
+        if (moves.length || sizes.length) {
+          const list = (ks: readonly string[]) => ks.map(k => `"${k}"`).join(' and ');
+          const why = [
+            moves.length ? `patching ${list(moves)} would move its bounds but none of its children -- use a "translate" command instead` : '',
+            sizes.length ? `patching ${list(sizes)} would resize its bounds but none of its children, and no command scales a subtree yet` : '',
+          ].filter(Boolean).join('; ');
+          throw new InvalidCommandError(`Node "${cmd.nodeId}" is a group, so ${why}.`);
         }
       }
       return mapNodes(doc, n => (n.id === cmd.nodeId ? patchNode(n, cmd.patch) : n));

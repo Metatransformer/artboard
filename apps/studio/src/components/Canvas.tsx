@@ -274,7 +274,17 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
 
     if (d.mode === 'resize' && d.handle) {
       const h = d.handle;
-      const cmds: Command[] = Object.entries(d.origin).map(([id, b]) => {
+      // A group in the selection is skipped, not resized. Its own handles are
+      // hidden, but a mixed selection still shows the PLAIN node's handles and
+      // `origin` covers everything selected -- so without this the group would
+      // be sent a width/height patch that the command layer now refuses, and
+      // the throw would land mid-gesture on a drag the user aimed at something
+      // else. Leaving the group untouched is also what the screen already
+      // shows, since resizing its box never redrew a child.
+      const cmds: Command[] = Object.entries(d.origin).filter(([id]) => {
+        const n = nodes.find(v => v.id === id) as any;
+        return n && n.kind !== 'group';
+      }).map(([id, b]) => {
         let { x: nx, y: ny, width: nw, height: nh } = b;
         if (h.includes('e')) nw = b.width + dx;
         if (h.includes('s')) nh = b.height + dy;

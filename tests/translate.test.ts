@@ -180,35 +180,45 @@ describe('commands: translate on a real document', () => {
 
 /* ── the same bug, still open, named rather than silent ──────────────────── */
 
-describe('commands: group resize is a known gap', () => {
+describe('commands: group resize is refused, not silently accepted', () => {
   /**
-   * `it.fails` is deliberate: this is executable documentation of a bug that is
-   * still here. It passes while the gap exists and goes RED the moment somebody
-   * fixes it, which forces the pin to be deleted rather than left lying.
+   * This began as an `it.fails` pin on a real gap: `x`/`y` on a group were
+   * refused and `width`/`height` were not, so patching them succeeded, changed
+   * the stored box and moved nothing on screen -- the lying-field bug
+   * `translate` was written to fix, surviving on the other axis of the same
+   * node. Hiding the editor's resize handles closed the UI path but not the
+   * command, which the Inspector, the MCP server and any script can still send.
    *
-   * The gap: `x`/`y` on a group are now refused, but `width`/`height` are not.
-   * Patching them succeeds, changes the stored box, and moves nothing on screen
-   * -- the identical lying-field bug `translate` was written to fix, surviving
-   * on the other axis of the same node. The editor hides a group's resize
-   * handles, which closes the UI path but not the command: the Inspector, the
-   * MCP server and any scripted caller can still issue it.
-   *
-   * EITHER resolution turns this red, and both are legitimate:
-   *   - implement scaling (recurse, scaling children's geometry -- and font
-   *     sizes and stroke widths, which is why it is a design decision), or
-   *   - refuse the patch the way `x`/`y` are refused.
-   * Whoever does one should delete this block.
+   * The guard now covers all four fields, so the pin has flipped from
+   * documenting a gap to protecting the fix. Kept as a live test rather than
+   * deleted, because the assertion was written as "a size change either takes
+   * effect or is refused" and that is true under BOTH resolutions: it passes
+   * today via the refusal, and it will still pass unchanged if scaling a
+   * subtree is ever implemented and the size starts taking effect.
    */
-  it.fails('changing a group’s size neither moves the artwork nor is refused', () => {
+  it('a size change on a group either takes effect or is refused', () => {
     const doc = nested();
     const resize = (): Document =>
       apply(doc, { type: 'updateNode', nodeId: 'outer', patch: { width: 500, height: 400 } });
 
-    // The assertion is what SHOULD be true: a size change either takes effect
-    // or is rejected. Silently accepting it is the bug, so this fails today.
     let refused = false;
     let rendered = svg(doc);
     try { rendered = svg(resize()); } catch { refused = true; }
     expect(refused || rendered !== svg(doc)).toBe(true);
+  });
+
+  it('names the group and the fields, and leaves the document untouched', () => {
+    const doc = nested();
+    const before = svg(doc);
+    expect(() => apply(doc, { type: 'updateNode', nodeId: 'outer', patch: { width: 500 } }))
+      .toThrow(/"outer".*group.*"width"/s);
+    expect(svg(doc)).toBe(before);
+  });
+
+  it('still allows a group to be rotated, renamed and hidden', () => {
+    const doc = nested();
+    for (const patch of [{ rotation: 15 }, { name: 'Logo' }, { opacity: 0.5 }]) {
+      expect(() => apply(doc, { type: 'updateNode', nodeId: 'outer', patch })).not.toThrow();
+    }
   });
 });
