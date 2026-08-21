@@ -102,6 +102,12 @@ if (copy) {
   // came back "6 failed | 8 passed" with 148 tests never collected and not one
   // assertion evaluated -- a bigger number than the 1 a real catch produces,
   // from a mutant that never ran. Read `Tests` as well as `Test Files`.
+  //
+  // `renderer-wins`' tell is sharper than any count and needs no judgement:
+  // A REAL CATCH NAMES AN EXPECTED AND AN ACTUAL; A HARNESS FAILURE NAMES A
+  // MODULE. `AssertionError: expected 24 to be 11` means the code ran and
+  // disagreed. `Error: Failed to load url ./effects` means nothing was
+  // evaluated. Both print as "failed".
   const dir = mkdtempSync(join(tmpdir(), 'artboard-mutant-'));
   cpSync(join(ROOT, 'packages', copy, 'src'), dir, { recursive: true });
   console.log(join(dir, 'index.ts'));
