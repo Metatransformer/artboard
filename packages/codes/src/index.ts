@@ -371,6 +371,16 @@ export function barcodeNode(opts: BarcodeNodeOptions): Node[] {
       // hold vertically, then let letter-spacing make up any shortfall -- that
       // way each digit still lands under its own group when a short, wide
       // barcode forces the type down.
+      //
+      // That 0.6 is the one assumption here. It holds where users actually
+      // are: the studio bundles JetBrains Mono as a woff2 (@font-face in
+      // apps/studio/src/styles.css, weights 300-800, covering the digits), and
+      // the engine lays out from the same bundled metrics, so registration is
+      // exact in the editor and in the single-file demo export. It breaks in
+      // exactly one place -- a raw .svg opened in a viewer that lacks the font,
+      // since the SVG export embeds no @font-face and the family falls back.
+      // That is the scenario to test if these digits ever look off; the digits
+      // drift together, because a uniform shift means a different advance.
       const fromWidth = pitch / 0.6;
       const fontSize = Math.min(fromWidth, textHeight * 0.78);
       const letterSpacing = pitch - fontSize * 0.6;
