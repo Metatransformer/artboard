@@ -69,17 +69,26 @@ const fail = (e: unknown) => {
  * a `z.enum` under a comment promising not to duplicate the union — the comment
  * was right and the code under it was the duplication.
  *
- * Values are `true` only because an object is what `satisfies Record<...>` can
- * check; the keys are the payload.
+ * The value says whether agents may send it. `false` still forces the member to
+ * be listed and considered -- the compile error is the point -- while keeping it
+ * out of the enum, which is how an undo primitive like `replaceNodes` is
+ * excluded without reintroducing a hand-maintained list of exclusions.
  */
 const COMMAND_TYPES = {
   addNode: true, removeNode: true, updateNode: true, reorder: true,
   group: true, ungroup: true, setArtboard: true, translate: true,
-  addAsset: true, batch: true,
-} satisfies Record<Command['type'], true>;
+  scale: true, addAsset: true, batch: true,
+  // Undo capture: replaces whole subtrees with no validation of what goes back,
+  // because what goes back is what was already there. An agent that wants to
+  // change a node has updateNode, translate and scale, all of which check.
+  replaceNodes: false,
+} satisfies Record<Command['type'], boolean>;
+
+const AGENT_COMMANDS = Object.entries(COMMAND_TYPES)
+  .filter(([, allowed]) => allowed).map(([type]) => type) as [Command['type'], ...Command['type'][]];
 
 const CommandInput = z.object({
-  type: z.enum(Object.keys(COMMAND_TYPES) as [Command['type'], ...Command['type'][]]),
+  type: z.enum(AGENT_COMMANDS),
   artboardId: z.string().optional(),
   nodeId: z.string().optional(),
   nodeIds: z.array(z.string()).optional(),
@@ -90,6 +99,10 @@ const CommandInput = z.object({
   to: z.number().optional(),
   dx: z.number().optional(),
   dy: z.number().optional(),
+  sx: z.number().optional(),
+  sy: z.number().optional(),
+  ox: z.number().optional(),
+  oy: z.number().optional(),
 }).passthrough();
 
 export function main(argv: readonly string[]): Promise<void> {
@@ -103,7 +116,7 @@ export function main(argv: readonly string[]): Promise<void> {
       'Artboard documents are declarative JSON: every node has an id, a kind, and an x/y/width/height box in artboard coordinates.',
       'Read with open_document (an outline) or get_node (one node in full); change with edit_document, which takes the same commands the editor uses.',
       'Coordinates are absolute within an artboard, including for a group\'s children. Move things with the "translate" command (dx/dy), which shifts a whole subtree; patching x/y with updateNode moves a group\'s bounds without its children and is refused.',
-      'A group cannot be resized: patching its width/height is refused too, and nothing scales a subtree yet. To make grouped artwork bigger, resize each child. A group CAN be rotated, renamed, hidden and restyled.',
+      'Resize a group with the "scale" command, which multiplies a whole subtree -- positions, sizes, font sizes, stroke widths -- about the fixed point (ox, oy). Patching a group\'s width/height with updateNode is still refused: it would resize the bounds and none of the children. A group CAN be rotated, renamed, hidden and restyled.',
       `Paths are relative to the workspace root: ${ws.root}`,
       readOnly ? 'This server is READ-ONLY: edit_document will refuse.' : '',
     ].filter(Boolean).join('\n') },
@@ -183,6 +196,7 @@ export function main(argv: readonly string[]): Promise<void> {
       '',
       'move                : {"type":"translate","nodeIds":["t1"],"dx":40,"dy":80}',
       'resize/restyle      : {"type":"updateNode","nodeId":"t1","patch":{"width":200}}',
+      'scale a group       : {"type":"scale","nodeIds":["g1"],"sx":1.5,"sy":1.5,"ox":0,"oy":0}',
       'add                 : {"type":"addNode","artboardId":"ab","node":{"kind":"rect","x":0,"y":0,"width":80,"height":40}}',
       'delete              : {"type":"removeNode","artboardId":"ab","nodeId":"r2"}',
       'restack             : {"type":"reorder","artboardId":"ab","nodeId":"r2","to":0}',
@@ -331,6 +345,8 @@ function describeCommand(cmd: any): string {
     case 'group': return `▣ grouped ${cmd.nodeIds.join(', ')} as ${cmd.groupId}`;
     case 'ungroup': return `▢ ungrouped ${cmd.groupId}`;
     case 'translate': return `→ moved ${cmd.nodeIds.join(', ')} by (${cmd.dx}, ${cmd.dy})`;
+    case 'scale': return `⤢ scaled ${cmd.nodeIds.join(', ')} by (${cmd.sx}, ${cmd.sy}) about (${cmd.ox}, ${cmd.oy})`;
+    case 'replaceNodes': return `↺ restored ${cmd.nodes.map((n: { id: string }) => n.id).join(', ')}`;
     case 'setArtboard': return `⬚ artboard ${cmd.artboardId}: ${Object.entries(cmd.patch ?? {}).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(' ')}`;
     case 'batch': return `[${cmd.label}] ${(cmd.commands ?? []).map(describeCommand).join('; ')}`;
     case 'addAsset': return `+ asset ${cmd.asset.id} (${cmd.asset.mime} ${cmd.asset.width}x${cmd.asset.height})`;

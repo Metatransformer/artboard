@@ -21,6 +21,16 @@ interface Drag {
   /** Snap lines to test against, captured once when the drag starts. */
   targets?: Targets;
   /**
+   * The selected subtrees exactly as they were when a resize began.
+   *
+   * `scale` rounds, so applying it once per pointermove would compound the
+   * rounding and the artwork would drift away from the box. Every frame
+   * therefore puts these back and scales the pristine copy by the total
+   * factor, which makes the drag exact at every position rather than only at
+   * the first.
+   */
+  originNodes?: Node[];
+  /**
    * How far the selection has already been translated during this drag.
    * `translate` is relative, so each pointermove sends only the difference
    * from here, and pointerup reverts by exactly this before committing.
@@ -192,6 +202,7 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
         mode: handle === 'rot' ? 'rotate' : 'resize', handle,
         startX: x, startY: y, originPan: state.pan, moved: false, applied: { dx: 0, dy: 0 },
         origin: Object.fromEntries(selected.map(n => [n.id, boxOf(n)])),
+        originNodes: selected.map(n => structuredClone(n as Node)),
       };
       (e.currentTarget as Element).setPointerCapture(e.pointerId);
       return;
@@ -274,26 +285,7 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
 
     if (d.mode === 'resize' && d.handle) {
       const h = d.handle;
-      // A group in the selection is skipped, not resized.
-      //
-      // UNREACHABLE TODAY, and kept deliberately. The original note here said a
-      // mixed selection still shows the plain node's handles, so `origin` could
-      // carry a group into a resize -- that is not true: every handle renders
-      // inside `{single && ...}` in SelectionBox, so a multi-selection shows no
-      // resize handle at all and a single selection of a group shows none
-      // either (`resizable` is false). `origin` in a resize drag can therefore
-      // only ever hold one non-group node, and this filter removes nothing.
-      //
-      // It stays because the command layer now THROWS on a group width/height
-      // patch, which makes "no group reaches here" a correctness requirement
-      // rather than an incidental fact -- anyone enabling multi-select resize
-      // would otherwise land that throw mid-gesture, on a drag the user aimed
-      // at something else. Kept as the guard for that change, not as a fix for
-      // a live bug.
-      const cmds: Command[] = Object.entries(d.origin).filter(([id]) => {
-        const n = nodes.find(v => v.id === id) as any;
-        return n && n.kind !== 'group';
-      }).map(([id, b]) => {
+      const cmds: Command[] = Object.entries(d.origin).flatMap(([id, b]) => {
         let { x: nx, y: ny, width: nw, height: nh } = b;
         if (h.includes('e')) nw = b.width + dx;
         if (h.includes('s')) nh = b.height + dy;
@@ -305,8 +297,9 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
           if (h.includes('n')) ny = b.y + b.height - nh;
           if (h.includes('w')) nx = b.x + b.width - nw;
         }
-        return { type: 'updateNode', nodeId: id,
-          patch: { x: snap(nx, grid), y: snap(ny, grid), width: Math.max(1, snap(nw, grid)), height: Math.max(1, snap(nh, grid)) } };
+        const box = { x: snap(nx, grid), y: snap(ny, grid),
+                      width: Math.max(1, snap(nw, grid)), height: Math.max(1, snap(nh, grid)) };
+        return resizeCommands(nodes.find(v => v.id === id) as Node | undefined, b, box, d.originNodes);
       });
       runTransient({ type: 'batch', label: 'resize', commands: cmds });
     }
@@ -352,14 +345,29 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
     }
 
     if (d.moved && (d.mode === 'resize' || d.mode === 'rotate')) {
-      const cmds: Command[] = Object.entries(d.origin).map(([id, b]) => {
+      // Revert to the origin state, then commit the whole gesture, so history
+      // records exactly one step. A resized GROUP reverts and commits through
+      // `replaceNodes`/`scale` rather than a box patch: its box is bounds
+      // metadata, and `updateNode` refuses to write it precisely because doing
+      // so would move the handles and leave the artwork behind. A ROTATED group
+      // stays on the patch path -- rotation is emitted on the group's wrapper
+      // and does work -- and sends x/y/width/height unchanged, which the guard
+      // allows.
+      const revert: Command[] = [];
+      const cmds: Command[] = [];
+      for (const [id, b] of Object.entries(d.origin)) {
         const now = nodes.find(n => n.id === id) as any;
-        if (!now) return { type: 'batch', label: 'noop', commands: [] } as Command;
-        return { type: 'updateNode', nodeId: id, patch: { x: now.x, y: now.y, width: now.width, height: now.height, rotation: now.rotation } };
-      });
-      // revert to origin, then commit the final state so history records exactly one step
-      const revert: Command = { type: 'batch', label: 'revert', commands: Object.entries(d.origin).map(([id, b]) => ({ type: 'updateNode', nodeId: id, patch: { x: b.x, y: b.y, width: b.width, height: b.height, rotation: b.rotation } })) };
-      runTransient(revert);
+        if (!now) continue;
+        const pristine = (d.originNodes ?? []).filter(n => n.id === id);
+        if (now.kind === 'group' && d.mode === 'resize' && pristine[0]) {
+          revert.push({ type: 'replaceNodes', nodes: pristine });
+          cmds.push(...resizeCommands(pristine[0], b, now));
+        } else {
+          revert.push({ type: 'updateNode', nodeId: id, patch: { x: b.x, y: b.y, width: b.width, height: b.height, rotation: b.rotation } });
+          cmds.push({ type: 'updateNode', nodeId: id, patch: { x: now.x, y: now.y, width: now.width, height: now.height, rotation: now.rotation } });
+        }
+      }
+      runTransient({ type: 'batch', label: 'revert', commands: revert });
       run({ type: 'batch', label: d.mode, commands: cmds });
     }
   };
@@ -546,7 +554,7 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
             {selected.map(n => (
               <SelectionBox key={n.id} box={boxOf(n)} zoom={state.zoom}
                             single={selected.length === 1}
-                            resizable={(n as any).kind !== 'group'} />
+                            />
             ))}
             {guides.map((g, i) => (
               <line key={i}
@@ -592,17 +600,53 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
 }
 
 /**
- * `resizable` is false for a group, and the eight resize handles are hidden.
+ * The commands that resize one node to `box`.
  *
- * Resizing a group would have to scale its whole subtree -- positions, sizes,
- * font sizes, stroke widths -- because `makeGroup` keeps children in artboard
- * space. Nothing does that yet, so the handles used to move the bounds box and
- * leave the artwork untouched: the same silent no-op as the drag bug, wearing
- * the other gesture. Showing a control that cannot do what it advertises is
- * worse than not showing it. The rotate handle stays, because rotation IS
- * emitted on the group's wrapper and does work.
+ * A plain node is its own geometry, so its box is simply patched -- resizing a
+ * text frame must NOT change its font size, which is what dragging a text box's
+ * edge means in every tool.
+ *
+ * A group owns no geometry: its children carry absolute coordinates and the
+ * renderer emits no transform for it, so patching its box moved the handles and
+ * nothing else. It therefore goes through `scale`, which multiplies the whole
+ * subtree -- positions, sizes, font sizes, stroke widths -- about the corner the
+ * drag is pinning.
+ *
+ * The pinned corner is derived rather than looked up from the handle: scaling
+ * about (ox, oy) has to map the node's own x and width onto the new box, and
+ * solving that is one line that stays correct for all eight handles, including
+ * the shift-constrained cases where the fixed point is not the opposite corner
+ * at all.
+ *
+ * `originNodes` is put back first so each frame scales the pristine subtree by
+ * the total factor rather than compounding a rounded one.
  */
-function SelectionBox({ box, zoom, single, resizable }: { box: Box; zoom: number; single: boolean; resizable: boolean }) {
+function resizeCommands(node: Node | undefined, from: Box, box: { x: number; y: number; width: number; height: number }, originNodes?: Node[]): Command[] {
+  if (!node) return [];
+  if ((node as any).kind !== 'group') {
+    return [{ type: 'updateNode', nodeId: node.id, patch: { ...box } }];
+  }
+  if (from.width <= 0 || from.height <= 0) return [];
+  const sx = box.width / from.width, sy = box.height / from.height;
+  const fixed = (nFrom: number, nTo: number, s: number) => (s === 1 ? nFrom : (nTo - nFrom * s) / (1 - s));
+  const pristine = (originNodes ?? []).filter(n => n.id === node.id);
+  return [
+    ...(pristine.length ? [{ type: 'replaceNodes', nodes: pristine } as Command] : []),
+    { type: 'scale', nodeIds: [node.id], sx, sy,
+      ox: fixed(from.x, box.x, sx), oy: fixed(from.y, box.y, sy) },
+  ];
+}
+
+/**
+ * Every selected node gets the eight resize handles and the rotate handle.
+ *
+ * A group's handles were hidden for a while, because resizing one moved the
+ * bounds box and left the artwork untouched -- the same silent no-op as the
+ * drag bug, wearing the other gesture, and a control that cannot do what it
+ * advertises is worse than no control. `scale` makes the gesture real, so they
+ * are back. See `resizeCommands`.
+ */
+function SelectionBox({ box, zoom, single }: { box: Box; zoom: number; single: boolean }) {
   const s = 1 / zoom;
   const hs = 7 * s;
   const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
@@ -618,7 +662,7 @@ function SelectionBox({ box, zoom, single, resizable }: { box: Box; zoom: number
       {single && <>
         <line x1={cx} y1={box.y} x2={cx} y2={box.y - 26 * s} stroke="#4f46e5" strokeWidth={1.5 * s} pointerEvents="none" />
         <circle data-handle="rot" cx={cx} cy={box.y - 26 * s} r={hs} fill="#fff" stroke="#4f46e5" strokeWidth={1.5 * s} style={{ cursor: 'grab' }} />
-        {resizable && handles.map(([h, x, y]) => (
+        {handles.map(([h, x, y]) => (
           <rect key={h} data-handle={h} x={x - hs} y={y - hs} width={hs * 2} height={hs * 2}
                 rx={1.5 * s} fill="#fff" stroke="#4f46e5" strokeWidth={1.5 * s}
                 style={{ cursor: `${h}-resize` }} />

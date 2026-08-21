@@ -67,7 +67,93 @@ export type Command =
    * than harder: a drag reverts with `-dx` instead of having to remember and
    * replay an absolute position per node.
    */
-  | { type: 'translate'; nodeIds: string[]; dx: number; dy: number };
+  | { type: 'translate'; nodeIds: string[]; dx: number; dy: number }
+
+  /**
+   * Scale a subtree about a fixed point, in artboard space.
+   *
+   * The sibling of `translate`, and it exists for the same reason: a group's
+   * width/height is bounds metadata that nothing draws from, so growing the box
+   * grew the handles and left the artwork alone. Resizing has to reach the
+   * leaves.
+   *
+   * `ox`/`oy` is the point that stays put -- the corner opposite the handle
+   * being dragged -- so the gesture the user sees (that corner is pinned, the
+   * rest follows) is the command's own definition rather than something the
+   * caller has to arrange by combining a scale with a move.
+   *
+   * NOT relative-invertible, unlike `translate`. Coordinates round to 2dp, so
+   * scaling by 2 and then by 0.5 does not land back where it started; `invert`
+   * captures the subtree instead. See `replaceNodes`.
+   */
+  | { type: 'scale'; nodeIds: string[]; sx: number; sy: number; ox: number; oy: number }
+
+  /**
+   * Put these exact subtrees back, matched by id at any depth.
+   *
+   * The undo capture for commands that rewrite a subtree in a way arithmetic
+   * cannot reverse. It is deliberately dumb -- no merging, no patching, just
+   * "this is what those nodes were" -- because a lossy inverse is worse than a
+   * verbose one, and this is the same idiom `removeNode` already uses when it
+   * inverts to an `addNode` carrying the whole node back.
+   *
+   * Not offered to the MCP server: it is an undo primitive, and an agent that
+   * wants to change a node has `updateNode`, `translate` and `scale`, all of
+   * which validate what they are asked to do.
+   */
+  | { type: 'replaceNodes'; nodes: Node[] };
+
+/**
+ * Scale one subtree about (ox, oy).
+ *
+ * `k` is the factor for lengths that are a single number when the scale is not
+ * uniform -- font size, corner radius, stroke width, blur. A box has an x and a
+ * y factor; a font size has one, and there is no honest way to give it two. `k`
+ * is the geometric mean, which is the only choice with all three properties
+ * that matter here: it equals sx exactly when the scale IS uniform (the common
+ * case, so the common case is exact rather than approximated), it preserves
+ * area ratio, and it is continuous, so dragging a side handle does not make
+ * text jump the moment the drag stops being square.
+ *
+ * Not scaled, deliberately: `rotation` is an angle, `lineHeight` is a multiple
+ * of the font size and so scales with it already, and a path's `d`/`viewBox`
+ * and an image's `frameD`/`frameBox` live in their own coordinate space that
+ * the node's width/height already maps onto the artboard.
+ */
+function scaleEffect(e: any, sx: number, sy: number, k: number): any {
+  switch (e?.kind) {
+    case 'shadow': return { ...e, x: round(e.x * sx), y: round(e.y * sy), blur: round(e.blur * k), spread: round(e.spread * k) };
+    case 'glow': return { ...e, blur: round(e.blur * k) };
+    case 'blur': return { ...e, radius: round(e.radius * k) };
+    case 'outline': return { ...e, width: round(e.width * k) };
+    case 'echo': return { ...e, dx: round(e.dx * sx), dy: round(e.dy * sy) };
+    case 'background': return { ...e, padding: round(e.padding * k), radius: round(e.radius * k) };
+    // curve, adjust, duotone and vignette are proportions and colours, with no
+    // length among them. Listed here rather than defaulted silently so the next
+    // effect with a size in it has to make a decision.
+    default: return e;
+  }
+}
+
+function scaleSubtree(n: Node, sx: number, sy: number, ox: number, oy: number, k: number): Node {
+  const a: any = { ...(n as any) };
+  a.x = round(ox + (a.x - ox) * sx);
+  a.y = round(oy + (a.y - oy) * sy);
+  a.width = round(Math.max(0, a.width * sx));
+  a.height = round(Math.max(0, a.height * sy));
+  if (a.shadow) a.shadow = { ...a.shadow, x: round(a.shadow.x * sx), y: round(a.shadow.y * sy), blur: round(a.shadow.blur * k) };
+  if (a.stroke) a.stroke = { ...a.stroke, width: round(a.stroke.width * k), dash: (a.stroke.dash ?? []).map((d: number) => round(d * k)) };
+  if (typeof a.radius === 'number') a.radius = round(a.radius * k);
+  if (a.kind === 'text') {
+    // The schema floors fontSize at 1, so an aggressive shrink would otherwise
+    // produce a node that cannot be re-read from disk.
+    a.fontSize = Math.max(1, round(a.fontSize * k));
+    a.letterSpacing = round(a.letterSpacing * k);
+  }
+  if (a.effects?.length) a.effects = a.effects.map((e: any) => scaleEffect(e, sx, sy, k));
+  if (a.kind === 'group') a.children = ((a.children ?? []) as Node[]).map(c => scaleSubtree(c, sx, sy, ox, oy, k));
+  return a as Node;
+}
 
 export function apply(doc: Document, cmd: Command): Document {
   switch (cmd.type) {
@@ -243,6 +329,38 @@ export function apply(doc: Document, cmd: Command): Document {
       return { ...doc, artboards: doc.artboards.map(ab => ({ ...ab, nodes: rec(ab.nodes as Node[]) })) };
     }
 
+    case 'scale': {
+      for (const id of cmd.nodeIds) if (!findAny(doc, id)) throw new StaleCommandError(id);
+      if (![cmd.sx, cmd.sy, cmd.ox, cmd.oy].every(Number.isFinite) || cmd.sx <= 0 || cmd.sy <= 0) {
+        throw new InvalidCommandError(
+          `scale needs finite positive factors about a finite origin; got sx=${cmd.sx}, sy=${cmd.sy}, origin=(${cmd.ox}, ${cmd.oy}). Mirroring is flipX/flipY, not a negative scale.`);
+      }
+      if (cmd.sx === 1 && cmd.sy === 1) return doc;
+      const k = Math.sqrt(cmd.sx * cmd.sy);
+      // Same subtree-stop walk as `translate`, and for the same reason:
+      // selecting a group AND one of its children must not scale that child
+      // twice, which would compound rather than double.
+      const wanted = new Set(cmd.nodeIds);
+      const rec = (nodes: Node[]): Node[] => nodes.map(n => {
+        if (wanted.has(n.id)) return scaleSubtree(n, cmd.sx, cmd.sy, cmd.ox, cmd.oy, k);
+        if ((n as any).kind === 'group') return { ...(n as any), children: rec(((n as any).children ?? []) as Node[]) };
+        return n;
+      });
+      return { ...doc, artboards: doc.artboards.map(ab => ({ ...ab, nodes: rec(ab.nodes as Node[]) })) };
+    }
+
+    case 'replaceNodes': {
+      const byId = new Map(cmd.nodes.map(n => [n.id, n]));
+      for (const id of byId.keys()) if (!findAny(doc, id)) throw new StaleCommandError(id);
+      const rec = (nodes: Node[]): Node[] => nodes.map(n => {
+        const replacement = byId.get(n.id);
+        if (replacement) return replacement;
+        if ((n as any).kind === 'group') return { ...(n as any), children: rec(((n as any).children ?? []) as Node[]) };
+        return n;
+      });
+      return { ...doc, artboards: doc.artboards.map(ab => ({ ...ab, nodes: rec(ab.nodes as Node[]) })) };
+    }
+
     case 'addAsset':
       return { ...doc, assets: { ...doc.assets, [cmd.asset.id]: cmd.asset } };
 
@@ -353,6 +471,21 @@ export function invert(doc: Document, cmd: Command): Command {
       // out of the reducer.
       for (const id of cmd.nodeIds) if (!findAny(doc, id)) throw new StaleCommandError(id);
       return { type: 'translate', nodeIds: cmd.nodeIds, dx: -cmd.dx, dy: -cmd.dy };
+    }
+
+    case 'scale':
+    case 'replaceNodes': {
+      // Captured, not computed. Scaling rounds to 2dp, so the reciprocal scale
+      // does not land back on the original numbers -- undo has to carry the
+      // subtree it is going to put back. `replaceNodes` inverts the same way,
+      // which makes undo/redo of a resize symmetrical.
+      const ids = cmd.type === 'scale' ? cmd.nodeIds : cmd.nodes.map(n => n.id);
+      const nodes = ids.map(id => {
+        const n = findAny(doc, id);
+        if (!n) throw new StaleCommandError(id);
+        return n as Node;
+      });
+      return { type: 'replaceNodes', nodes };
     }
 
     case 'addAsset':
