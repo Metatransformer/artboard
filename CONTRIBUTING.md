@@ -424,6 +424,16 @@ something observable?**
    skip the fencing too, and whoever reopens the question next inherits neither
    a pin nor a reason.
 
+   Those two are not the same kind of fence, which is worth knowing before you
+   write one. Restore the deleted rule verbatim and run the suite: `:462` stays
+   green and `:433` goes red. `:462` constrains the design without taking a
+   side — stack placement writes y, so no y rule can reach it, and it survives
+   the question reopening. `:433` is a change-detector, and deliberately: it
+   fails at exactly the 860 its own inline control computes, so whoever reopens
+   valign gets both numbers and the 110px delta in one block instead of a bare
+   assertion. Prefer the first kind. Write the second when the failure can brief
+   the person who causes it.
+
 2. **Yes, and it is already decided correctly.** The stretch-stack guard was
    right, and the test written for it was never going to fail. Write it anyway:
    stating the mechanism out loud is what exposed a comment beside it claiming
