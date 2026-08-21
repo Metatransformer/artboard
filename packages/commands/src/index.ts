@@ -233,6 +233,13 @@ export function apply(doc: Document, cmd: Command): Document {
 
     case 'addAsset':
       return { ...doc, assets: { ...doc.assets, [cmd.asset.id]: cmd.asset } };
+
+    // Unreachable for typed callers, and that is exactly the risk: without it a
+    // union member added here but missed below falls off the end and returns
+    // `undefined`, which every caller assigns straight back over its document.
+    // A missing case must be loud at the moment it is introduced.
+    default:
+      throw new InvalidCommandError(`apply: unhandled command type "${(cmd as Command).type}".`);
   }
 }
 
@@ -338,6 +345,12 @@ export function invert(doc: Document, cmd: Command): Command {
 
     case 'addAsset':
       return { type: 'batch', label: 'noop', commands: [] };
+
+    // See `apply`. A missed case here is worse: `invert` returning `undefined`
+    // pushes a non-command onto the undo stack, so the failure surfaces on a
+    // later ctrl-Z rather than on the edit that caused it.
+    default:
+      throw new InvalidCommandError(`invert: unhandled command type "${(cmd as Command).type}".`);
   }
 }
 
