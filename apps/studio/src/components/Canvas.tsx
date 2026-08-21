@@ -487,6 +487,27 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
         return;
       }
 
+      /* Text style toggles. There is deliberately no Cmd+B: weight is a select
+         of many values here, not a boolean, so "bold" would have to invent a
+         weight to come back to and would silently discard a 300 or 500 the
+         user chose. Underline and italic are booleans, so they map exactly. */
+      if (meta && (key === 'u' || key === 'i')) {
+        // Claimed whether or not it applies: letting Cmd+U fall through to the
+        // browser's view-source in a design tool is a worse surprise than a
+        // keystroke that does nothing.
+        e.preventDefault();
+        const texts = selected.filter(n => (n as any).kind === 'text');
+        if (!texts.length || !mutable()) return;
+        const field = key === 'u' ? 'underline' : 'italic';
+        /* A mixed selection turns ON rather than inverting each node, which is
+           what every other editor does: the shortcut reads as "underline this",
+           not "swap whatever each one happens to be". */
+        const on = !texts.every(n => (n as any)[field]);
+        run({ type: 'batch', label: field,
+              commands: texts.map(n => ({ type: 'updateNode', nodeId: n.id, patch: { [field]: on } })) });
+        return;
+      }
+
       if ((e.key === 'Delete' || e.key === 'Backspace') && selected.length) {
         e.preventDefault();
         if (!mutable()) return;
