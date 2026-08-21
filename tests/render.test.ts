@@ -646,10 +646,14 @@ describe('render: curved text', () => {
   });
 
   it('warns CURVE_NO_RULES rather than drawing a rule that ignores the arc', () => {
-    // The golden oracle is structurally blind to this one: a diagnostic is not
-    // in the SVG, so no baseline can hold it and no re-bake can notice it going
-    // missing. `effects.json` does carry curved text, but with neither rule
-    // set, so the branch had no coverage of any kind.
+    // `effects.json` carries curved text but sets neither rule, so this branch
+    // had no coverage of any kind while its sibling CURVE_SINGLE_LINE did.
+    //
+    // The golden oracle COULD hold it -- `golden` writes a .diag baseline
+    // beside the .svg and reports "diagnostics drifted" when one disappears.
+    // But no fixture in the corpus emits any diagnostic at all (zero .diag
+    // files across 29 fixtures), so that half of the oracle has never fired.
+    // Asserting it here does not wait on a fixture being added.
     const doc = docWith([{ id: 't', kind: 'text', x: 0, y: 0, width: 400, height: 100,
       text: 'Arched', fontSize: 20, underline: true,
       effects: [{ kind: 'curve', amount: 60 }] }]);
