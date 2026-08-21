@@ -205,6 +205,41 @@ export function aabb(b: Box): { x: number; y: number; width: number; height: num
   return { x: minX, y: minY, width: Math.max(...xs) - minX, height: Math.max(...ys) - minY };
 }
 
+/**
+ * The box a node actually occupies, which for a group is NOT the box it stores.
+ *
+ * A group owns no geometry of its own: its children carry absolute coordinates
+ * and every renderer emits no transform for it. The stored x/y/width/height is
+ * a cache written once, at creation, that no writer refreshes -- move a child
+ * and the group still reports the box it had the day it was made.
+ *
+ * Everywhere that box is only drawn, a stale value is a cosmetic lie. Where it
+ * is the rotation PIVOT it is a wrong pixel in the exported file, and where it
+ * is the selection rectangle it is a control pointing at the wrong place. So
+ * nobody reads the stored value: they ask here.
+ *
+ * Rotation is honoured per child, so a rotated child widens the box exactly as
+ * it does on screen, and a nested group contributes its own DERIVED box widened
+ * by its OWN rotation. Pushing a nested derived box unrotated is the easy
+ * mistake and it is silently close -- it only shows up once something several
+ * levels down is turned.
+ *
+ * An empty group falls back to its stored box: there is nothing to derive from,
+ * and the stored value is at least what the editor last showed.
+ */
+export function nodeBox(node: unknown): { x: number; y: number; width: number; height: number } {
+  const n = node as any;
+  if (n.kind !== 'group') return { x: n.x, y: n.y, width: n.width, height: n.height };
+  const boxes: { x: number; y: number; width: number; height: number }[] = [];
+  for (const c of (n.children ?? []) as any[]) {
+    const b = nodeBox(c);
+    boxes.push(aabb({ x: b.x, y: b.y, width: b.width, height: b.height, rotation: c.rotation ?? 0 }));
+  }
+  if (!boxes.length) return { x: n.x, y: n.y, width: n.width, height: n.height };
+  const x = Math.min(...boxes.map(b => b.x)), y = Math.min(...boxes.map(b => b.y));
+  return { x, y, width: Math.max(...boxes.map(b => b.x + b.width)) - x, height: Math.max(...boxes.map(b => b.y + b.height)) - y };
+}
+
 /** Point-in-node test in artboard space, accounting for rotation. */
 export function hitTest(b: Box, px: number, py: number): boolean {
   const cx = b.x + b.width / 2, cy = b.y + b.height / 2;

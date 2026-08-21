@@ -1,4 +1,5 @@
 import React from 'react';
+import { nodeBox, round } from '@artboard/engine';
 import { useEditor } from '../state/store';
 import { EffectsPanel } from './EffectsPanel';
 import { ArrangePanel } from './ArrangePanel';
@@ -25,7 +26,11 @@ export function Inspector() {
    * node alike.
    */
   const moveTo = (axis: 'x' | 'y', value: number) => {
-    const delta = value - (n[axis] as number);
+    // Delta from the DERIVED edge. A group's stored x is a cache written at
+    // creation, so subtracting it moved the subtree by the staleness instead
+    // of to the number typed -- the field read 120, you typed 120, and the
+    // artwork jumped.
+    const delta = value - nodeBox(n)[axis];
     if (delta === 0) return;
     run({
       type: 'translate',
@@ -33,6 +38,28 @@ export function Inspector() {
       dx: axis === 'x' ? delta : 0,
       dy: axis === 'y' ? delta : 0,
     });
+  };
+
+  /**
+   * W and H are shown as the box the artwork occupies and applied as a SCALE
+   * for a group, for the same reason the canvas resize handle does: a group
+   * owns no geometry, so patching its width wrote a field that nothing reads
+   * and nothing drew -- a control that silently did nothing at all.
+   *
+   * The top-left is pinned, so typing a width grows to the right, which is what
+   * every tool does with a numeric size field. A group holding a rotated child
+   * cannot be stretched on one axis -- the command refuses and says why in a
+   * toast, which is a worse outcome than success and a much better one than a
+   * field that quietly ignores you.
+   */
+  const sizeTo = (axis: 'width' | 'height', value: number) => {
+    if (n.kind !== 'group') { patch({ [axis]: Math.max(axis === 'width' ? 1 : 0, value) }); return; }
+    const from = nodeBox(n);
+    if (from.width <= 0 || from.height <= 0) return;
+    const s = Math.max(0.01, value) / from[axis];
+    if (!Number.isFinite(s) || s <= 0 || s === 1) return;
+    run({ type: 'scale', nodeIds: [n.id],
+      sx: axis === 'width' ? s : 1, sy: axis === 'height' ? s : 1, ox: from.x, oy: from.y });
   };
 
   if (!n) {
@@ -66,16 +93,19 @@ export function Inspector() {
   }
 
   const multi = selected.length > 1;
+  // Every geometry field reads this, never n.x/n.width. For a plain node the
+  // two are the same object; for a group the stored one is a stale cache.
+  const box = nodeBox(n);
   return (
     <div className="props">
       <Section title={multi ? `${selected.length} selected` : (n.name || n.kind)}>
         <Row label="Position">
-          <Num value={n.x} onChange={v => moveTo('x', v)} prefix="X" />
-          <Num value={n.y} onChange={v => moveTo('y', v)} prefix="Y" />
+          <Num value={round(box.x)} onChange={v => moveTo('x', v)} prefix="X" />
+          <Num value={round(box.y)} onChange={v => moveTo('y', v)} prefix="Y" />
         </Row>
         <Row label="Size">
-          <Num value={n.width} onChange={v => patch({ width: Math.max(1, v) })} prefix="W" />
-          <Num value={n.height} onChange={v => patch({ height: Math.max(0, v) })} prefix="H" />
+          <Num value={round(box.width)} onChange={v => sizeTo('width', v)} prefix="W" />
+          <Num value={round(box.height)} onChange={v => sizeTo('height', v)} prefix="H" />
         </Row>
         <Row label="Rotate">
           <Num value={n.rotation ?? 0} onChange={v => patch({ rotation: v })} suffix="deg" />

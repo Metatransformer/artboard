@@ -1,5 +1,5 @@
 import React from 'react';
-import { aabb, round } from '@artboard/engine';
+import { aabb, nodeBox, round } from '@artboard/engine';
 import { uid, type Command } from '@artboard/commands';
 import type { Node } from '@artboard/schema';
 import { useEditor } from '../state/store';
@@ -21,9 +21,13 @@ import { useEditor } from '../state/store';
 type Rect = { x: number; y: number; width: number; height: number };
 type Axis = 'x' | 'y';
 
+// `nodeBox` first, so aligning a group aligns where its artwork actually is
+// rather than where its stored box says it was when it was created. Align and
+// distribute both compute offsets from these rects and then translate by the
+// difference, so a stale box moved the subtree by exactly the staleness.
 const boxOf = (n: Node): Rect => {
-  const a = n as any;
-  return aabb({ x: a.x, y: a.y, width: a.width, height: a.height, rotation: a.rotation ?? 0 });
+  const b = nodeBox(n);
+  return aabb({ ...b, rotation: (n as any).rotation ?? 0 });
 };
 
 const union = (rs: Rect[]): Rect => {

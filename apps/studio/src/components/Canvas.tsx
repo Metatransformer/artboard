@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { renderArtboard } from '@artboard/render-svg';
-import { hitTest, snap, type Box } from '@artboard/engine';
+import { hitTest, nodeBox, snap, type Box } from '@artboard/engine';
 import type { Node } from '@artboard/schema';
 import { uid, unscalableDescendant, type Command } from '@artboard/commands';
 import { Scene } from '../lib/scene';
@@ -138,7 +138,15 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
     return { x: (clientX - r.left) / state.zoom, y: (clientY - r.top) / state.zoom };
   }, [state.zoom]);
 
-  const boxOf = (n: Node): Box => ({ x: (n as any).x, y: (n as any).y, width: (n as any).width, height: (n as any).height, rotation: (n as any).rotation ?? 0 });
+  // Derived, not stored. A group's stored box is a cache written at creation
+  // that nothing invalidates, so reading it put the selection rectangle, the
+  // eight handles, the hit test and the marquee all around a box the artwork
+  // had already left. `nodeBox` is the same derivation the renderer uses for
+  // the rotation pivot, which is why the handles and the exported file now
+  // agree about where a group is. Rotation stays the node's own: a group's
+  // children are already widened into the derived box, and rotating that box
+  // again would double-count.
+  const boxOf = (n: Node): Box => ({ ...nodeBox(n), rotation: (n as any).rotation ?? 0 });
 
   const pickAt = (ax: number, ay: number): Node | null => {
     for (let i = nodes.length - 1; i >= 0; i--) {
