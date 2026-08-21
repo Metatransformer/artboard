@@ -272,17 +272,19 @@ export function apply(doc: Document, cmd: Command): Document {
           k in cmd.patch && round(Number(cmd.patch[k])) !== round(Number((target as any)[k]));
         const moves = (['x', 'y'] as const).filter(changes);
         const sizes = (['width', 'height'] as const).filter(changes);
-        // Size is refused for the same reason as position and with no
-        // alternative to offer: there is no command that scales a subtree yet,
-        // because deciding whether font sizes and stroke widths scale with the
-        // box is a design question rather than a bug fix. Refusing says the gap
-        // exists; succeeding says the group was resized, which is a lie the
-        // renderer never repeats. Delete this half when scaling lands.
+        // Size is refused for the same reason as position, and now with an
+        // alternative to offer: `scale` multiplies the whole subtree about a
+        // pinned origin, so the message names it rather than reporting a gap
+        // that has since been filled. This half said "no command scales a
+        // subtree yet" for as long as that was true and for one commit longer,
+        // which is how a correct guard turns into a wrong signpost -- the
+        // refusal keeps working and the sentence quietly stops being about
+        // the code. Flagged by the `renderer-wins` session, whose guard it is.
         if (moves.length || sizes.length) {
           const list = (ks: readonly string[]) => ks.map(k => `"${k}"`).join(' and ');
           const why = [
             moves.length ? `patching ${list(moves)} would move its bounds but none of its children -- use a "translate" command instead` : '',
-            sizes.length ? `patching ${list(sizes)} would resize its bounds but none of its children, and no command scales a subtree yet` : '',
+            sizes.length ? `patching ${list(sizes)} would resize its bounds but none of its children -- use a "scale" command instead` : '',
           ].filter(Boolean).join('; ');
           throw new InvalidCommandError(`Node "${cmd.nodeId}" is a group, so ${why}.`);
         }

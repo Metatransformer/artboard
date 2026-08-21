@@ -149,6 +149,13 @@ at WCAG AA — those are the bulk of what this project can say about a document,
 until they landed here the only thing that ever ran them was a human typing `artboard
 check`. Error-level diagnostics never reach the sidecar; they already fail the case.
 
+**That last part couples the render oracle to `@artboard/diagnostics`, on purpose.** Move
+a contrast threshold and every affected golden goes red. This is the intended behaviour —
+an advisory change is exactly the kind that otherwise ships unnoticed — but it is written
+down here so that nobody meets it for the first time while wondering why 13 baselines
+went red on a commit that touched no renderer. Re-bake and read the diff like any other:
+the `.diag` diff *is* the review of the threshold change.
+
 This is the project's oracle. It exists because a rendering regression does not throw,
 does not fail a type check, and does not look wrong in a unit test that only asserts
 "an element was produced". It looks wrong in the artwork, six weeks later.

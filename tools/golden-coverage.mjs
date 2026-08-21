@@ -322,8 +322,13 @@ if (thin.length) {
   const all = [...new Set([...declared.keys(), ...emitted.keys()])].sort();
   const w = Math.max(...all.map((c) => c.length), 20);
   console.log(`\nDIAGNOSTIC CODES  ${[...emitted.keys()].length}/${all.length} provoked by some fixture`);
-  console.log('A code no fixture provokes is a message nobody has ever read back. It');
-  console.log('can be deleted, reworded, or broken and every oracle here stays green.');
+  console.log('Fixture reach, NOT a to-do list -- same reading as the section above. A');
+  console.log('code here with no fixture is usually asserted by a unit test: six of the');
+  console.log('seven renderer/schema/engine codes were, when this was measured. What a');
+  console.log('fixture adds over a unit test is that a diagnostic vanishing from a real');
+  console.log('document is caught by whoever runs `golden`, not by whoever remembers to');
+  console.log('read render.test.ts. Worth having for one or two codes, not for all of');
+  console.log('them. Check what else covers a line before writing a fixture for it.');
   for (const code of all) {
     const fx = emitted.get(code);
     const inSrc = declared.has(code);
