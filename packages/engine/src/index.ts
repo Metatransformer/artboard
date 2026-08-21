@@ -240,6 +240,123 @@ export function nodeBox(node: unknown): { x: number; y: number; width: number; h
   return { x, y, width: Math.max(...boxes.map(b => b.x + b.width)) - x, height: Math.max(...boxes.map(b => b.y + b.height)) - y };
 }
 
+/* ── magic resize: anchoring ────────────────────────────────────────────────
+ *
+ * Reflowing a design into another aspect ratio is marketed as AI and is not.
+ * It is a rules table, and the whole of the judgement lives in one step:
+ * deciding what each node was BOUND to in the frame it was laid out in. Get
+ * that right and the rest is arithmetic.
+ *
+ * These are pure box functions -- no Node, no Document, no recursion -- so the
+ * classifier can be tested against nothing but numbers, and a caller can apply
+ * the result to a leaf, a group or a whole subtree however it needs to.
+ *
+ * The failure mode worth designing against: a classifier that answers `centre`
+ * for everything is invisible to any test that only asks whether nodes are
+ * still on the page. What catches it is asserting the RELATIONSHIP survives --
+ * a left-bound node stays left-bound at any target size -- rather than
+ * asserting coordinates, which pin one aspect ratio and certify nothing about
+ * the 9:16 case the feature exists for.
+ * ------------------------------------------------------------------------- */
+
+export type AnchorX = 'left' | 'centre' | 'right' | 'stretch';
+export type AnchorY = 'top' | 'middle' | 'bottom' | 'stretch';
+export interface Anchors { x: AnchorX; y: AnchorY }
+
+/** Spans this much of an axis or more and it is treated as full-bleed. */
+const STRETCH_SPAN = 0.9;
+/** Margins this close to equal, as a fraction of the frame, read as centred. */
+const CENTRE_BAND = 0.08;
+
+/*
+ * Classified from the two MARGINS, not from absolute distance to an edge.
+ *
+ * The first cut used bands -- centred if the box's centre sat within 6% of the
+ * frame's centre, edge-bound if within 8% of an edge, centre otherwise -- and
+ * on the first real design it classified all ten nodes `centre/middle`. A
+ * kicker 100px down a 1080 frame is 9.3% from the top, so it missed the edge
+ * band, was nowhere near the centre band, and fell through the "open field"
+ * fallback to centre. Every band-based rule has that hole, and it is invisible
+ * to any test that only asks whether nodes are still on the page: a classifier
+ * answering one constant passes them all.
+ *
+ * Comparing the margins has no hole. Either they are close, in which case the
+ * node is centred at any size, or one is smaller, in which case that is the
+ * edge it was laid out against. Nothing falls between, and no threshold
+ * decides whether a node is anchored at all -- only WHICH way.
+ */
+function axisAnchor(start: number, extent: number, frame: number): 'start' | 'centre' | 'end' | 'stretch' {
+  if (frame <= 0) return 'start';
+  if (extent / frame >= STRETCH_SPAN) return 'stretch';
+  const before = start, after = frame - (start + extent);
+  if (Math.abs(before - after) <= CENTRE_BAND * frame) return 'centre';
+  return before < after ? 'start' : 'end';
+}
+
+/** Which edges a box is bound to, inferred from where it sits in its frame. */
+export function classifyAnchors(
+  box: { x: number; y: number; width: number; height: number },
+  frame: { width: number; height: number },
+): Anchors {
+  const ax = axisAnchor(box.x, box.width, frame.width);
+  const ay = axisAnchor(box.y, box.height, frame.height);
+  return {
+    x: ax === 'start' ? 'left' : ax === 'end' ? 'right' : ax === 'stretch' ? 'stretch' : 'centre',
+    y: ay === 'start' ? 'top' : ay === 'end' ? 'bottom' : ay === 'stretch' ? 'stretch' : 'middle',
+  };
+}
+
+/**
+ * The uniform factor sizes take. Positions do NOT use it -- they resolve by
+ * anchor -- because scaling a position by k is what turns a 1:1 into a 9:16 by
+ * leaving everything in the top square, which is the bug this feature is for.
+ */
+export function resizeFactor(from: { width: number; height: number }, to: { width: number; height: number }): number {
+  if (from.width <= 0 || from.height <= 0) return 1;
+  return Math.min(to.width / from.width, to.height / from.height);
+}
+
+/** The box a node should occupy in the new frame. */
+export function reanchor(
+  box: { x: number; y: number; width: number; height: number },
+  anchors: Anchors,
+  from: { width: number; height: number },
+  to: { width: number; height: number },
+): { x: number; y: number; width: number; height: number } {
+  const k = resizeFactor(from, to);
+  const rx = from.width > 0 ? to.width / from.width : 1;
+  const ry = from.height > 0 ? to.height / from.height : 1;
+
+  const axis = (
+    start: number, extent: number, fromLen: number, toLen: number,
+    ratio: number, anchor: 'start' | 'centre' | 'end' | 'stretch',
+  ): [number, number] => {
+    // A stretch axis takes its own ratio, not k: a full-bleed banner that
+    // stopped being full-bleed is the one outcome nobody reads as correct.
+    if (anchor === 'stretch') return [round(start * ratio), round(extent * ratio)];
+    const size = round(extent * k);
+    if (anchor === 'centre') {
+      // The CENTRE's fraction of the frame is preserved, not the origin's.
+      // Preserving the origin drifts anything off-centre toward the near edge
+      // as the frame grows, and the drift is proportional to the node's own
+      // width, so wide elements skew more than narrow ones in the same design.
+      const centre = (start + extent / 2) / fromLen * toLen;
+      return [round(centre - size / 2), size];
+    }
+    // Margin from the anchored edge, scaled by that axis's ratio. Clamped so a
+    // large shrink cannot push a node off the far side of its own frame.
+    if (anchor === 'start') return [round(Math.min(start * ratio, Math.max(0, toLen - size))), size];
+    const margin = fromLen - (start + extent);
+    return [round(Math.max(0, toLen - margin * ratio - size)), size];
+  };
+
+  const ax = anchors.x === 'left' ? 'start' : anchors.x === 'right' ? 'end' : anchors.x === 'stretch' ? 'stretch' : 'centre';
+  const ay = anchors.y === 'top' ? 'start' : anchors.y === 'bottom' ? 'end' : anchors.y === 'stretch' ? 'stretch' : 'centre';
+  const [x, width] = axis(box.x, box.width, from.width, to.width, rx, ax);
+  const [y, height] = axis(box.y, box.height, from.height, to.height, ry, ay);
+  return { x, y, width, height };
+}
+
 /** Point-in-node test in artboard space, accounting for rotation. */
 export function hitTest(b: Box, px: number, py: number): boolean {
   const cx = b.x + b.width / 2, cy = b.y + b.height / 2;

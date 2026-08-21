@@ -1024,6 +1024,36 @@ it is entirely tractable here. The algorithm that reproduces ~90 % of the observ
 Only step 1 involves judgement, and a rules table beats a model at it. Effort `L`, priority P1,
 and it makes the tool feel far more capable than the code justifies.
 
+**Geometry shipped** as `engine.classifyAnchors` / `engine.reanchor` / `engine.resizeFactor` — pure
+box functions, no `Node` and no `Document`, so the classifier is testable against nothing but
+numbers. Two corrections to step 1 as written above, both found by running it rather than reading it:
+
+- **Classify from the two margins, not from bands.** The literal reading — edge-bound within ~8% of
+  the dimension, centred within a tolerance, otherwise fall back — classified all ten nodes of
+  `social-editorial-quote` as `centre/middle`. A kicker 100px down a 1080 frame is 9.3% from the
+  top: outside the edge band, nowhere near the centre band, and swallowed by the fallback. Every
+  band rule has that hole. Comparing `before` and `after` margins has none — either they are close
+  (centred) or one is smaller (that edge), with no third case and no threshold deciding *whether* a
+  node is anchored, only which way. After the change the same design reads header-top,
+  signature-block bottom-left, mark bottom-right, and `deck-stat-trio` classifies its three columns
+  left / centre / right with its topbar `stretch/top`.
+- **A degenerate classifier is invisible to the obvious test.** One returning `centre` for
+  everything passes any assertion that nodes are still on the page. What catches it is asserting the
+  *relationship* survives — a left-bound node stays left-bound at any target size — which holds
+  under every k and fails loudly on a bad threshold, where coordinate assertions pin one aspect
+  ratio and certify nothing about the 9:16 case the feature exists for.
+
+**Known limitation, and it is inherent rather than a bug:** elements that belong together but are
+not grouped drift apart, because each anchors independently and the growth lands in the gap between
+them. In `social-editorial-quote` the name and role separate; in `deck-stat-trio` each column's
+rule, value and label spread out. Step 5 is the mitigation and it already works — a group resolves
+against its own derived bounds and moves as one unit — so the guidance is that tightly-related
+elements should be grouped. Worth stating in the UI when the command lands, not discovered.
+
+**What naive resize actually costs**, measured on `deck-stat-trio` at 1920×1080 → 1080×1920: it does
+not merely leave dead space, it **crops the third column off the page entirely**. Content loss, not
+just bad composition.
+
 ## Fonts: the one hard dependency
 
 Half of § B and all of § C rest on the same unsolved problem: `packages/engine`'s `metricMeasurer`
