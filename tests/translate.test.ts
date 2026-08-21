@@ -177,3 +177,38 @@ describe('commands: translate on a real document', () => {
     expect(svg(apply(moved, invert(doc, cmd)))).toBe(svg(doc));
   });
 });
+
+/* ── the same bug, still open, named rather than silent ──────────────────── */
+
+describe('commands: group resize is a known gap', () => {
+  /**
+   * `it.fails` is deliberate: this is executable documentation of a bug that is
+   * still here. It passes while the gap exists and goes RED the moment somebody
+   * fixes it, which forces the pin to be deleted rather than left lying.
+   *
+   * The gap: `x`/`y` on a group are now refused, but `width`/`height` are not.
+   * Patching them succeeds, changes the stored box, and moves nothing on screen
+   * -- the identical lying-field bug `translate` was written to fix, surviving
+   * on the other axis of the same node. The editor hides a group's resize
+   * handles, which closes the UI path but not the command: the Inspector, the
+   * MCP server and any scripted caller can still issue it.
+   *
+   * EITHER resolution turns this red, and both are legitimate:
+   *   - implement scaling (recurse, scaling children's geometry -- and font
+   *     sizes and stroke widths, which is why it is a design decision), or
+   *   - refuse the patch the way `x`/`y` are refused.
+   * Whoever does one should delete this block.
+   */
+  it.fails('changing a group’s size neither moves the artwork nor is refused', () => {
+    const doc = nested();
+    const resize = (): Document =>
+      apply(doc, { type: 'updateNode', nodeId: 'outer', patch: { width: 500, height: 400 } });
+
+    // The assertion is what SHOULD be true: a size change either takes effect
+    // or is rejected. Silently accepting it is the bug, so this fails today.
+    let refused = false;
+    let rendered = svg(doc);
+    try { rendered = svg(resize()); } catch { refused = true; }
+    expect(refused || rendered !== svg(doc)).toBe(true);
+  });
+});
