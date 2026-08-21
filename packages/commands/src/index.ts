@@ -657,6 +657,14 @@ export function invert(doc: Document, cmd: Command): Command {
        * Both halves are needed and neither is sufficient: the dimensions
        * without the nodes leaves a relayout applied to the old frame, and the
        * nodes without the dimensions leaves the page the wrong size.
+       *
+       * The capture is not only a rounding defence. `resizeFactor` takes the
+       * MINIMUM of the two ratios, which is what "nothing overflows" means and
+       * makes the transform lossy in the return direction: square -> story is
+       * k = 1, story -> square is k = 0.5625, so resizing there and back lands
+       * at 56%. Capturing makes this the only EXACT way back. "Try a story,
+       * dislike it, go back" is Cmd+Z, not a second resize -- they are
+       * different gestures and only one of them is a resize.
        */
       const ab = doc.artboards.find(a => a.id === cmd.artboardId);
       if (!ab) throw new StaleArtboardError(cmd.artboardId);
