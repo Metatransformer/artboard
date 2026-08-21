@@ -218,9 +218,18 @@ type Frame = { width: number; height: number };
  * placed text nodes and cost a net 1941px of extra tearing across the corpus.
  * Against the clustered model it fires on nothing -- but that number says less
  * than it looks like it says, and the honest version is worth the extra line.
- * Of 166 text nodes in the corpus, 165 land in a stack of two or more and take
- * their y from it; the single node placed alone does not read `middle`, so the
- * branch is unreachable here. `renderer-wins` made the same measurement with
+ * Of the 166 TOP-LEVEL text nodes in the corpus, 165 land in a stack of two or
+ * more and take their y from it; the single node placed alone does not read
+ * `middle`, so the branch is unreachable here. Top-level is the honest scope
+ * and not a convenient one: there are 181 text nodes in all, and the other 15
+ * sit inside groups, where `scaleSubtree` relays them and `textAware` is never
+ * consulted on any path. Said explicitly because a later re-count lands on 181
+ * and would otherwise go looking for fifteen missing candidates.
+ *
+ * That lone node classifies `x = centre, y = top` -- so the SURVIVING half of
+ * this function fires on precisely the node the removed half could not reach.
+ * The one place in the corpus where `textAware` has anything to decide is a
+ * place where the asymmetry above is visible rather than theoretical. `renderer-wins` made the same measurement with
  * the right control: forcing `y: 'top'` unconditionally ALSO changes nothing
  * across 120 fixture/target combinations. The corpus cannot distinguish any y
  * rule from any other, so the zero is a fact about the corpus, not about this
@@ -401,9 +410,21 @@ function stackPlacements(
   const place = new Map<number, { y: number; height: number }>();
   for (const st of stacksOf(boxes, from)) {
     const anchors = classifyAnchors({ x: 0, y: st.box.y, width: from.width, height: st.box.height }, from);
-    /* A stack is never stretched. Stretching one distributes the new height
-       through its interior, which is the tear this exists to prevent; a column
-       tall enough to read as full-bleed is still a column. */
+    /* A stack is never stretched, and the reason first written here was wrong.
+       It said stretching one distributes the new height through its interior.
+       It cannot: members land at `next.y + offset * k` and size at
+       `b.height * k`, so interior spacing is k-scaled whichever branch runs,
+       and the stretched `next.height` is computed and never read. Measured on a
+       stack spanning 92.6% of a 1080 square into 1080x1920 -- interior gap 160
+       either way, and the same 160 as the k-scaled original.
+
+       What the branch actually decides is where the column LANDS: centred at
+       460, or pinned proportionally to its old top at 71.11, a 389px
+       difference. Centring is right -- a column that filled a square belongs in
+       the middle of a taller frame, not riding its top edge -- so the guard
+       stands and only its stated reason changes. Found by `tests` pinning the
+       one branch the mutation run left surviving, which is a good argument for
+       covering a survivor even when you are sure of it. */
     const y = anchors.y === 'stretch' ? 'middle' : anchors.y;
     const next = reanchor({ x: 0, y: st.box.y, width: 0, height: st.box.height }, { x: 'left', y }, from, to);
     for (const i of st.members) {
