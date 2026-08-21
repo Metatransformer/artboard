@@ -302,6 +302,19 @@ export function barcodeNode(opts: BarcodeNodeOptions): Node[] {
   });
 
   if (showText) {
+    // KNOWN GAP (EAN-13): the retail convention puts the first digit to the
+    // LEFT of the left guard and splits the remaining twelve 6/6 under each
+    // half of the symbol. This emits one centred block of all thirteen.
+    //
+    // Scanners read bars, never the text, so nothing fails to scan -- but it
+    // reads as visibly non-standard to anyone who knows retail barcodes, and
+    // the geometry above is already set up for the real layout: `shortBar`
+    // extends the guard bars down into the text zone for exactly the gaps
+    // those digit groups are supposed to sit in. Half the convention is
+    // implemented and the label does not use it.
+    //
+    // Fixing it means three text nodes, not one, positioned off `guards`.
+    // Code 128 has no such convention -- one centred line is correct there.
     const textHeight = height - barHeight;
     nodes.push({
       ...base(nextId(), 'Barcode text', x, y + barHeight, width, textHeight),
