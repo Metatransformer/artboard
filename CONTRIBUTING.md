@@ -215,18 +215,34 @@ UNCLASSIFIED rather than silently dropped.
 
 Two things to know before reading the number:
 
-- **It is a report, not a gate.** It always exits 0. Uncovered paths are a prompt to
-  judge whether a fixture earns its keep, and often it does not — seven blend modes
-  down one `mix-blend-mode` emission buy nothing the first one did not.
+- **It is a report, not a gate, and NOT a to-do list.** It always exits 0. It
+  measures the *golden oracle's* reach; a value missing from it is unproven only if
+  nothing **else** covers it. Someone audited all 21 unexercised values and every one
+  resolved to an enum option sharing a code path or a branch already unit-tested —
+  `visible=false`, gradient `radial` and `opaque` are in `render.test.ts`, `valign
+  bottom` is asserted directly in `engine.test.ts`. Zero fixtures were worth writing.
+  Check what else covers a line before writing a fixture for it; it took ten minutes
+  for all 21.
 - **Dimensions are keyed on the field, not on node kind × field.** `blend`, `rotation`
   and `flipX` live on `NodeBase` and are emitted by one shared path for every kind, so
   they count once. An earlier cut keyed them per kind, got 283 dimensions, and buried
   the seven real gaps under 200 entries like `ellipse.blend=hue` that were all true and
   all useless.
 
-The `RIDING ON A SINGLE FIXTURE` section at the bottom is the more actionable half —
-paths held up by exactly one file, where deleting that file stops testing them and
-nothing goes red. That is the number worth watching.
+- **Dimension count is not path count, and the headline reports both.** `blend` has
+  16 values behind a single line — `mix-blend-mode:${n.blend}`, read nowhere else — so
+  counting values made it 14 of the 21 gaps and weighted a string interpolation above
+  `group`, which is an entire `renderNode` arm and counts as one. Read
+  `26/28 dimensions` as the honest headline; `53/74 schema values` is the finer grain
+  and inflates wherever an enum is wide.
+
+`FIXTURES PER NODE KIND` is the section worth watching, because each kind is a
+different `renderNode` arm rather than a field on a shared path. `THIN` is the same
+idea for fields, printing the fixture count rather than only flagging singletons — a
+binary check cannot tell two fixtures from twenty. Both mark `!` where a single file
+is holding a path up, but neither is automatically a job: `image` sits at one fixture
+and three guards in `render.test.ts` go red if that fixture disappears, which is the
+hazard already handled by something that is not a fixture.
 
 Prefer to extend the derivation over adding to `IGNORED`. The tool has been
 mutation-tested — run against the fixture set with `render-features.json` removed via

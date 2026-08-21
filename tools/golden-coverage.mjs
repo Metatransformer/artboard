@@ -182,25 +182,39 @@ for (const f of files) {
 /* -- report ---------------------------------------------------------------- */
 const hits = (d) => new Set([...d.seen].map((s) => s.slice(0, s.lastIndexOf(' '))));
 let total = 0, covered = 0;
+// Dimensions counted separately from enum VALUES, because they are not the
+// same unit and reporting one number conflated them. `blend` has 16 values and
+// one line of code behind them all -- `mix-blend-mode:${n.blend}`, read nowhere
+// else -- so counting it as 16 made it 14 of the 21 "unexercised paths" and
+// weighted a string interpolation above `group`, which is a whole renderNode
+// arm and counted as one. A reader following that list writes 14 blend
+// fixtures to prove an interpolation.
+let dimTotal = 0, dimCovered = 0;
 const gaps = [];
 for (const [label, d] of [...dims].sort(([a], [b]) => a.localeCompare(b))) {
   if (d.values) {
     const hit = hits(d);
     total += d.values.size;
     covered += [...d.values].filter((v) => hit.has(v)).length;
+    dimTotal += 1;
+    if (hit.size) dimCovered += 1;
     const miss = [...d.values].filter((v) => !hit.has(v));
     if (miss.length) gaps.push([label, miss.join(', '), miss.length === d.values.size]);
   } else {
     total += 1;
-    if (d.seen.size) covered += 1;
+    dimTotal += 1;
+    if (d.seen.size) { covered += 1; dimCovered += 1; }
     else gaps.push([label, '(never set)', true]);
   }
 }
 
-console.log(`golden coverage  ${files.length} fixtures  ${covered}/${total} render paths exercised\n`);
+console.log(`golden coverage  ${files.length} fixtures  ${dimCovered}/${dimTotal} dimensions, ${covered}/${total} schema values reached by a fixture\n`);
 if (!gaps.length) console.log('every schema-expressible render path has a fixture behind it.');
 else {
   console.log('NOT EXERCISED BY ANY FIXTURE   (* = nothing in this dimension at all)');
+  console.log('This is the GOLDEN oracle\'s reach, not a to-do list. A value here is');
+  console.log('unproven only if nothing ELSE covers it -- unit tests often do, and enum');
+  console.log('values sharing one code path are one path however many are listed.');
   const w = Math.max(...gaps.map(([l]) => l.length));
   for (const [label, miss, whole] of gaps) console.log(`  ${whole ? '*' : ' '} ${label.padEnd(w)}  ${miss}`);
 }
