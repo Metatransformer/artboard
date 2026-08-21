@@ -376,6 +376,38 @@ Two things make a sweep honest:
   of the sweep reproduces the code you replaced, and the whole table has a fixed point you
   did not have to trust.
 
+### "No fixture reaches this branch" means three different things
+
+This came up three times in one day and meant something different each time. The
+sentence is identical; the correct response is not, and pattern-matching one case
+onto another is how a real gap gets waved through.
+
+Ask one question first: **can you construct an input that makes the branch decide
+something observable?**
+
+1. **No — the corpus cannot answer the question.** The `valign` half of
+   `textAware` fired on nothing. The control that settled it was forcing
+   `y: 'top'` unconditionally, which *also* changed nothing across 120
+   fixture/target combinations: the corpus could not distinguish any rule on
+   that axis from any other. A zero there is a fact about the corpus, not about
+   the code. Decide it on the argument and record that you did — and do not
+   write a test, because the test will pin whichever answer you happened to
+   pick and it will still be green long after the question closes the other way.
+
+2. **Yes, and it is already decided correctly.** The stretch-stack guard was
+   right, and the test written for it was never going to fail. Write it anyway:
+   stating the mechanism out loud is what exposed a comment beside it claiming
+   the guard prevented something it cannot prevent. A comment can never be red;
+   the assertion that forces you to say why is the only thing that checks one.
+
+3. **Yes, and nothing has ever exercised it.** `rotated && !uniform` is trivially
+   reachable by construction — the corpus merely happens not to contain a
+   rotated group in a resized page. That is an ordinary coverage gap. Build the
+   case and pin it.
+
+The trap is reading (3) as (1): "no fixture reaches it" sounds like "the question
+is unanswerable here" and is usually just "nobody has written the fixture".
+
 ### Verify what you are about to commit, not what you were editing
 
 `git add <path>` stages the file as of the add, not as of the change you made or
