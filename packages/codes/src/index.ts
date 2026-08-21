@@ -302,35 +302,93 @@ export function barcodeNode(opts: BarcodeNodeOptions): Node[] {
   });
 
   if (showText) {
-    // KNOWN GAP (EAN-13): the retail convention puts the first digit to the
-    // LEFT of the left guard and splits the remaining twelve 6/6 under each
-    // half of the symbol. This emits one centred block of all thirteen.
-    //
-    // Scanners read bars, never the text, so nothing fails to scan -- but it
-    // reads as visibly non-standard to anyone who knows retail barcodes, and
-    // the geometry above is already set up for the real layout: `shortBar`
-    // extends the guard bars down into the text zone for exactly the gaps
-    // those digit groups are supposed to sit in. Half the convention is
-    // implemented and the label does not use it.
-    //
-    // Fixing it means three text nodes, not one, positioned off `guards`.
-    // Code 128 has no such convention -- one centred line is correct there.
     const textHeight = height - barHeight;
-    nodes.push({
-      ...base(nextId(), 'Barcode text', x, y + barHeight, width, textHeight),
-      kind: 'text',
-      text: label,
-      fontFamily: 'JetBrains Mono',
-      fontSize: round(textHeight * 0.78),
-      fontWeight: 500,
-      italic: false,
-      lineHeight: 1.2,
-      letterSpacing: round(width / span),
-      align: 'center',
-      valign: 'middle',
-      color: dark,
-      uppercase: false,
-    });
+    const moduleWidth = width / span;
+
+    // The human-readable line, per symbology convention.
+    //
+    // EAN-13 does NOT centre its digits under the symbol. The first digit sits
+    // OUTSIDE the bars, in the left quiet zone, and the remaining twelve split
+    // 6/6 under the two halves, each digit under its own 7-module group. That
+    // layout is what makes a retail barcode instantly recognisable, and the
+    // bars above are already drawn for it: `shortBar` lifts the data bars so
+    // the guard bars descend into this band and fence the three groups.
+    //
+    // Code 128 has no such convention -- one centred line is correct there.
+    const groups: Array<{ text: string; from: number; to: number }> = [];
+
+    if (symbology === 'ean13' && guards.length === 3) {
+      const [leftGuard, midGuard, rightGuard] = guards as unknown as [
+        readonly [number, number], readonly [number, number], readonly [number, number],
+      ];
+      // Module spans are read off the guards rather than written down, so this
+      // follows the symbol if the guard layout is ever corrected.
+      groups.push(
+        // Lead digit: the quiet zone is what it is for. One module of air is
+        // left before the guard so the glyph never touches the bars.
+        { text: label.slice(0, 1), from: -quietLeft, to: leftGuard[0] - 1 },
+        { text: label.slice(1, 7), from: leftGuard[1], to: midGuard[0] },
+        { text: label.slice(7), from: midGuard[1], to: rightGuard[0] },
+      );
+    }
+
+    if (groups.length === 0) {
+      // Code 128 and anything else: one centred line across the whole node,
+      // which is the convention for those symbologies. Unchanged.
+      nodes.push({
+        ...base(nextId(), 'Barcode text', x, y + barHeight, width, textHeight),
+        kind: 'text',
+        text: label,
+        fontFamily: 'JetBrains Mono',
+        fontSize: round(textHeight * 0.78),
+        fontWeight: 500,
+        italic: false,
+        lineHeight: 1.2,
+        letterSpacing: round(moduleWidth),
+        align: 'center',
+        valign: 'middle',
+        color: dark,
+        uppercase: false,
+      });
+    }
+
+    for (const g of groups) {
+      const cells = g.text.length;
+      const boxWidth = (g.to - g.from) * moduleWidth;
+      const pitch = boxWidth / cells;
+
+      // JetBrains Mono is monospace at 0.6em, so a glyph fills its cell when
+      // fontSize is pitch/0.6. Take the smaller of that and what the band can
+      // hold vertically, then let letter-spacing make up any shortfall -- that
+      // way each digit still lands under its own group when a short, wide
+      // barcode forces the type down.
+      const fromWidth = pitch / 0.6;
+      const fontSize = Math.min(fromWidth, textHeight * 0.78);
+      const letterSpacing = pitch - fontSize * 0.6;
+
+      // Letter-spacing is applied after EVERY glyph, the trailing one
+      // included, and the renderer centres that full advance on the box. So a
+      // centred run sits half a space left of where the cells are. Half a
+      // space right puts each digit back over its own group -- measured, not
+      // assumed: without this every digit lands 1.55 modules low.
+      const boxX = x + (quietLeft + g.from) * moduleWidth + letterSpacing / 2;
+
+      nodes.push({
+        ...base(nextId(), 'Barcode text', boxX, y + barHeight, boxWidth, textHeight),
+        kind: 'text',
+        text: g.text,
+        fontFamily: 'JetBrains Mono',
+        fontSize: round(fontSize),
+        fontWeight: 500,
+        italic: false,
+        lineHeight: 1.2,
+        letterSpacing: round(letterSpacing),
+        align: 'center',
+        valign: 'middle',
+        color: dark,
+        uppercase: false,
+      });
+    }
   }
 
   return nodes;
