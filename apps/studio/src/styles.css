@@ -149,6 +149,11 @@ input,select{font:inherit}
 }
 .field:focus{border-color:var(--accent)}
 .field.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11.5px}
+/* .field is a 29px control; a textarea has to grow instead. */
+.field.ta{height:auto;padding:7px 8px;line-height:1.5;resize:vertical;min-height:76px}
+/* The expanded body of a generator accordion, inset so it reads as belonging
+   to the button above it rather than as three more top-level controls. */
+.genpanel{padding:8px 0 4px;border-bottom:1px solid var(--line);margin-bottom:2px}
 select.field{cursor:pointer}
 .num{position:relative;flex:1;display:flex;align-items:center;min-width:0}
 .num .affix{position:absolute;left:7px;font-size:10px;color:var(--fg3);pointer-events:none}

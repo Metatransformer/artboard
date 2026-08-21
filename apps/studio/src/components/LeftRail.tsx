@@ -10,6 +10,7 @@ import {
 import { useEditor, documentFromTemplate } from '../state/store';
 import { makeNode } from './Canvas';
 import { BrandPanel } from './BrandPanel';
+import { ChartInsert, QrInsert, BarcodeInsert } from './InsertData';
 import { ProjectsPanel } from './ProjectsPanel';
 
 /**
@@ -185,7 +186,43 @@ function Elements() {
           }}>{l.n}</button>
         ))}
       </div>
+
+      <h4>Data &amp; codes</h4>
+      <Generators />
     </>
+  );
+}
+
+/**
+ * Charts, QR codes and barcodes each need a few inputs before anything can be
+ * inserted, which is more surface than an `.ecard` can carry. One open at a
+ * time: three forms stacked in a drawer that already scrolls would bury the
+ * shapes above them.
+ */
+const GENERATORS: Array<{ id: string; label: string; panel: React.ReactNode }> = [
+  { id: 'chart', label: 'Chart', panel: <ChartInsert /> },
+  { id: 'qr', label: 'QR code', panel: <QrInsert /> },
+  { id: 'barcode', label: 'Barcode', panel: <BarcodeInsert /> },
+];
+
+function Generators() {
+  const [open, setOpen] = useState<string | null>(null);
+
+  return (
+    <div className="stack">
+      {GENERATORS.map(g => (
+        <React.Fragment key={g.id}>
+          <button
+            className={`btn full ${open === g.id ? 'on' : ''}`}
+            aria-expanded={open === g.id}
+            onClick={() => setOpen(open === g.id ? null : g.id)}
+          >
+            {g.label}
+          </button>
+          {open === g.id && <div className="genpanel">{g.panel}</div>}
+        </React.Fragment>
+      ))}
+    </div>
   );
 }
 
