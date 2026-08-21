@@ -517,6 +517,68 @@ describe('resizeArtboard: adjacency survives the aspect change', () => {
     expect(nodeById(withBlob, 'head').y).toBeCloseTo(nodeById(plain, 'head').y, 2);
   });
 
+  /*
+   * THE CLUMPING SIDE, which the lead flagged as having no assertion yet.
+   *
+   * The tearing tests above bound STACK_GAP from BELOW: set it too small and a
+   * 36px gap (3.3% of the frame) stops reading as contiguous and the column
+   * tears. Nothing yet bounds it from above, where the failure is the opposite
+   * and quieter -- every gap reads as contiguous, the whole page becomes one
+   * block, and the design stops adapting to the frame instead of visibly
+   * breaking in it.
+   *
+   * One page carries both. A badge 220px above the headline is 20.4% of the
+   * frame; the headline and body are 36px apart, 3.3%. Resize to a frame with
+   * height to spare and the two gaps must behave DIFFERENTLY: the tight one
+   * scales by k, the loose one absorbs what is left over.
+   *
+   * Together they bracket STACK_GAP into (3.3%, 20.4%) without pinning it. That
+   * the bracket really does straddle the threshold was measured rather than
+   * assumed, and measured from OUTSIDE the implementation: membership is
+   * `gapY <= STACK_GAP * frame.height`, so holding a 36px gap fixed and
+   * shrinking the frame walks it across the boundary without anyone editing the
+   * constant. It flips between 10.59% of frame height (torn) and 10.00% (one
+   * stack) -- so 3.3% and 20.4% sit either side of it with room to spare.
+   *
+   * Knowing the threshold is 0.10 is exactly why this does not assert it. The
+   * lead's sweep puts the flat spot at 10-12% and the danger below 8%, so the
+   * bracket is deliberately far wider than the region they measured: it rules
+   * out the two failure modes and stays silent about the choice between 10 and
+   * 12, which is the same shape as the centre-band bound.
+   */
+  it.each([
+    ['story', 1080, 1920],
+    ['a4', 2480, 3508],
+  ])('puts the new height in the loose gap, not the tight one: %s', (_label, w, h) => {
+    const page = column([buildNode({ id: 'badge', kind: 'rect', x: 96, y: 60, width: 888, height: 100 })]);
+    const looseBefore = nodeById(page, 'head').y - (nodeById(page, 'badge').y + nodeById(page, 'badge').height);
+    const after = apply(page, resize('ab-1', w, h));
+    const k = resizeFactor(SQ, { width: w, height: h });
+    const loose = nodeById(after, 'head').y - (nodeById(after, 'badge').y + nodeById(after, 'badge').height);
+
+    expect(looseBefore).toBe(220);
+    expect(gapOf(after)).toBeCloseTo(gapOf(page) * k, 1);     // tight: scales by k
+    expect(loose).toBeGreaterThan(looseBefore * k * 1.5);     // loose: absorbs the rest
+  });
+
+  it('but only where there IS height to spare', () => {
+    // The honest exception, asserted rather than dodged by picking targets that
+    // suit the story. Square -> 1584x396 is a SHORTER frame: ry equals k, so
+    // there is no leftover height and every gap simply scales by k, loose and
+    // tight alike. A test that only ever resized into taller frames would read
+    // as though the loose gap always grows.
+    const BANNER = { width: 1584, height: 396 };
+    const page = column([buildNode({ id: 'badge', kind: 'rect', x: 96, y: 60, width: 888, height: 100 })]);
+    const looseBefore = nodeById(page, 'head').y - (nodeById(page, 'badge').y + nodeById(page, 'badge').height);
+    const after = apply(page, resize('ab-1', BANNER.width, BANNER.height));
+    const k = resizeFactor(SQ, BANNER);
+    const loose = nodeById(after, 'head').y - (nodeById(after, 'badge').y + nodeById(after, 'badge').height);
+
+    expect(BANNER.height / SQ.height).toBeCloseTo(k, 6);      // ry === k: nothing spare
+    expect(loose).toBeCloseTo(looseBefore * k, 1);
+    expect(gapOf(after)).toBeCloseTo(gapOf(page) * k, 1);
+  });
+
   it('leaves a node in no stack exactly as it was', () => {
     // "A stack of one is the old behaviour exactly, so nothing already right
     // changes" is a claim in the commit message. A lone badge, far from
