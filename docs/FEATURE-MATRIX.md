@@ -1027,7 +1027,9 @@ it is entirely tractable here. The algorithm that reproduces ~90 % of the observ
    height was quartered. Only the `fontSize` floor of 1 breaks the proportionality, and it needs
    roughly a 10× reduction to bite. This was billed as "where the reflow intelligence actually
    lives"; the intelligence is in step 1.
-5. **Groups** resolve recursively against their own bounding box.
+5. **Groups** resolve recursively against their own bounding box. **And so do implicit stacks** —
+   nodes that sit close enough to read as one block are placed together whether or not anyone
+   grouped them. Without that, step 3 tears columns in half; see the section below.
 
 Only step 1 involves judgement, and a rules table beats a model at it. Effort `L`, priority P1,
 and it makes the tool feel far more capable than the code justifies.
@@ -1051,12 +1053,51 @@ numbers. Two corrections to step 1 as written above, both found by running it ra
   under every k and fails loudly on a bad threshold, where coordinate assertions pin one aspect
   ratio and certify nothing about the 9:16 case the feature exists for.
 
-**Known limitation, and it is inherent rather than a bug:** elements that belong together but are
-not grouped drift apart, because each anchors independently and the growth lands in the gap between
-them. In `social-editorial-quote` the name and role separate; in `deck-stat-trio` each column's
-rule, value and label spread out. Step 5 is the mitigation and it already works — a group resolves
-against its own derived bounds and moves as one unit — so the guidance is that tightly-related
-elements should be grouped. Worth stating in the UI when the command lands, not discovered.
+**~~Known limitation, and it is inherent rather than a bug~~ — it was a bug, and it is fixed.** The
+claim here was that ungrouped elements which belong together drift apart because each anchors
+independently, that this is inherent, and that the mitigation is to tell users to group things. Two
+of the three were wrong. It is not inherent, and telling a user to restructure their document to
+work around a layout engine is not a mitigation.
+
+It was also worse than "drift". A contiguous column that straddles the frame's midline is *torn in
+half*: members nearer the top leave for the top edge, members nearer the bottom leave for the
+bottom, and the whole of the new height is dumped into the seam between them. On
+`social-gradient-launch` at 1:1 → 9:16 the headline's bottom landed at 1033 and the body copy
+started at 1501 — a 36px gap became **468px**, a void the height of the headline in the middle of a
+text column. **18 of 24 fixtures** opened a gap over 100px between two nodes that had been
+neighbours. The render shows it plainly; the description "distributes the design down the frame" is
+true of the same picture and reads as success.
+
+**The fix is to resolve adjacency before anchoring** (`stacksOf` / `stackPlacements` in
+`packages/commands`). Nodes that read as one stack are placed as one: gaps *inside* a stack scale by
+`k` like everything else, and the frame's extra height is absorbed *between* stacks — which is what
+"distribute down a taller frame" should mean, and what a designer does by hand. A stack of one is
+the old behaviour exactly, so nothing that was already right changes. **0 of 26 designs now tear.**
+
+Two things about its shape are worth keeping:
+
+- **Membership is 2D; placement is `y` only.** Clustering by vertical adjacency alone made two
+  designs visibly *worse*: `business-card-mono` has a monogram badge 90px to the right of the name
+  with no horizontal overlap, so the name's column walked down the story frame and left the badge
+  behind at the top, and `deck-section-mono` did the same to a numeral card and the title beside it.
+  But the x axis must not be *placed* by cluster: a cluster box for the launch template has 96px
+  margins either side and classifies as centred, which would undo the `align` override below.
+- **The threshold is a judgement and is documented as one.** The corpus offers no valley to snap to —
+  141 adjacent gaps run smoothly from 0 to 29% of frame height. What makes 10% safe is that the
+  answer does not move around it: tearing collapses to 1/26 by 10% and stops improving, while
+  *clumping* — a design that has stopped adapting and just sits in the frame as one block — keeps
+  climbing, so 10–12% is the flat spot between two failure modes. Below 8% the number is very much
+  load-bearing: at 6%, a 42px gap in `business-card-mono` fell outside a 36px threshold and split a
+  column that reads as one. The sweep table lives in the source, and its zero row is a control —
+  `STACK_GAP = 0` reproduces the per-node behaviour it replaces, and reproduces the 18/26 figure.
+
+**A text box is a frame, not the visible extent**, so anchoring reads the node's own `align`. A
+left-aligned headline inset 96px in a 1080 frame has symmetric margins and classifies as centred —
+correct about the box, wrong about the element, because the glyphs start hard left and every pixel
+of slack is on the right. Resizing 1080×1080 → 1584×396 moved two of six left-margin nodes from
+8.9% to 39.7% of the frame while the rest held, and the left column came apart. Only the `centre`
+reading is overridden: a decisive margin stays decisive and `stretch` survives, so a full-bleed
+block stays full-bleed.
 
 **Resize is lossy in the return direction, on purpose.** `k = min(...)` means widening a square
 into a story shrinks nothing (`k = 1`), which is the motivating case; the return trip is

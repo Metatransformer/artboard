@@ -333,6 +333,57 @@ evidence until you have watched it report something.** A probe whose selector ma
 element and a codebase with no defects produce identical output. Run it against a known
 bad input first — the control group is what separates the two.
 
+### Your control must be a no-op *for the metric*, not just a different input
+
+The control-group habit above has a failure mode of its own, and it is easy to walk
+into: picking a control that looks like "no change" without checking that it is no
+change *to the thing you are measuring*.
+
+Measuring whether Magic Resize pulls neighbouring elements apart, the obvious control was
+"resize every fixture to 540×540 and expect no movement". It lit up at 10×. The code was
+fine — most fixtures are not square, so 540×540 was itself an aspect change and the
+control was a second experiment. The control that works is **half of each fixture's own
+size**: uniform aspect, every anchor class reduces to exactly ×0.5, so the excess must be
+zero by construction. It reports `0.00px` across the corpus, and it reports the *count of
+fixtures it examined* alongside — otherwise a probe that found no pairs at all prints the
+same `0.00` as a probe that found many and cleared them all.
+
+Both halves matter. A control that cannot distinguish "nothing wrong" from "nothing
+looked at" is decoration.
+
+### A threshold you cannot pin, you can bound
+
+`tests` established that a test can be *threshold-independent* without being
+*threshold-bounding*: choosing cases far from any boundary avoids pinning a number
+reasonable people would set differently, but leaves it unconstrained in both directions —
+a mutant that widened a centre band from 8% to 45% passed everything.
+
+The same problem shows up when you have to *choose* the number. If the data contains a
+natural break, take it and say so. If it does not, say that too, and then show that the
+answer does not depend on the number: sweep it, and publish the range over which the
+outcome is flat. Magic Resize's stack threshold is 10% of the frame, chosen because
+tearing collapses by 8–10% and stops improving while over-clustering keeps climbing, so
+anything in 10–12% behaves identically. Below 8% the value *is* load-bearing, and the
+comment says which fixture proves it.
+
+Two things make a sweep honest:
+
+- **Report the failure mode on both sides.** A sweep that only counts the bug you are
+  fixing always recommends the extreme. The stack sweep counts tearing *and* clumping —
+  designs that stopped adapting and just sit in the frame as one block — because the cure
+  and the disease sit at opposite ends of the same knob.
+- **A knob at zero is a free control.** If the new behaviour is off at `0`, the zero row
+  of the sweep reproduces the code you replaced, and the whole table has a fixed point you
+  did not have to trust.
+
+### Look at the render at the size a person would
+
+A 200px thumbnail is enough to see a layout tear and not enough to see anything else.
+Reviewing a contact sheet of relaid designs, a subtitle under a credit line read as a
+red string overlapping white text — a serious-looking overlap bug that evaporated at
+full size, where it is just small grey type. Contact sheets are for choosing which one
+to open. Open it before you file the defect.
+
 ### The golden output is an API
 
 Treat the status labels (`PASS`, `FAIL`, `NEW`, `UPD`, `SAME`) and the exit codes
