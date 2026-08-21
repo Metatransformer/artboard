@@ -387,7 +387,13 @@ function goldenCases(dir: string, fixture: string, update: boolean): GoldenCase[
 
     if (!existsSync(baseline)) {
       writeOut(actualPath, rendered);
-      cases.push({ fixture, artboard: index, baseline, status: 'fail', detail: `no baseline -- run \`artboard golden --update\` (render saved to ${rel(actualPath)})` });
+      // `npm run golden -- --update`, not `artboard golden --update`. The bin is
+      // linked into node_modules/.bin by the workspace install, so the bare name
+      // resolves inside an npm script and from `npx` -- but NOT in the plain
+      // shell the reader of this message is standing in. A remedy that does not
+      // run is worse than no remedy: it is emitted at the exact moment someone
+      // is stuck, and it costs them a detour proving the tool lied.
+      cases.push({ fixture, artboard: index, baseline, status: 'fail', detail: `no baseline -- run \`npm run golden -- --update\` (render saved to ${rel(actualPath)})` });
       continue;
     }
 
