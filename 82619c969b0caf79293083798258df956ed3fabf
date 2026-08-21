@@ -1,0 +1,12 @@
+Sweeps an unmentioned second change: 72 lines of tests/generators.test.ts.
+
+That file is the `tests` agent's derived-inventory work, which was uncommitted
+in the shared worktree when I ran `git add -A` for the coverage-checklist
+change. The commit message describes only the scanner, so the inventory work
+is in this commit unmentioned. Nothing was lost - it landed intact and the
+suite is 286 green - but `git log` misdescribes the commit, and this note is
+the correction, since the commit is already pushed and rewriting it would
+break anyone who pulled.
+
+The cause was `git add -A` in a tree other sessions are editing. It stages
+whatever anyone happens to have in flight. Name the paths instead.
