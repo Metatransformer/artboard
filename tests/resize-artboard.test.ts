@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildNode, loadDocument, type Document, type Node } from '@artboard/schema';
 import { apply, invert, StaleArtboardError, InvalidCommandError, type Command } from '@artboard/commands';
-import { layoutText, classifyAnchors, reanchor } from '@artboard/engine';
+import { layoutText, classifyAnchors, reanchor, resizeFactor } from '@artboard/engine';
 
 /**
  * Magic Resize's command half: `resizeArtboard`.
@@ -422,5 +422,103 @@ describe('resizeArtboard: alignment overrides a centred box reading, and only th
     const TALL = { width: 1080, height: 1920 };
     const after = nodeById(apply(stacked, resize('ab-1', TALL.width, TALL.height)), 'quote');
     expect(after.y / TALL.height).toBeCloseTo(before.y / SQ.height, 4);
+  });
+});
+
+
+/* ── stacks are placed as one, so a column is not torn ────────────────────── */
+
+describe('resizeArtboard: adjacency survives the aspect change', () => {
+  /*
+   * The tear this pins, in the lead's numbers: anchoring each node on its own
+   * splits any contiguous column straddling the frame's midline. The members
+   * nearer the top leave for the top edge, the members nearer the bottom leave
+   * for the bottom, and the whole of the new height lands in the seam between
+   * them -- on social-gradient-launch a 36px gap became 468px, a void the
+   * height of the headline in the middle of a text column.
+   *
+   * The invariant that replaces it: a gap INSIDE a stack scales by k like
+   * everything else, and only the space BETWEEN stacks absorbs the frame's
+   * extra height. That is the property worth holding, rather than the stack
+   * detection itself -- STACK_GAP sits in a flat spot between two failure modes
+   * by the lead's own sweep, and a test that pinned 0.10 would certify a number
+   * they measured as not load-bearing.
+   */
+  const SQ = { width: 1080, height: 1080 };
+  const STORY = { width: 1080, height: 1920 };
+
+  // Deliberately straddling: the headline reads `top` on its own and the body
+  // reads `bottom`, so per-node anchoring sends them in opposite directions.
+  const HEAD = { id: 'head', kind: 'text', x: 96, y: 380, width: 888, height: 120, text: 'Launch day', fontSize: 48, align: 'left' };
+  const BODY = { id: 'body', kind: 'text', x: 96, y: 536, width: 888, height: 380, text: 'Everything you need, in one place.', fontSize: 28, align: 'left' };
+
+  const column = (extra: unknown[] = []) => doc(SQ, [buildNode(HEAD), buildNode(BODY), ...extra]);
+  const gapOf = (d: Document) => {
+    const h = nodeById(d, 'head'), b = nodeById(d, 'body');
+    return b.y - (h.y + h.height);
+  };
+
+  it('the two nodes really do anchor in opposite directions on their own', () => {
+    // The premise. Without it this whole block could be exercising a column
+    // that was never at risk, and would pass on the code it is meant to catch.
+    expect(classifyAnchors(nodeById(column(), 'head'), SQ).y).toBe('top');
+    expect(classifyAnchors(nodeById(column(), 'body'), SQ).y).toBe('bottom');
+  });
+
+  it('scales the gap inside a column by k, not by the frame', () => {
+    const before = gapOf(column());
+    const after = gapOf(apply(column(), resize('ab-1', STORY.width, STORY.height)));
+    // k is 1 for square -> story (min(1, 1.78)), so the gap is unchanged. The
+    // assertion is written against k rather than against 36 so it still means
+    // something on a resize where k is not 1 -- see the A4 case below.
+    expect(after).toBeCloseTo(before * resizeFactor(SQ, STORY), 1);
+  });
+
+  it('CONTROL: anchored per node, the same column tears open', () => {
+    // Not a description of the old behaviour -- a reproduction of it. `reanchor`
+    // is asked for each node's own answer on the identical boxes, which is
+    // exactly what this code did before stacks existed.
+    const h = nodeById(column(), 'head'), b = nodeById(column(), 'body');
+    const perNode = (n: any) => reanchor(n, classifyAnchors(n, SQ), SQ, STORY);
+    const torn = perNode(b).y - (perNode(h).y + perNode(h).height);
+
+    expect(gapOf(column())).toBe(36);
+    expect(torn).toBeGreaterThan(400);            // measured 452.9
+  });
+
+  it('holds when k is not 1', () => {
+    // Square -> A4 shrinks nothing and stretches nothing on the horizontal, so
+    // k = 1080/2480 is not 1 and a gap that merely stayed put would fail here.
+    const A4 = { width: 2480, height: 3508 };
+    const before = gapOf(column());
+    const after = gapOf(apply(column(), resize('ab-1', A4.width, A4.height)));
+    expect(after).toBeCloseTo(before * resizeFactor(SQ, A4), 1);
+    expect(after).not.toBeCloseTo(before, 1);      // it did scale, not merely survive
+  });
+
+  it('does not let a full-bleed backdrop swallow the column', () => {
+    // A shape running off the page is decoration behind the content, not a
+    // member of its rhythm -- and being adjacent to everything, it would
+    // otherwise pull every node on the page into one stack and change where
+    // that stack lands. The gap alone cannot see this: interior gaps scale by k
+    // whatever the stack contains. The stack's POSITION is what moves: a stack
+    // spanning the blob reads as stretch, is forced to middle, and puts the
+    // headline at 800 instead of 1092.44 -- measured, so the assertion below is
+    // known to discriminate rather than assumed to.
+    const blob = { id: 'blob', kind: 'rect', x: -100, y: -200, width: 1280, height: 1480 };
+    const plain = apply(column(), resize('ab-1', STORY.width, STORY.height));
+    const withBlob = apply(column([buildNode(blob)]), resize('ab-1', STORY.width, STORY.height));
+    expect(nodeById(withBlob, 'head').y).toBeCloseTo(nodeById(plain, 'head').y, 2);
+  });
+
+  it('leaves a node in no stack exactly as it was', () => {
+    // "A stack of one is the old behaviour exactly, so nothing already right
+    // changes" is a claim in the commit message. A lone badge, far from
+    // everything, has to land where its own anchor puts it.
+    const lone = { id: 'badge', kind: 'rect', x: 940, y: 24, width: 100, height: 40 };
+    const page = doc(SQ, [buildNode(lone)]);
+    const after = nodeById(apply(page, resize('ab-1', STORY.width, STORY.height)), 'badge');
+    const own = reanchor(nodeById(page, 'badge'), classifyAnchors(nodeById(page, 'badge'), SQ), SQ, STORY);
+    expect({ x: after.x, y: after.y, width: after.width, height: after.height }).toEqual(own);
   });
 });
