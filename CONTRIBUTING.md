@@ -408,9 +408,21 @@ something observable?**
    `y: 'top'` unconditionally, which *also* changed nothing across 120
    fixture/target combinations: the corpus could not distinguish any rule on
    that axis from any other. A zero there is a fact about the corpus, not about
-   the code. Decide it on the argument and record that you did — and do not
-   write a test, because the test will pin whichever answer you happened to
-   pick and it will still be green long after the question closes the other way.
+   the code. Decide it on the argument and record that you did.
+
+   The testing rule here is two-part, and the second half is the one that gets
+   dropped: **write no test for the unanswerable question, and do write the
+   tests that fence it in.** The test to refuse is "an isolated text node with
+   `valign: top` anchors to the top" — it pins whichever answer you happened to
+   pick and stays green long after the question closes the other way. But two
+   live `valign` tests sit in `tests/resize-artboard.test.ts` and both belong
+   there, because both pin *reachable* facts around the hole: that stack
+   placement beats any y rule (`'inside a stack, align still places x while
+   nothing places y but the stack'`), and what an isolated node does now that
+   the rule is gone (`'an isolated text node anchors by its box, not by its
+   valign'`). Without the second half of the rule, someone cites this case to
+   skip the fencing too, and whoever reopens the question next inherits neither
+   a pin nor a reason.
 
 2. **Yes, and it is already decided correctly.** The stretch-stack guard was
    right, and the test written for it was never going to fail. Write it anyway:
