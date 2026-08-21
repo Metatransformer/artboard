@@ -65,6 +65,60 @@ function useInsertGroup() {
 }
 
 /**
+ * Where a newly generated element lands: centred, unless something already
+ * occupies the centre, in which case it steps down-right until it finds a free
+ * slot.
+ *
+ * Two identical QRs stacked pixel-perfect are indistinguishable from one QR.
+ * The second insert succeeds, reports success, and produces no visible change --
+ * which honestly reads as "nothing happened", so the user clicks again. Layers
+ * would show both, but needing to open a panel to confirm that a click worked is
+ * not the feature working.
+ *
+ * This reads the artboard rather than counting inserts, and that is the whole
+ * reason it behaves in the cases a counter gets wrong: move the first QR aside
+ * and the centre is free again, so the next insert re-centres instead of
+ * continuing to march; undo an insert and the slot it freed gets reused. There
+ * is no cascade state that can go stale, nothing to reset, and it is per
+ * artboard for free.
+ *
+ * A slot only counts if the whole element still fits inside the artboard. When
+ * none do -- a big element on a small artboard -- placement collapses back to
+ * centre rather than pushing a node off the edge for the user to hunt for.
+ */
+function usePlacement() {
+  const { artboard } = useEditor();
+
+  return (width: number, height: number): { x: number; y: number } => {
+    const step = Math.max(16, Math.round(Math.min(artboard.width, artboard.height) * 0.025));
+    const home = {
+      x: Math.round((artboard.width - width) / 2),
+      y: Math.round((artboard.height - height) / 2),
+    };
+    const placed = artboard.nodes as ReadonlyArray<{ x: number; y: number }>;
+    // A node nudged a few pixels off its origin still occupies that slot, so a
+    // slot is a neighbourhood rather than an exact coordinate match.
+    const occupied = (x: number, y: number) =>
+      placed.some((n) => Math.abs(n.x - x) < step && Math.abs(n.y - y) < step);
+
+    // Outward from centre in both directions -- 0, +1, -1, +2, -2 -- rather than
+    // only down-right. Up-left is in bounds exactly when down-right is not, so
+    // searching both roughly doubles the usable slots on a cramped artboard and
+    // pushes the collapse-to-centre case further out. A slot that does not fit
+    // is skipped rather than ending the search, because the mirror of it may.
+    for (let i = 0; i <= 12; i++) {
+      for (const dir of i === 0 ? [0] : [1, -1]) {
+        const x = home.x + step * i * dir;
+        const y = home.y + step * i * dir;
+        if (x < 0 || y < 0 || x + width > artboard.width || y + height > artboard.height) continue;
+        if (!occupied(x, y)) return { x, y };
+      }
+    }
+    return home;
+  };
+}
+
+/**
  * Generators throw on input they cannot encode -- `CodeError` when a payload
  * will not fit a version-10 symbol, `ChartDataError` on ragged or non-numeric
  * data -- and both carry a message written for a person. Show it. The two
@@ -123,6 +177,7 @@ export function ChartInsert() {
   const { artboard } = useEditor();
   const insert = useInsertGroup();
   const toast = useToast();
+  const place = usePlacement();
   const [kind, setKind] = useState<ChartKind>('column');
   const [data, setData] = useState(() => sampleText('column'));
   const [title, setTitle] = useState('');
@@ -142,8 +197,7 @@ export function ChartInsert() {
       const { labels, series } = parseRows(data, names.split(','));
       const nodes = buildChart({
         kind, labels, series, width, height,
-        x: Math.round((artboard.width - width) / 2),
-        y: Math.round((artboard.height - height) / 2),
+        ...place(width, height),
         ...(title.trim() ? { title: title.trim() } : {}),
       });
       insert('Insert chart', title.trim() || `${kind} chart`, nodes);
@@ -188,6 +242,7 @@ export function QrInsert() {
   const { artboard } = useEditor();
   const insert = useInsertGroup();
   const toast = useToast();
+  const place = usePlacement();
   const [text, setText] = useState('https://example.com');
   const [ec, setEc] = useState<EcLevel>('M');
   const [quiet, setQuiet] = useState(true);
@@ -198,8 +253,7 @@ export function QrInsert() {
     try {
       const nodes = qrNode({
         text, ec, size,
-        x: Math.round((artboard.width - size) / 2),
-        y: Math.round((artboard.height - size) / 2),
+        ...place(size, size),
         ...(quiet ? { light: '#ffffff' } : {}),
       });
       insert('Insert QR code', 'QR code', nodes);
@@ -241,6 +295,7 @@ export function BarcodeInsert() {
   const { artboard } = useEditor();
   const insert = useInsertGroup();
   const toast = useToast();
+  const place = usePlacement();
   const [symbology, setSymbology] = useState<Symbology>('code128');
   const [text, setText] = useState('ABC-1234');
   const [showText, setShowText] = useState(true);
@@ -253,8 +308,7 @@ export function BarcodeInsert() {
     try {
       const nodes = barcodeNode({
         text: text.trim(), symbology, width, height, showText,
-        x: Math.round((artboard.width - width) / 2),
-        y: Math.round((artboard.height - height) / 2),
+        ...place(width, height),
       });
       insert('Insert barcode', `${sym.label} barcode`, nodes);
     } catch (e) {
