@@ -39,6 +39,29 @@
  *
  * So: reconstruct from `git show <commit>^:<path>`, never from memory of what
  * the rule did.
+ *
+ * SCOPE -- what this tool cannot tell you:
+ *
+ * 1. It runs `tests/**`, NOT the goldens. The 30-fixture SVG diff runs from
+ *    `packages/cli/bin/artboard.mjs golden`, which this never invokes, so
+ *    "no golden moved" is NEVER a result of this tool. It is also vacuous on
+ *    its own terms for anything command-shaped: `goldenCases` parses a fixture
+ *    and renders it, applying no command (`resize` appears 0 times in
+ *    `packages/cli/src/main.ts` and in 0 of 30 fixtures), so the golden path
+ *    cannot reach a command mutation of any strength. I reported "caught by
+ *    three tests, none golden" as evidence; the second half was guaranteed
+ *    before the run started.
+ *
+ * 2. It substitutes a PACKAGE ENTRY POINT through `resolve.alias`. Anything not
+ *    reached that way -- a mutant in `vitest.config.ts` itself, in `tools/`, or
+ *    in a module imported by relative path rather than through the alias map --
+ *    still has no route but the working tree, and the window protocol still
+ *    applies there. "All of it is alias-reachable" is true until someone adds a
+ *    file.
+ *
+ * 3. Read this script's exit code directly. `--at ... | grep` reports the
+ *    PIPELINE's status, so the in-repo refusal below looks like exit 0 through
+ *    a pipe. Redirect to a file if you need to check it.
  */
 import { spawnSync } from 'node:child_process';
 import { copyFileSync, mkdtempSync, writeFileSync } from 'node:fs';
