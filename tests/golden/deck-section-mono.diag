@@ -1,0 +1,1 @@
+warn CONTRAST_AA deck-section-mono-page "02 / 24" has a contrast ratio of 3.9:1 against the artboard background, below the 4.5:1 that WCAG AA requires for body text (22px).

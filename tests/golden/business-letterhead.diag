@@ -1,0 +1,3 @@
+info LINE_TOO_LONG business-letterhead-body "Dear Mira, Thank you for the int" wraps to 113 characters per line, above the ~90 at which the eye starts losing its place. Narrow the box or raise the size.
+warn CONTRAST_AA business-letterhead-footer "Northwind Studio B.V. · KvK 1234" has a contrast ratio of 2.56:1 against the artboard background, below the 4.5:1 that WCAG AA requires for body text (22px).
+warn CONTRAST_AA business-letterhead-page "Page 1 of 1" has a contrast ratio of 2.56:1 against the artboard background, below the 4.5:1 that WCAG AA requires for body text (22px).

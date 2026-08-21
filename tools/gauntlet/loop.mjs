@@ -190,7 +190,7 @@ function nextActionsFor(gates) {
     if (gates.golden.noFixtures) {
       actions.push('tests/golden has no fixtures. Add a *.json document, then run `npm run golden -- --update`.');
     } else if (gates.golden.drifted.length) {
-      actions.push(`Golden drift in ${gates.golden.drifted.join(', ')}. Inspect the .actual.svg next to each baseline; if the new output is correct, run \`npm run golden -- --update\` and commit the baseline.`);
+      actions.push(`Golden drift in ${gates.golden.drifted.join(', ')}. Inspect the .actual.svg next to each baseline -- or, where the failure says "diagnostics drifted", the +/- lines in the output itself, since a diagnostics-only drift moves no pixels and writes no .actual.svg. If the new output is correct, run \`npm run golden -- --update\` and commit the baseline (and its .diag sidecar).`);
     } else {
       actions.push('golden exited non-zero with no drift parsed -- read gates.golden.output.');
     }

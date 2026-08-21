@@ -1,0 +1,10 @@
+warn TEXT_TOO_SMALL n_chart001-2 "Axis 0" is set at 7.35px, below the 8px floor for legible text.
+warn TEXT_TOO_SMALL n_chart001-4 "Axis 20" is set at 7.35px, below the 8px floor for legible text.
+warn TEXT_TOO_SMALL n_chart001-6 "Axis 40" is set at 7.35px, below the 8px floor for legible text.
+warn TEXT_TOO_SMALL n_chart001-8 "Axis 60" is set at 7.35px, below the 8px floor for legible text.
+warn TEXT_TOO_SMALL n_chart001-10 "Axis 80" is set at 7.35px, below the 8px floor for legible text.
+warn TEXT_TOO_SMALL n_chart001-12 "Axis 100" is set at 7.35px, below the 8px floor for legible text.
+warn TEXT_TOO_SMALL n_chart001-13 "Category Q1" is set at 7.35px, below the 8px floor for legible text.
+warn TEXT_TOO_SMALL n_chart001-14 "Category Q2" is set at 7.35px, below the 8px floor for legible text.
+warn TEXT_TOO_SMALL n_chart001-15 "Category Q3" is set at 7.35px, below the 8px floor for legible text.
+warn TEXT_TOO_SMALL n_chart001-16 "Category Q4" is set at 7.35px, below the 8px floor for legible text.

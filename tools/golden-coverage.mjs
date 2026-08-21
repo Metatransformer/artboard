@@ -41,15 +41,16 @@
  * whether a fixture earns its place, and often it does not -- seven blend modes
  * down one shared `mix-blend-mode` emission buy nothing the first one did not.
  */
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 // This report gets piped to `head` and `grep` constantly; a closed stdout is
 // the reader having seen enough, not an error worth a stack trace.
 process.stdout.on('error', (e) => { if (e.code === 'EPIPE') process.exit(0); });
 
-import { dirname, join } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const PKGS = join(ROOT, 'packages');
 /** `--dir <path>` mirrors `artboard golden --dir`, and makes this script's own
  *  claims testable: drop a fixture, re-run, and the paths it uniquely carried
  *  must flip to missing. */
@@ -245,9 +246,100 @@ console.log('\nFIXTURES PER NODE KIND  (each kind is its own renderNode arm)');
 const thin = [...dims].filter(([, d]) => !d.values && d.seen.size >= 1 && d.seen.size <= 2)
   .sort((a, b) => a[1].seen.size - b[1].seen.size);
 if (thin.length) {
-  console.log('\nTHIN  (few enough fixtures that deleting one costs real coverage)');
+  // Wording matters here. A "1 fixture" row is not a weak fixture -- it is
+  // usually a strong one standing alone, and the risk is structural, not a
+  // quality judgement on the file named. Say LOAD-BEARING, so nobody reads
+  // this as "that fixture is thin" and goes looking for something to improve
+  // in it. The thing to improve is the count.
+  console.log('\nLOAD-BEARING  (so few fixtures that deleting one silently drops the dimension)');
+  console.log('Not a criticism of the fixture named -- it is the only thing holding');
+  console.log('that path up. A second fixture is the fix; editing this one is not.');
   for (const [label, d] of thin) {
     const n = d.seen.size;
     console.log(`  ${n === 1 ? '!' : ' '} ${label.padEnd(22)} ${String(n).padStart(2)} fixture${n === 1 ? ' ' : 's'}  ${[...d.seen].map(f => f.trim()).join(', ')}`);
+  }
+}
+
+/* -- DIAGNOSTIC CODES ------------------------------------------------------
+ *
+ * Everything above this line reports on a dimension space read out of the
+ * schema -- which is to say, on things that end up in the SVG. A diagnostic
+ * does not. It is a second output of the same render, it has never been in a
+ * baseline, and so no re-bake could ever notice one going missing. That is not
+ * a dimension counted wrongly; it is a dimension the oracle could not
+ * represent, which is a strictly worse failure because it is invisible.
+ *
+ * The `.diag` sidecars fixed the holding half. This fixes the reporting half:
+ * which codes the corpus actually provokes, and which exist only in source.
+ *
+ * The scan is deliberately dumb -- a regex over `code:` in package sources --
+ * and deliberately loud about its own blind spot. `CONTRAST_${opts.level}` is
+ * a template literal that no literal-matching scanner can resolve, and the
+ * honest move is to print it as unresolved rather than quietly omit it and
+ * report a smaller, cleaner, wrong number. Same polarity as UNCLASSIFIED
+ * above: unrecognised is reported, never dropped.
+ * ---------------------------------------------------------------------- */
+{
+  const srcFiles = [];
+  const walk = (dir) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      if (e.name === 'node_modules' || e.name === 'dist') continue;
+      const full = join(dir, e.name);
+      if (e.isDirectory()) walk(full);
+      else if (e.name.endsWith('.ts')) srcFiles.push(full);
+    }
+  };
+  for (const pkg of readdirSync(PKGS, { withFileTypes: true })) {
+    const src = join(PKGS, pkg.name, 'src');
+    if (pkg.isDirectory() && existsSync(src)) walk(src);
+  }
+
+  const declared = new Map();   // CODE -> Set<file>
+  const unresolved = [];        // expressions this scanner cannot read
+  for (const file of srcFiles) {
+    const text = readFileSync(file, 'utf8');
+    for (const m of text.matchAll(/\bcode:\s*(?:'([A-Z0-9_]+)'|"([A-Z0-9_]+)"|(`[^`]*`))/g)) {
+      const lit = m[1] ?? m[2];
+      if (lit) {
+        if (!declared.has(lit)) declared.set(lit, new Set());
+        declared.get(lit).add(relative(ROOT, file));
+      } else {
+        unresolved.push(`${relative(ROOT, file)}  code: ${m[3]}`);
+      }
+    }
+  }
+
+  const emitted = new Map();    // CODE -> Set<fixture>
+  for (const f of readdirSync(FIXTURES).filter((f) => f.endsWith('.diag'))) {
+    for (const line of readFileSync(join(FIXTURES, f), 'utf8').split('\n')) {
+      const code = line.split(' ')[1];
+      if (!code) continue;
+      if (!emitted.has(code)) emitted.set(code, new Set());
+      emitted.get(code).add(f.replace(/\.diag$/, ''));
+    }
+  }
+
+  const all = [...new Set([...declared.keys(), ...emitted.keys()])].sort();
+  const w = Math.max(...all.map((c) => c.length), 20);
+  console.log(`\nDIAGNOSTIC CODES  ${[...emitted.keys()].length}/${all.length} provoked by some fixture`);
+  console.log('A code no fixture provokes is a message nobody has ever read back. It');
+  console.log('can be deleted, reworded, or broken and every oracle here stays green.');
+  for (const code of all) {
+    const fx = emitted.get(code);
+    const inSrc = declared.has(code);
+    // Two different absences, and conflating them would hide the interesting
+    // one. No source + emitted = built by a template literal (see above), not
+    // a mystery. No fixture = a genuinely unobserved message.
+    const mark = !fx ? '!' : !inSrc ? '~' : ' ';
+    const detail = !fx
+      ? '(no fixture provokes it)'
+      : `${String(fx.size).padStart(2)} fixture${fx.size === 1 ? ' ' : 's'}${inSrc ? '' : '   built at runtime -- no literal in source'}`;
+    console.log(`  ${mark} ${code.padEnd(w)}  ${detail}`);
+  }
+  if (unresolved.length) {
+    console.log('\n  code: expressions this scanner cannot resolve (so the count above is a');
+    console.log('  floor, not a total). Every one should show up as a ~ row if a fixture');
+    console.log('  reaches it; a ~ row with no entry here is the surprising case:');
+    for (const u of [...new Set(unresolved)]) console.log(`      ${u}`);
   }
 }

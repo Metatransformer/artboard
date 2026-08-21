@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 
 import { parseDocument, walk, type Diagnostic } from '@artboard/schema';
 import { renderToString } from '@artboard/render-svg';
-import { checkDocument } from '@artboard/diagnostics';
+import { checkArtboard, checkDocument } from '@artboard/diagnostics';
 
 import {
   buildVectorExport, fileStem, HEADLESS_FORMATS, isFormat, parsePages,
@@ -481,6 +481,30 @@ function baselineFor(dir: string, fixture: string, artboard: number): string {
 
 const actualFor = (baseline: string): string => baseline.replace(/\.svg$/, '.actual.svg');
 
+/* -- diagnostics baselines -------------------------------------------------
+ *
+ * A diagnostic is not in the SVG, so no .svg baseline can hold one and no
+ * re-bake can notice one going missing. The renderer can stop warning about a
+ * substituted font, a truncated string or a rule on curved text and every
+ * oracle here stays green -- the warning was never part of what was compared.
+ *
+ * So the non-error diagnostics of a render are a baseline of their own. A
+ * fixture that produces none has no file, and the file is DELETED when the
+ * last diagnostic goes away rather than left behind claiming warnings that no
+ * longer fire.
+ *
+ * Error-level diagnostics deliberately do not reach here: they already fail
+ * the case above. This is for the warn and info that were computed on every
+ * run and then thrown away.
+ * ---------------------------------------------------------------------- */
+const diagFor = (baseline: string): string => baseline.replace(/\.svg$/, '.diag');
+
+/** Message included on purpose. It carries the substance -- WHICH font was
+ *  substituted, HOW long the line was -- and a baseline that drops it goes
+ *  green on a warning that has quietly started saying something else. */
+const diagText = (diagnostics: readonly Diagnostic[]): string =>
+  diagnostics.map(d => `${d.level} ${d.code} ${d.nodeId ?? '-'} ${d.message}`).join('\n');
+
 function unifiedish(expected: string, actual: string): string {
   const e = expected.split('\n');
   const a = actual.split('\n');
@@ -522,7 +546,17 @@ function goldenCases(dir: string, fixture: string, update: boolean): GoldenCase[
       // inlineAssets:false keeps data: URIs out of the baselines -- fixtures stay diffable.
       const rendered = renderToString(doc, index, { inlineAssets: false });
       svg = rendered.svg;
-      diagnostics = [...openDiagnostics, ...rendered.diagnostics];
+      // The accessibility findings are in here on purpose. They are the bulk
+      // of what this project can say about a document and, until now, the
+      // only oracle that ever ran them was a human typing `artboard check`.
+      // Pinned at AA because a baseline has to pick one; AAA is a flag on the
+      // command, not a second set of files.
+      const board = doc.artboards[index];
+      diagnostics = [
+        ...openDiagnostics,
+        ...rendered.diagnostics,
+        ...(board ? checkArtboard(board, { level: 'AA' }) : []),
+      ];
     } catch (e) {
       cases.push({ fixture, artboard: index, baseline, status: 'fail', detail: `render threw -- ${describeError(e)}` });
       continue;
@@ -537,12 +571,22 @@ function goldenCases(dir: string, fixture: string, update: boolean): GoldenCase[
 
     const rendered = svg + '\n';
 
+    const diagPath = diagFor(baseline);
+    const diagNow = diagText(diagnostics);
+    const diagWas = existsSync(diagPath) ? normalize(readFileSync(diagPath, 'utf8')) : '';
+
     if (update) {
       const existed = existsSync(baseline);
       const same = existed && normalize(readFileSync(baseline, 'utf8')) === normalize(rendered);
       if (!same) writeOut(baseline, rendered);
+      const diagSame = diagWas === normalize(diagNow);
+      if (!diagSame) {
+        if (diagNow) writeOut(diagPath, diagNow + '\n');
+        else if (existsSync(diagPath)) rmSync(diagPath);
+      }
       if (existsSync(actualPath)) rmSync(actualPath);
-      cases.push({ fixture, artboard: index, baseline, status: existed ? (same ? 'unchanged' : 'updated') : 'created', detail: '' });
+      const status: CaseStatus = existed ? (same && diagSame ? 'unchanged' : 'updated') : 'created';
+      cases.push({ fixture, artboard: index, baseline, status, detail: '' });
       continue;
     }
 
@@ -558,15 +602,44 @@ function goldenCases(dir: string, fixture: string, update: boolean): GoldenCase[
       continue;
     }
 
-    const expected = normalize(readFileSync(baseline, 'utf8'));
-    if (expected === normalize(rendered)) {
+    // Both drifts are reported together, never one instead of the other. An
+    // earlier cut returned on the first difference it found, which meant a
+    // change that moved pixels AND silenced a warning showed only the pixels;
+    // you would re-bake the SVG, the sidecar would be rewritten in the same
+    // pass, and the lost warning would never once have been printed.
+    const svgDrift = normalize(readFileSync(baseline, 'utf8')) !== normalize(rendered);
+    const diagDrift = diagWas !== normalize(diagNow);
+
+    if (!svgDrift && !diagDrift) {
       if (existsSync(actualPath)) rmSync(actualPath);
       cases.push({ fixture, artboard: index, baseline, status: 'pass', detail: '' });
       continue;
     }
 
-    writeOut(actualPath, rendered);
-    cases.push({ fixture, artboard: index, baseline, status: 'fail', detail: unifiedish(expected, normalize(rendered)) });
+    const parts: string[] = [];
+    if (svgDrift) {
+      writeOut(actualPath, rendered);
+      parts.push(unifiedish(normalize(readFileSync(baseline, 'utf8')), normalize(rendered)));
+    } else if (existsSync(actualPath)) {
+      rmSync(actualPath);
+    }
+    if (diagDrift) {
+      // A set difference, not the two whole lists. Printing both in full made
+      // one restored warning read as three lost ones: the reader has to spot
+      // which of five near-identical sentences moved, which is exactly the
+      // work a diff exists to do for them.
+      const lines = (t: string): string[] => t.split('\n').filter(Boolean);
+      const was = lines(diagWas), now = lines(normalize(diagNow));
+      const gone = was.filter(l => !now.includes(l));
+      const came = now.filter(l => !was.includes(l));
+      parts.push([
+        `      diagnostics drifted -- ${diagFor(rel(baseline))}`,
+        ...gone.map(l => red(`      - ${l}`)),
+        ...came.map(l => green(`      + ${l}`)),
+        dim(`      ${gone.length} gone, ${came.length} new, ${now.length - came.length} unchanged`),
+      ].join('\n'));
+    }
+    cases.push({ fixture, artboard: index, baseline, status: 'fail', detail: parts.join('\n') });
   }
 
   return cases;
@@ -628,7 +701,7 @@ ${bold('COMMANDS')}
       --out <path>                  Write to a file instead of stdout.
       --artboard <n>                Which artboard (default 0).
       --no-assets                   Emit asset:<id> refs instead of inline data: URIs.
-  golden                            THE ORACLE: re-render every tests/golden fixture and diff the SVG.
+  golden                            THE ORACLE: re-render every tests/golden fixture, diff the SVG and its diagnostics.
       --update                      Rewrite the .svg baselines instead of failing.
       --dir <path>                  Fixture directory (default <repo>/tests/golden).
   export   <file.json>              Export a document. Same options as the editor's Export dialog.

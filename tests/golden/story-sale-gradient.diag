@@ -1,0 +1,2 @@
+warn CONTRAST_AA story-sale-gradient-pill-label "Spring Sale" has a contrast ratio of 2.31:1 against "story-sale-gradient-pill" over the artboard background at its worst point, below the 3:1 that WCAG AA requires for large text (26px).
+warn CONTRAST_AA story-sale-gradient-scope "Everything in store" has a contrast ratio of 2.64:1 against the artboard background at its worst point, below the 3:1 that WCAG AA requires for large text (68px).

@@ -128,6 +128,27 @@ tests/golden/smoke.json   ->  smoke.svg      (artboard 0)
 An empty or missing fixture directory is `NoFixturesError` and exit 1. An oracle with
 nothing to check is not a pass.
 
+**Diagnostics are baselined too, in a `.diag` sidecar.** A render has two outputs: the
+SVG, and what it has to say about the document. Only the first was ever compared, so a
+warning could stop firing — or start saying something different — and every oracle in
+the repo stayed green, because the warning was never part of what was compared. So the
+non-error diagnostics of each artboard are written next to its baseline:
+
+```
+tests/golden/text-diagnostics.json  ->  text-diagnostics.svg
+                                        text-diagnostics.diag
+```
+
+Three things about the file. It holds **level, code, node id and the full message** —
+the message carries the substance (*which* font was substituted, *how* long the line
+was), and a baseline that drops it goes green on a warning that has quietly started
+saying something else. It is **deleted when the last diagnostic goes away** rather than
+left behind claiming warnings that no longer fire, and a missing file means "none
+expected". And it includes the **accessibility findings** from `checkArtboard`, pinned
+at WCAG AA — those are the bulk of what this project can say about a document, and
+until they landed here the only thing that ever ran them was a human typing `artboard
+check`. Error-level diagnostics never reach the sidecar; they already fail the case.
+
 This is the project's oracle. It exists because a rendering regression does not throw,
 does not fail a type check, and does not look wrong in a unit test that only asserts
 "an element was produced". It looks wrong in the artwork, six weeks later.
@@ -237,12 +258,40 @@ Two things to know before reading the number:
   and inflates wherever an enum is wide.
 
 `FIXTURES PER NODE KIND` is the section worth watching, because each kind is a
-different `renderNode` arm rather than a field on a shared path. `THIN` is the same
-idea for fields, printing the fixture count rather than only flagging singletons — a
-binary check cannot tell two fixtures from twenty. Both mark `!` where a single file
+different `renderNode` arm rather than a field on a shared path. `LOAD-BEARING` is the
+same idea for fields, printing the fixture count rather than only flagging singletons —
+a binary check cannot tell two fixtures from twenty. Both mark `!` where a single file
 is holding a path up, but neither is automatically a job: `image` sits at one fixture
 and three guards in `render.test.ts` go red if that fixture disappears, which is the
 hazard already handled by something that is not a fixture.
+
+That section used to be called `THIN`, which read as a judgement on the fixture named.
+It is the opposite: a `1 fixture` row is usually a *strong* fixture standing alone, and
+the fragility is structural. The fix is a second fixture, never an edit to the one
+listed.
+
+`DIAGNOSTIC CODES` answers a different question, and a sharper one. Everything else in
+the report describes a dimension space read out of the schema — which is to say, things
+that end up in the SVG. **A diagnostic does not.** It is a second output of the same
+render, so no `.svg` baseline could hold it and no re-bake could notice one going
+missing. That is not a dimension counted wrongly; it is a dimension the oracle could not
+*represent*, which is strictly worse, because it is invisible rather than merely absent.
+
+Both halves are now closed. The holding half is the `.diag` sidecar (above). The
+reporting half is this section: which codes the corpus actually provokes, and which
+exist only in source. A code with no fixture behind it is a message nobody has ever read
+back — it can be deleted, reworded, or wired to nothing, and every oracle here stays
+green. That is not hypothetical: `FONT_SUBSTITUTED` was raised by `layoutText` on every
+unmeasured family, the `TextLayout` type documented it as *"Renderers forward these"*,
+and `render-svg` did not. It reached nobody for the whole life of the feature, and the
+only question that surfaced it was "which code has no fixture?".
+
+The scanner is a regex over `code:` in package sources and is deliberately loud about
+its own blind spot: `` code: `CONTRAST_${opts.level}` `` is a template literal it cannot
+resolve, so it prints the expression under an explicit unresolved list and marks the
+runtime-built code `~` rather than quietly reporting a smaller, cleaner, wrong number.
+Same polarity as `UNCLASSIFIED`. A `~` row with no matching unresolved entry is the
+surprising case worth chasing.
 
 Prefer to extend the derivation over adding to `IGNORED`. The tool has been
 mutation-tested — run against the fixture set with `render-features.json` removed via
@@ -250,6 +299,32 @@ mutation-tested — run against the fixture set with `render-features.json` remo
 missing — so a false "covered" is the one thing it is known not to do. Keep it that
 way: an exclusion that hides a real path re-creates the stale-allowlist bug the tool
 exists to prevent.
+
+### When a measurement disagrees with the renderer
+
+Sooner or later you will build a harness — a browser screenshot, a font probe, a
+measuring script — and it will disagree with the engine. Before you retune a constant,
+read the *shape* of the disagreement, because the shape names the culprit:
+
+- **Proportional error indicts the ruler.** A uniform 7.6% overshoot across strings of
+  very different lengths cannot be kerning or rounding; nothing real scales that
+  cleanly. It is one wrong factor somewhere in the instrument. This exact number came
+  from a harness whose `@font-face` `file://` URL never loaded from an `about:blank`
+  document — while `document.fonts.ready` resolved anyway, so the harness cheerfully
+  measured a fallback face and reported the difference as a renderer bug. The engine
+  was right the whole time; inlined as a data URI, the bundled woff2 measured `0.7456`
+  against the metric table's `0.7456`.
+- **Constant error indicts something being silently added.** A flat 55.4px across two
+  strings of different lengths cannot be measurement — it is five space glyphs at size
+  44. That one *was* a real, shipped bug: the serializer pretty-printed inside
+  `<text xml:space="preserve">`, injecting the newline and indent as real characters.
+  The editor's React path never emitted that whitespace, so the editor was correct and
+  only the export was wrong, which is why no golden and no unit test could see it.
+
+The corollary is a habit, not a rule: **an instrument that reports nothing is not
+evidence until you have watched it report something.** A probe whose selector matches no
+element and a codebase with no defects produce identical output. Run it against a known
+bad input first — the control group is what separates the two.
 
 ### The golden output is an API
 
@@ -359,6 +434,14 @@ A structured `{ level, code, nodeId, message }`.
 
 That is what lets the editor show the problem and the CLI fail CI. A silent wrong
 pixel is the worst bug this project can ship.
+
+**And a diagnostic nothing forwards is not a diagnostic.** If you raise one in a package
+that returns it to a caller — the way `layoutText` returns `TextLayout.diagnostics` —
+the raise is only half the work; the forward at every call site is the other half.
+`FONT_SUBSTITUTED` sat un-forwarded by `render-svg` long enough to ship, with the
+contract written in the type's own doc comment the whole time. The check that catches
+this is `DIAGNOSTIC CODES` in `tools/golden-coverage.mjs`: give any new code a fixture
+that provokes it, or accept that nothing will ever tell you it stopped working.
 
 ### Also
 
