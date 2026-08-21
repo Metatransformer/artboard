@@ -160,7 +160,20 @@ function record(subject, file, backgrounds) {
   }
 }
 
-const visit = (n, f) => { record(n, f, false); for (const c of n.children ?? []) visit(c, f); };
+// Which fixtures contain each node KIND.
+//
+// Tracked separately from `dims` because kind is not a field on a node the way
+// `blend` or `rotation` is -- it selects which renderNode arm runs, so a kind
+// with thin fixture backing means a whole rendering branch is thinly watched.
+// Nothing here reported that at all: `group` was absent from every section of
+// this report while group rendering rode on one fixture and a rotation-pivot
+// bug sat inside it.
+const kinds = new Map();
+const visit = (n, f) => {
+  if (n.kind) { if (!kinds.has(n.kind)) kinds.set(n.kind, new Set()); kinds.get(n.kind).add(f); }
+  record(n, f, false);
+  for (const c of n.children ?? []) visit(c, f);
+};
 for (const f of files) {
   const doc = JSON.parse(readFileSync(join(FIXTURES, f), 'utf8'));
   for (const ab of doc.artboards ?? []) { record(ab, f, true); for (const n of ab.nodes ?? []) visit(n, f); }
@@ -196,8 +209,31 @@ if (unclassified.length) {
   console.log('Teach this script the shape, or add the field to IGNORED:');
   for (const u of unclassified) console.log(`    ${u}`);
 }
-const thin = [...dims].filter(([, d]) => !d.values && d.seen.size === 1);
+// Threshold 2, not 1, and the COUNT is printed rather than implied.
+//
+// This read `=== 1` and said nothing about a dimension with two fixtures
+// behind it. `group` was exactly that: one fixture until insert-data landed,
+// two after -- and a rotation-pivot bug sat inside that one fixture the whole
+// time, reported as plain "covered". A binary check cannot tell two from
+// twenty, so the number is the finding and hiding it behind a threshold is
+// what let "covered" read as "safe".
+console.log('\nFIXTURES PER NODE KIND  (each kind is its own renderNode arm)');
+{
+  const w = Math.max(...[...kinds.keys()].map((k) => k.length));
+  for (const [k, set] of [...kinds].sort((a, b) => a[1].size - b[1].size || a[0].localeCompare(b[0]))) {
+    // Names only where the count is actionable. Listing all 28 fixtures for
+    // `text` buries the two lines that matter under three lines that do not.
+    const thinEnough = set.size <= 2;
+    console.log(`  ${thinEnough ? '!' : ' '} ${k.padEnd(w)}  ${String(set.size).padStart(2)}${thinEnough ? '  ' + [...set].join(', ') : ''}`);
+  }
+}
+
+const thin = [...dims].filter(([, d]) => !d.values && d.seen.size >= 1 && d.seen.size <= 2)
+  .sort((a, b) => a[1].seen.size - b[1].seen.size);
 if (thin.length) {
-  console.log('\nRIDING ON A SINGLE FIXTURE  (delete it and the path goes unobserved)');
-  for (const [label, d] of thin) console.log(`    ${label.padEnd(22)} ${[...d.seen][0].trim()}`);
+  console.log('\nTHIN  (few enough fixtures that deleting one costs real coverage)');
+  for (const [label, d] of thin) {
+    const n = d.seen.size;
+    console.log(`  ${n === 1 ? '!' : ' '} ${label.padEnd(22)} ${String(n).padStart(2)} fixture${n === 1 ? ' ' : 's'}  ${[...d.seen].map(f => f.trim()).join(', ')}`);
+  }
 }

@@ -274,13 +274,22 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
 
     if (d.mode === 'resize' && d.handle) {
       const h = d.handle;
-      // A group in the selection is skipped, not resized. Its own handles are
-      // hidden, but a mixed selection still shows the PLAIN node's handles and
-      // `origin` covers everything selected -- so without this the group would
-      // be sent a width/height patch that the command layer now refuses, and
-      // the throw would land mid-gesture on a drag the user aimed at something
-      // else. Leaving the group untouched is also what the screen already
-      // shows, since resizing its box never redrew a child.
+      // A group in the selection is skipped, not resized.
+      //
+      // UNREACHABLE TODAY, and kept deliberately. The original note here said a
+      // mixed selection still shows the plain node's handles, so `origin` could
+      // carry a group into a resize -- that is not true: every handle renders
+      // inside `{single && ...}` in SelectionBox, so a multi-selection shows no
+      // resize handle at all and a single selection of a group shows none
+      // either (`resizable` is false). `origin` in a resize drag can therefore
+      // only ever hold one non-group node, and this filter removes nothing.
+      //
+      // It stays because the command layer now THROWS on a group width/height
+      // patch, which makes "no group reaches here" a correctness requirement
+      // rather than an incidental fact -- anyone enabling multi-select resize
+      // would otherwise land that throw mid-gesture, on a drag the user aimed
+      // at something else. Kept as the guard for that change, not as a fix for
+      // a live bug.
       const cmds: Command[] = Object.entries(d.origin).filter(([id]) => {
         const n = nodes.find(v => v.id === id) as any;
         return n && n.kind !== 'group';
