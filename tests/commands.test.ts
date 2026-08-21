@@ -44,9 +44,20 @@ function randomNode(rng: () => number): Node {
   }
 }
 
-/** Keys that exist on the node and are safe to patch (never structural). */
+/**
+ * Keys that exist on the node and are safe to patch (never structural).
+ *
+ * `x`/`y` are dropped for a group: `apply` refuses them now, because a group's
+ * x/y is bounds metadata that no child draws from, and patching it moved the
+ * selection handles while every child stayed put. The generator has to stop
+ * producing the command that is now correctly rejected -- and `translate`,
+ * which replaces it, is generated as its own kind below so the round-trip
+ * invariant still covers moving a group.
+ */
 function patchableKeys(node: any): string[] {
-  const common = ['x', 'y', 'width', 'height', 'rotation', 'opacity', 'visible', 'locked', 'name'];
+  const common = node.kind === 'group'
+    ? ['width', 'height', 'rotation', 'opacity', 'visible', 'locked', 'name']
+    : ['x', 'y', 'width', 'height', 'rotation', 'opacity', 'visible', 'locked', 'name'];
   const perKind: Record<string, string[]> = {
     rect: ['radius'], ellipse: [], text: ['text', 'fontSize', 'align', 'uppercase'], group: [],
   };
@@ -60,6 +71,13 @@ function randomPatchValue(rng: () => number, key: string): unknown {
     case 'name': case 'text': return `v${int(rng, 0, 9999)}`;
     case 'align': return pick(rng, ['left', 'center', 'right'] as const);
     case 'width': case 'height': case 'fontSize': return int(rng, 1, 400);
+    // `radius` is `min(0)` in the schema. It used to fall through to the
+    // signed default and produce negative values, which `updateNode` accepted
+    // and stored; the round-trip only broke much later, when grouping the node
+    // re-validated it. `apply` refuses them now, so the generator has to stop
+    // asking -- a property test asserting apply∘invert === identity has to
+    // generate patches the schema would accept, or it is testing the refusal.
+    case 'radius': return int(rng, 0, 40);
     default: return int(rng, -200, 800);
   }
 }
@@ -71,7 +89,7 @@ const allNodes = (doc: Document): Node[] => {
   return out;
 };
 
-type Kind = 'addNode' | 'removeNode' | 'updateNode' | 'reorder' | 'setArtboard' | 'group' | 'ungroup';
+type Kind = 'addNode' | 'removeNode' | 'updateNode' | 'reorder' | 'setArtboard' | 'group' | 'ungroup' | 'translate';
 
 const groupsIn = (doc: Document): Node[] =>
   (doc.artboards[0]!.nodes as Node[]).filter(n => (n as any).kind === 'group');
@@ -81,7 +99,7 @@ function canMake(kind: Kind, doc: Document): boolean {
   const top = doc.artboards[0]!.nodes as Node[];
   if (kind === 'ungroup') return groupsIn(doc).length > 0;
   if (kind === 'group') return top.length >= 2;
-  if (kind === 'removeNode' || kind === 'reorder') return top.length > 0;
+  if (kind === 'removeNode' || kind === 'reorder' || kind === 'translate') return top.length > 0;
   return true;
 }
 
@@ -120,6 +138,22 @@ function makeCommand(kind: Kind, rng: () => number, doc: Document): Command {
     }
     case 'reorder':
       return { type: 'reorder', artboardId: AB, nodeId: pick(rng, top).id, to: int(rng, 0, top.length - 1) };
+    case 'translate': {
+      // Top-level only, and distinct: `apply` deliberately moves a matched
+      // node's whole subtree and stops descending, so naming both a group and
+      // its own child is not a double-move -- but it is also not what a
+      // selection ever looks like, and generating it would test the guard
+      // rather than the invariant.
+      const pool = top.map(n => n.id);
+      const nodeIds: string[] = [];
+      for (let want = int(rng, 1, Math.min(3, pool.length)); nodeIds.length < want;) {
+        const id = pick(rng, pool);
+        if (!nodeIds.includes(id)) nodeIds.push(id);
+      }
+      // Integers: `apply` rounds, so a fractional delta would not invert to a
+      // byte-identical document and the failure would indict the test.
+      return { type: 'translate', nodeIds, dx: int(rng, -300, 300), dy: int(rng, -300, 300) };
+    }
     case 'setArtboard': {
       const patch: Record<string, unknown> = {};
       for (const k of ['name', 'width', 'height'] as const) {
@@ -131,7 +165,7 @@ function makeCommand(kind: Kind, rng: () => number, doc: Document): Command {
   }
 }
 
-const KINDS: Kind[] = ['addNode', 'removeNode', 'updateNode', 'reorder', 'setArtboard', 'group', 'ungroup'];
+const KINDS: Kind[] = ['addNode', 'removeNode', 'updateNode', 'reorder', 'setArtboard', 'group', 'ungroup', 'translate'];
 
 /** A random command of any type that is currently buildable. */
 function anyCommand(rng: () => number, doc: Document): Command {
@@ -660,6 +694,30 @@ describe('commands: silent no-ops (regression guards)', () => {
   // `undefined` and undo re-added the key rather than removing it. The fix is
   // upstream of invert: a patch key the node does not have is not a valid
   // edit, so apply rejects it and there is nothing to invert.
+  // REGRESSION GUARD: `updateNode` checked that the patch named a real FIELD
+  // and never looked at the VALUE, so out-of-range numbers were written into
+  // the document and only surfaced later, from a command that had nothing to
+  // do with the one that wrote them. The first symptom was a `group` command
+  // failing with `Invalid rect node: Number must be greater than or equal to
+  // 0` -- pointing at the grouping, with nothing left pointing at the patch.
+  it('rejects an updateNode patch whose VALUE the schema would refuse', () => {
+    const doc = freshDoc();
+    for (const patch of [{ radius: -50 }, { opacity: 9 }, { width: -1 }]) {
+      expect(() => apply(doc, { type: 'updateNode', nodeId: 'r1', patch }), JSON.stringify(patch))
+        .toThrow(InvalidCommandError);
+    }
+    // ...and says which command did it, not just that something is invalid.
+    expect(() => apply(doc, { type: 'updateNode', nodeId: 'r1', patch: { radius: -50 } }))
+      .toThrow(/Patching "r1" with \{"radius":-50\}/);
+    // The document is untouched: a refused command must not half-apply.
+    expect(findNode(doc, 'r1')).toStrictEqual(findNode(freshDoc(), 'r1'));
+  });
+
+  it('stores a patched value the schema accepts, unchanged', () => {
+    const out = apply(freshDoc(), { type: 'updateNode', nodeId: 'r1', patch: { radius: 0, opacity: 0.25 } });
+    expect(findNode(out, 'r1')).toMatchObject({ radius: 0, opacity: 0.25 });
+  });
+
   it('rejects an updateNode patch naming a field the node does not have', () => {
     const doc = freshDoc();
     const cmd: Command = { type: 'updateNode', nodeId: 'r1', patch: { phantom: 7 } as any };
