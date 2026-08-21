@@ -351,6 +351,17 @@ same `0.00` as a probe that found many and cleared them all.
 Both halves matter. A control that cannot distinguish "nothing wrong" from "nothing
 looked at" is decoration.
 
+**And an honest denominator is still not enough.** A later measurement in the same
+feature reported that a rule "fires on 0 of 4" cases. The 4 was real — and it was one
+node counted once per target size, and that node could not reach the branch under any
+value of the rule. The number that would have exposed it was not the denominator but a
+control on the *rule*: forcing the most extreme version of it also changed nothing, which
+says the corpus is blind to the question rather than that the rule is inert. So there are
+three separate things to establish, and the first two do not imply the third: that the
+probe examined something, that it can report a difference, and that the sample can reach
+the question at all. A zero from a sample that cannot reach the question is a fact about
+the sample.
+
 ### A threshold you cannot pin, you can bound
 
 `tests` established that a test can be *threshold-independent* without being
@@ -375,6 +386,13 @@ Two things make a sweep honest:
 - **A knob at zero is a free control.** If the new behaviour is off at `0`, the zero row
   of the sweep reproduces the code you replaced, and the whole table has a fixed point you
   did not have to trust.
+
+And a bound is not a guard against the constant changing. A mutant *inside* the bracket
+passes it, and later did: `STACK_GAP = 0.5` was killed only because it fell outside
+(3.3%, 20.4%), where `0.15` would have shipped silently. That is not the bracket failing
+— a bounding test answers "is this value defensible" and a staged-diff read answers "is
+this the value I verified", and neither substitutes for the other. The bracket would be
+wrong to try.
 
 ### "No fixture reaches this branch" means three different things
 
