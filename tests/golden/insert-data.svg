@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 300" width="1400" height="300" role="img">
+  <title>Insert Data</title>
+  <rect x="0" y="0" width="1400" height="300" fill="#ffffff"/>
+  <g>
+    <text x="90.58" y="54.58" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="12.87" font-weight="700" text-anchor="start" fill="#111827" xml:space="preserve">
+      <tspan x="90.58" y="64.75">Quarterly revenue</tspan>
+    </text>
+    <rect x="101.78" y="76.24" width="0.92" height="157.68" fill="#9ca3af" aria-hidden="true"/>
+    <text x="-38.76" y="236.5" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="middle" fill="#6b7280" xml:space="preserve">
+      <tspan x="102.24" y="242.31">0</tspan>
+    </text>
+    <rect x="158.34" y="76.24" width="0.61" height="157.68" fill="#e5e7eb" aria-hidden="true"/>
+    <text x="17.64" y="236.5" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="middle" fill="#6b7280" xml:space="preserve">
+      <tspan x="158.64" y="242.31">20</tspan>
+    </text>
+    <rect x="214.74" y="76.24" width="0.61" height="157.68" fill="#e5e7eb" aria-hidden="true"/>
+    <text x="74.04" y="236.5" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="middle" fill="#6b7280" xml:space="preserve">
+      <tspan x="215.04" y="242.31">40</tspan>
+    </text>
+    <rect x="271.14" y="76.24" width="0.61" height="157.68" fill="#e5e7eb" aria-hidden="true"/>
+    <text x="130.44" y="236.5" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="middle" fill="#6b7280" xml:space="preserve">
+      <tspan x="271.44" y="242.31">60</tspan>
+    </text>
+    <rect x="327.54" y="76.24" width="0.61" height="157.68" fill="#e5e7eb" aria-hidden="true"/>
+    <text x="186.84" y="236.5" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="middle" fill="#6b7280" xml:space="preserve">
+      <tspan x="327.84" y="242.31">80</tspan>
+    </text>
+    <rect x="383.94" y="76.24" width="0.61" height="157.68" fill="#e5e7eb" aria-hidden="true"/>
+    <text x="243.25" y="236.5" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="middle" fill="#6b7280" xml:space="preserve">
+      <tspan x="384.25" y="242.31">100</tspan>
+    </text>
+    <text x="90.58" y="88.6" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="end" fill="#374151" xml:space="preserve">
+      <tspan x="98.81" y="97.35">Q1</tspan>
+    </text>
+    <text x="90.58" y="128.02" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="end" fill="#374151" xml:space="preserve">
+      <tspan x="98.81" y="136.77">Q2</tspan>
+    </text>
+    <text x="90.58" y="167.44" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="end" fill="#374151" xml:space="preserve">
+      <tspan x="98.81" y="176.19">Q3</tspan>
+    </text>
+    <text x="90.58" y="206.86" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="end" fill="#374151" xml:space="preserve">
+      <tspan x="98.81" y="215.61">Q4</tspan>
+    </text>
+    <rect x="102.24" y="82.29" width="118.44" height="27.33" rx="1.84" ry="1.84" fill="#4f46e5" aria-hidden="true"/>
+    <rect x="102.24" y="121.71" width="191.76" height="27.33" rx="1.84" ry="1.84" fill="#4f46e5" aria-hidden="true"/>
+    <rect x="102.24" y="161.13" width="155.1" height="27.33" rx="1.84" ry="1.84" fill="#4f46e5" aria-hidden="true"/>
+    <rect x="102.24" y="200.55" width="256.62" height="27.33" rx="1.84" ry="1.84" fill="#4f46e5" aria-hidden="true"/>
+  </g>
+  <g>
+    <rect x="625" y="75" width="150" height="150" fill="#ffffff" aria-hidden="true"/>
+    <g transform="translate(625 75) scale(4.55 4.55)" aria-hidden="true">
+      <path d="M4 4h7v1h-7zM12 4h3v1h-3zM17 4h2v1h-2zM22 4h7v1h-7zM4 5h1v1h-1zM10 5h1v1h-1zM12 5h4v1h-4zM17 5h1v1h-1zM22 5h1v1h-1zM28 5h1v1h-1zM4 6h1v1h-1zM6 6h3v1h-3zM10 6h1v1h-1zM12 6h6v1h-6zM22 6h1v1h-1zM24 6h3v1h-3zM28 6h1v1h-1zM4 7h1v1h-1zM6 7h3v1h-3zM10 7h1v1h-1zM13 7h1v1h-1zM17 7h1v1h-1zM19 7h2v1h-2zM22 7h1v1h-1zM24 7h3v1h-3zM28 7h1v1h-1zM4 8h1v1h-1zM6 8h3v1h-3zM10 8h1v1h-1zM12 8h5v1h-5zM18 8h1v1h-1zM22 8h1v1h-1zM24 8h3v1h-3zM28 8h1v1h-1zM4 9h1v1h-1zM10 9h1v1h-1zM15 9h2v1h-2zM18 9h1v1h-1zM20 9h1v1h-1zM22 9h1v1h-1zM28 9h1v1h-1zM4 10h7v1h-7zM12 10h1v1h-1zM14 10h1v1h-1zM16 10h1v1h-1zM18 10h1v1h-1zM20 10h1v1h-1zM22 10h7v1h-7zM13 11h2v1h-2zM17 11h1v1h-1zM20 11h1v1h-1zM4 12h1v1h-1zM7 12h7v1h-7zM15 12h1v1h-1zM18 12h4v1h-4zM24 12h1v1h-1zM26 12h3v1h-3zM6 13h2v1h-2zM9 13h1v1h-1zM11 13h3v1h-3zM16 13h1v1h-1zM19 13h1v1h-1zM21 13h1v1h-1zM23 13h5v1h-5zM4 14h1v1h-1zM9 14h4v1h-4zM17 14h1v1h-1zM19 14h1v1h-1zM21 14h5v1h-5zM28 14h1v1h-1zM5 15h2v1h-2zM8 15h2v1h-2zM13 15h1v1h-1zM15 15h2v1h-2zM19 15h3v1h-3zM25 15h4v1h-4zM4 16h1v1h-1zM7 16h2v1h-2zM10 16h1v1h-1zM12 16h2v1h-2zM15 16h1v1h-1zM17 16h3v1h-3zM22 16h2v1h-2zM28 16h1v1h-1zM4 17h1v1h-1zM8 17h2v1h-2zM11 17h2v1h-2zM14 17h1v1h-1zM16 17h1v1h-1zM18 17h4v1h-4zM24 17h1v1h-1zM27 17h1v1h-1zM4 18h2v1h-2zM10 18h1v1h-1zM12 18h3v1h-3zM18 18h2v1h-2zM21 18h2v1h-2zM24 18h5v1h-5zM4 19h1v1h-1zM7 19h2v1h-2zM11 19h2v1h-2zM16 19h3v1h-3zM20 19h1v1h-1zM22 19h2v1h-2zM25 19h2v1h-2zM28 19h1v1h-1zM4 20h1v1h-1zM6 20h7v1h-7zM14 20h3v1h-3zM19 20h6v1h-6zM26 20h2v1h-2zM12 21h4v1h-4zM20 21h1v1h-1zM24 21h1v1h-1zM26 21h2v1h-2zM4 22h7v1h-7zM12 22h2v1h-2zM16 22h3v1h-3zM20 22h1v1h-1zM22 22h1v1h-1zM24 22h1v1h-1zM28 22h1v1h-1zM4 23h1v1h-1zM10 23h1v1h-1zM12 23h4v1h-4zM17 23h1v1h-1zM19 23h2v1h-2zM24 23h1v1h-1zM28 23h1v1h-1zM4 24h1v1h-1zM6 24h3v1h-3zM10 24h1v1h-1zM12 24h1v1h-1zM14 24h2v1h-2zM17 24h1v1h-1zM19 24h6v1h-6zM27 24h2v1h-2zM4 25h1v1h-1zM6 25h3v1h-3zM10 25h1v1h-1zM12 25h1v1h-1zM16 25h2v1h-2zM19 25h1v1h-1zM21 25h2v1h-2zM27 25h2v1h-2zM4 26h1v1h-1zM6 26h3v1h-3zM10 26h1v1h-1zM13 26h3v1h-3zM17 26h1v1h-1zM20 26h2v1h-2zM24 26h5v1h-5zM4 27h1v1h-1zM10 27h1v1h-1zM14 27h4v1h-4zM21 27h4v1h-4zM26 27h3v1h-3zM4 28h7v1h-7zM12 28h1v1h-1zM15 28h3v1h-3zM20 28h2v1h-2zM25 28h1v1h-1zM28 28h1v1h-1z" fill="#111111"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(1028 97) scale(2.38 0.09)" aria-hidden="true">
+      <path d="M9 0h1v1000h-1zM11 0h1v1000h-1zM15 0h1v930h-1zM17 0h2v930h-2zM20 0h1v930h-1zM23 0h3v930h-3zM27 0h2v930h-2zM31 0h2v930h-2zM35 0h1v930h-1zM38 0h2v930h-2zM41 0h4v930h-4zM46 0h1v930h-1zM49 0h3v930h-3zM53 0h1v930h-1zM55 0h1v1000h-1zM57 0h1v1000h-1zM59 0h2v930h-2zM63 0h2v930h-2zM66 0h2v930h-2zM69 0h2v930h-2zM73 0h1v930h-1zM78 0h1v930h-1zM80 0h1v930h-1zM82 0h3v930h-3zM87 0h1v930h-1zM90 0h3v930h-3zM94 0h1v930h-1zM98 0h1v930h-1zM101 0h1v1000h-1zM103 0h1v1000h-1z" fill="#111111"/>
+    </g>
+    <text x="1033.05" y="183.92" font-family="'JetBrains Mono', ui-sans-serif, system-ui, sans-serif" font-size="14.88" font-weight="500" letter-spacing="10.098" text-anchor="middle" fill="#111111" xml:space="preserve">
+      <tspan x="1042.56" y="196.29">5</tspan>
+    </text>
+    <text x="1060.4" y="183.92" font-family="'JetBrains Mono', ui-sans-serif, system-ui, sans-serif" font-size="14.88" font-weight="500" letter-spacing="7.719" text-anchor="middle" fill="#111111" xml:space="preserve">
+      <tspan x="1110.35" y="196.29">901234</tspan>
+    </text>
+    <text x="1172.18" y="183.92" font-family="'JetBrains Mono', ui-sans-serif, system-ui, sans-serif" font-size="14.88" font-weight="500" letter-spacing="7.719" text-anchor="middle" fill="#111111" xml:space="preserve">
+      <tspan x="1222.13" y="196.29">123457</tspan>
+    </text>
+  </g>
+</svg>
