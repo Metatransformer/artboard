@@ -804,6 +804,19 @@ you decided against an obvious alternative, say so; it saves the reviewer asking
   against [docs/SECURITY.md](docs/SECURITY.md). If your change makes one of the
   guarantees in that document untrue, the document has to change first, in its own
   PR, with the reasoning written down.
+* **Expect your measurements to be re-run, and offer the command.** Many of the
+  numbered claims in this file were corrected at least once, several of them
+  only after they had already landed, and the pattern held every time: the
+  correction came from someone who had not written the thing, and the author was
+  confident. A count that was really one node counted four times; a "no fixture
+  reaches this" that turned out to be reachable by hand; a mutation run reported as `6 failed` when six
+  suites had failed to load and no assertion had run at all. None of those were
+  caught by re-reading. Each was caught by a second person executing the claim.
+
+So the useful thing to hand a reviewer is not a summary of what you measured, it
+is the command that measures it. And when you review, run the number rather than
+read it — including your own, from an hour ago. Recall is not measurement, and it
+does not become measurement by being yours.
 
 ### Security issues
 
