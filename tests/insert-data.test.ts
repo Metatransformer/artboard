@@ -21,6 +21,12 @@ import { renderToString } from '@artboard/render-svg';
  * the rendered `tests/golden/insert-data.svg`, not against the generators:
  *
  *   EAN-13   `python-barcode` 0.16.1, `EAN13('590123412345').build()[0]`.
+ *
+ * The fixture itself is generated, not hand-written: `tools/make-insert-fixture.mjs`
+ * emits it through the real insert path. Re-run that after changing a payload,
+ * then re-bake the SVG with `npm run golden -- --update`, then regenerate the
+ * constant above. Restoring a deliberately mutated fixture is the same command -
+ * never `git checkout`, which discards whatever else is uncommitted in the file.
  *            95 modules, bit-identical.
  *   QR       OpenCV 4.8.1 `QRCodeDetector().detectAndDecode()` on the fixture
  *            rasterized at 4200px wide. Decoded to exactly
