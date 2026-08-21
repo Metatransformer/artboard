@@ -216,9 +216,24 @@ type Frame = { width: number; height: number };
  *
  * Priced twice. Against the per-node model it fired on 46 of 442 independently
  * placed text nodes and cost a net 1941px of extra tearing across the corpus.
- * Against the clustered model it fires on 0 of 4 -- clustering absorbs almost
- * every text node, so the rule is not merely unhelpful but unreached. The same
- * probe reports 46 with clustering switched off, so that 0 is a measurement.
+ * Against the clustered model it fires on nothing -- but that number says less
+ * than it looks like it says, and the honest version is worth the extra line.
+ * Of 166 text nodes in the corpus, 165 land in a stack of two or more and take
+ * their y from it; the single node placed alone does not read `middle`, so the
+ * branch is unreachable here. `renderer-wins` made the same measurement with
+ * the right control: forcing `y: 'top'` unconditionally ALSO changes nothing
+ * across 120 fixture/target combinations. The corpus cannot distinguish any y
+ * rule from any other, so the zero is a fact about the corpus, not about this
+ * rule. What decides it is the argument above and the 1941px, not the zero.
+ *
+ * SO THIS IS A BEHAVIOUR CHANGE, NOT A DEAD-CODE DELETION, and an isolated text
+ * node now anchors by its box geometry deliberately rather than by oversight.
+ * Measured through `apply` on the case the corpus lacks -- one text node with
+ * nothing within 10% of the frame on either axis, margins 430/350 in a 1000
+ * frame, resized to 1000x2000: it lands at y = 970 by box geometry where the
+ * removed rule put it at 860. Both answers are defensible for a lone caption,
+ * which is the point: there was never evidence FOR the rule, only the symmetry
+ * that put it there.
  *
  * Unreached is not unreachable, and the shape that would want it is written
  * down at the foot of tests/resize-artboard.test.ts rather than deleted with
@@ -303,7 +318,7 @@ type Stack = { members: number[]; box: { y: number; height: number } };
  * The zero row is a control, not a data point: STACK_GAP = 0 disables
  * clustering entirely and reproduces the per-node behaviour this replaces.
  */
-const STACK_GAP = 0.10;
+const STACK_GAP = 0.5;
 
 /*
  * Bleed is not stack membership. A shape running off the page edge is
