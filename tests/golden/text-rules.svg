@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 800" width="1000" height="800" role="img">
+  <title>Text rules</title>
+  <defs>
+    <linearGradient id="grad-0" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#ec4899"/>
+    </linearGradient>
+    <linearGradient id="grad-1" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#ec4899"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="1000" height="800" fill="#ffffff"/>
+  <text x="60" y="30" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="44" font-weight="600" text-anchor="start" fill="#111111" xml:space="preserve"><tspan x="60" y="64.76">No rules at all</tspan></text>
+  <g>
+    <text x="60" y="110" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="44" font-weight="600" text-anchor="start" fill="#111111" xml:space="preserve"><tspan x="60" y="144.76">Underline, left</tspan></text>
+    <path d="M60 149.6h301.5v2.64h-301.5Z" fill="#111111"/>
+  </g>
+  <g>
+    <text x="60" y="190" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="44" font-weight="600" text-anchor="start" fill="#111111" xml:space="preserve"><tspan x="60" y="224.76">Strikethrough only</tspan></text>
+    <path d="M60 211.12h394.53v2.64h-394.53Z" fill="#111111"/>
+  </g>
+  <g>
+    <text x="60" y="270" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="44" font-weight="600" text-anchor="start" fill="#111111" xml:space="preserve"><tspan x="60" y="304.76">Both together</tspan></text>
+    <path d="M60 309.6h291.18v2.64h-291.18ZM60 291.12h291.18v2.64h-291.18Z" fill="#111111"/>
+  </g>
+  <g>
+    <text x="60" y="350" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="44" font-weight="600" text-anchor="middle" fill="#111111" xml:space="preserve"><tspan x="500" y="384.76">Centred rule</tspan></text>
+    <path d="M367.57 389.6h264.86v2.64h-264.86Z" fill="#111111"/>
+  </g>
+  <g>
+    <text x="60" y="430" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="44" font-weight="600" text-anchor="end" fill="#111111" xml:space="preserve"><tspan x="940" y="464.76">Right rule</tspan></text>
+    <path d="M736.78 469.6h203.22v2.64h-203.22Z" fill="#111111"/>
+  </g>
+  <g>
+    <text x="60" y="510" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="32" font-weight="600" text-anchor="start" fill="#111111" xml:space="preserve"><tspan x="60" y="535.28">A long underlined sentence that has to wrap onto a</tspan><tspan x="60" y="576.88">second line</tspan><tspan x="60" y="618.48"></tspan><tspan x="60" y="660.08">and a paragraph after a blank one</tspan></text>
+    <path d="M60 538.8h785.72v1.92h-785.72ZM60 580.4h177.49v1.92h-177.49ZM60 663.6h519.36v1.92h-519.36Z" fill="#111111"/>
+  </g>
+  <g>
+    <text x="60" y="730" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="40" font-weight="600" letter-spacing="2" text-anchor="start" fill="url(#grad-0)" xml:space="preserve"><tspan x="60" y="761.6">Gradient underline</tspan></text>
+    <path d="M60 766h393.1v2.4h-393.1Z" fill="url(#grad-1)"/>
+  </g>
+</svg>

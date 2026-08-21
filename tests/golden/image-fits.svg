@@ -62,7 +62,5 @@
   <g clip-path="url(#clip-7)">
     <image x="640" y="100" width="200" height="400" href="asset:band" preserveAspectRatio="none"/>
   </g>
-  <text x="40" y="16" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="20" font-weight="600" text-anchor="start" fill="#3f3f46" xml:space="preserve">
-    <tspan x="40" y="31.8">cover / contain / fill / radius</tspan>
-  </text>
+  <text x="40" y="16" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="20" font-weight="600" text-anchor="start" fill="#3f3f46" xml:space="preserve"><tspan x="40" y="31.8">cover / contain / fill / radius</tspan></text>
 </svg>

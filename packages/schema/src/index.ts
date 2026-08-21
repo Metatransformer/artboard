@@ -155,6 +155,9 @@ export const TextNode = z.object({
    *  the simple path and keeps every existing document rendering unchanged. */
   fill: Fill.optional(),
   uppercase: z.boolean().default(false),
+  /** Drawn as real geometry, not `text-decoration`. See the renderer for why. */
+  underline: z.boolean().default(false),
+  strikethrough: z.boolean().default(false),
 });
 
 export const RectNode = z.object({

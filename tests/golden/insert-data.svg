@@ -2,45 +2,23 @@
   <title>Insert Data</title>
   <rect x="0" y="0" width="1400" height="300" fill="#ffffff"/>
   <g>
-    <text x="90.58" y="54.58" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="12.87" font-weight="700" text-anchor="start" fill="#111827" xml:space="preserve">
-      <tspan x="90.58" y="64.75">Quarterly revenue</tspan>
-    </text>
+    <text x="90.58" y="54.58" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="12.87" font-weight="700" text-anchor="start" fill="#111827" xml:space="preserve"><tspan x="90.58" y="64.75">Quarterly revenue</tspan></text>
     <rect x="101.78" y="76.24" width="0.92" height="157.68" fill="#9ca3af" aria-hidden="true"/>
-    <text x="-38.76" y="236.5" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="middle" fill="#6b7280" xml:space="preserve">
-      <tspan x="102.24" y="242.31">0</tspan>
-    </text>
+    <text x="-38.76" y="236.5" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="middle" fill="#6b7280" xml:space="preserve"><tspan x="102.24" y="242.31">0</tspan></text>
     <rect x="158.34" y="76.24" width="0.61" height="157.68" fill="#e5e7eb" aria-hidden="true"/>
-    <text x="17.64" y="236.5" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="middle" fill="#6b7280" xml:space="preserve">
-      <tspan x="158.64" y="242.31">20</tspan>
-    </text>
+    <text x="17.64" y="236.5" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="middle" fill="#6b7280" xml:space="preserve"><tspan x="158.64" y="242.31">20</tspan></text>
     <rect x="214.74" y="76.24" width="0.61" height="157.68" fill="#e5e7eb" aria-hidden="true"/>
-    <text x="74.04" y="236.5" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="middle" fill="#6b7280" xml:space="preserve">
-      <tspan x="215.04" y="242.31">40</tspan>
-    </text>
+    <text x="74.04" y="236.5" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="middle" fill="#6b7280" xml:space="preserve"><tspan x="215.04" y="242.31">40</tspan></text>
     <rect x="271.14" y="76.24" width="0.61" height="157.68" fill="#e5e7eb" aria-hidden="true"/>
-    <text x="130.44" y="236.5" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="middle" fill="#6b7280" xml:space="preserve">
-      <tspan x="271.44" y="242.31">60</tspan>
-    </text>
+    <text x="130.44" y="236.5" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="middle" fill="#6b7280" xml:space="preserve"><tspan x="271.44" y="242.31">60</tspan></text>
     <rect x="327.54" y="76.24" width="0.61" height="157.68" fill="#e5e7eb" aria-hidden="true"/>
-    <text x="186.84" y="236.5" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="middle" fill="#6b7280" xml:space="preserve">
-      <tspan x="327.84" y="242.31">80</tspan>
-    </text>
+    <text x="186.84" y="236.5" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="middle" fill="#6b7280" xml:space="preserve"><tspan x="327.84" y="242.31">80</tspan></text>
     <rect x="383.94" y="76.24" width="0.61" height="157.68" fill="#e5e7eb" aria-hidden="true"/>
-    <text x="243.25" y="236.5" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="middle" fill="#6b7280" xml:space="preserve">
-      <tspan x="384.25" y="242.31">100</tspan>
-    </text>
-    <text x="90.58" y="88.6" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="end" fill="#374151" xml:space="preserve">
-      <tspan x="98.81" y="97.35">Q1</tspan>
-    </text>
-    <text x="90.58" y="128.02" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="end" fill="#374151" xml:space="preserve">
-      <tspan x="98.81" y="136.77">Q2</tspan>
-    </text>
-    <text x="90.58" y="167.44" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="end" fill="#374151" xml:space="preserve">
-      <tspan x="98.81" y="176.19">Q3</tspan>
-    </text>
-    <text x="90.58" y="206.86" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="end" fill="#374151" xml:space="preserve">
-      <tspan x="98.81" y="215.61">Q4</tspan>
-    </text>
+    <text x="243.25" y="236.5" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="middle" fill="#6b7280" xml:space="preserve"><tspan x="384.25" y="242.31">100</tspan></text>
+    <text x="90.58" y="88.6" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="end" fill="#374151" xml:space="preserve"><tspan x="98.81" y="97.35">Q1</tspan></text>
+    <text x="90.58" y="128.02" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="end" fill="#374151" xml:space="preserve"><tspan x="98.81" y="136.77">Q2</tspan></text>
+    <text x="90.58" y="167.44" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="end" fill="#374151" xml:space="preserve"><tspan x="98.81" y="176.19">Q3</tspan></text>
+    <text x="90.58" y="206.86" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="7.35" font-weight="500" text-anchor="end" fill="#374151" xml:space="preserve"><tspan x="98.81" y="215.61">Q4</tspan></text>
     <rect x="102.24" y="82.29" width="118.44" height="27.33" rx="1.84" ry="1.84" fill="#4f46e5" aria-hidden="true"/>
     <rect x="102.24" y="121.71" width="191.76" height="27.33" rx="1.84" ry="1.84" fill="#4f46e5" aria-hidden="true"/>
     <rect x="102.24" y="161.13" width="155.1" height="27.33" rx="1.84" ry="1.84" fill="#4f46e5" aria-hidden="true"/>
@@ -56,14 +34,8 @@
     <g transform="translate(1028 97) scale(2.38 0.09)" aria-hidden="true">
       <path d="M9 0h1v1000h-1zM11 0h1v1000h-1zM15 0h1v930h-1zM17 0h2v930h-2zM20 0h1v930h-1zM23 0h3v930h-3zM27 0h2v930h-2zM31 0h2v930h-2zM35 0h1v930h-1zM38 0h2v930h-2zM41 0h4v930h-4zM46 0h1v930h-1zM49 0h3v930h-3zM53 0h1v930h-1zM55 0h1v1000h-1zM57 0h1v1000h-1zM59 0h2v930h-2zM63 0h2v930h-2zM66 0h2v930h-2zM69 0h2v930h-2zM73 0h1v930h-1zM78 0h1v930h-1zM80 0h1v930h-1zM82 0h3v930h-3zM87 0h1v930h-1zM90 0h3v930h-3zM94 0h1v930h-1zM98 0h1v930h-1zM101 0h1v1000h-1zM103 0h1v1000h-1z" fill="#111111"/>
     </g>
-    <text x="1033.05" y="183.92" font-family="'JetBrains Mono', ui-sans-serif, system-ui, sans-serif" font-size="14.88" font-weight="500" letter-spacing="10.098" text-anchor="middle" fill="#111111" xml:space="preserve">
-      <tspan x="1042.56" y="196.29">5</tspan>
-    </text>
-    <text x="1060.4" y="183.92" font-family="'JetBrains Mono', ui-sans-serif, system-ui, sans-serif" font-size="14.88" font-weight="500" letter-spacing="7.719" text-anchor="middle" fill="#111111" xml:space="preserve">
-      <tspan x="1110.35" y="196.29">901234</tspan>
-    </text>
-    <text x="1172.18" y="183.92" font-family="'JetBrains Mono', ui-sans-serif, system-ui, sans-serif" font-size="14.88" font-weight="500" letter-spacing="7.719" text-anchor="middle" fill="#111111" xml:space="preserve">
-      <tspan x="1222.13" y="196.29">123457</tspan>
-    </text>
+    <text x="1033.05" y="183.92" font-family="'JetBrains Mono', ui-sans-serif, system-ui, sans-serif" font-size="14.88" font-weight="500" letter-spacing="10.098" text-anchor="middle" fill="#111111" xml:space="preserve"><tspan x="1042.56" y="196.29">5</tspan></text>
+    <text x="1060.4" y="183.92" font-family="'JetBrains Mono', ui-sans-serif, system-ui, sans-serif" font-size="14.88" font-weight="500" letter-spacing="7.719" text-anchor="middle" fill="#111111" xml:space="preserve"><tspan x="1110.35" y="196.29">901234</tspan></text>
+    <text x="1172.18" y="183.92" font-family="'JetBrains Mono', ui-sans-serif, system-ui, sans-serif" font-size="14.88" font-weight="500" letter-spacing="7.719" text-anchor="middle" fill="#111111" xml:space="preserve"><tspan x="1222.13" y="196.29">123457</tspan></text>
   </g>
 </svg>

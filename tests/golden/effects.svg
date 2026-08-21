@@ -83,70 +83,50 @@
   <rect x="0" y="0" width="1000" height="820" fill="#111827"/>
   <g>
     <g filter="url(#fx-0)">
-      <text x="40" y="60" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="40" font-weight="800" text-anchor="middle" fill="#ffffff" xml:space="preserve">
-        <tspan x="180" y="91.6">shadow</tspan>
-      </text>
+      <text x="40" y="60" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="40" font-weight="800" text-anchor="middle" fill="#ffffff" xml:space="preserve"><tspan x="180" y="91.6">shadow</tspan></text>
     </g>
   </g>
   <g>
     <g filter="url(#fx-1)">
-      <text x="360" y="60" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="40" font-weight="800" text-anchor="middle" fill="#ffffff" xml:space="preserve">
-        <tspan x="500" y="91.6">glow</tspan>
-      </text>
+      <text x="360" y="60" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="40" font-weight="800" text-anchor="middle" fill="#ffffff" xml:space="preserve"><tspan x="500" y="91.6">glow</tspan></text>
     </g>
   </g>
   <g>
     <g filter="url(#fx-2)">
-      <text x="680" y="60" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="40" font-weight="800" text-anchor="middle" fill="#ffffff" xml:space="preserve">
-        <tspan x="820" y="91.6">outline</tspan>
-      </text>
+      <text x="680" y="60" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="40" font-weight="800" text-anchor="middle" fill="#ffffff" xml:space="preserve"><tspan x="820" y="91.6">outline</tspan></text>
     </g>
   </g>
   <g>
     <g filter="url(#fx-3)">
-      <text x="40" y="240" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="40" font-weight="800" text-anchor="middle" fill="#ffffff" xml:space="preserve">
-        <tspan x="180" y="271.6">echo</tspan>
-      </text>
+      <text x="40" y="240" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="40" font-weight="800" text-anchor="middle" fill="#ffffff" xml:space="preserve"><tspan x="180" y="271.6">echo</tspan></text>
     </g>
   </g>
   <g>
     <g filter="url(#fx-4)">
-      <text x="360" y="240" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="40" font-weight="800" text-anchor="middle" fill="#ffffff" xml:space="preserve">
-        <tspan x="500" y="271.6">blur</tspan>
-      </text>
+      <text x="360" y="240" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="40" font-weight="800" text-anchor="middle" fill="#ffffff" xml:space="preserve"><tspan x="500" y="271.6">blur</tspan></text>
     </g>
   </g>
   <g>
     <g>
       <rect x="666" y="226" width="308" height="118" rx="10" fill="#f59e0b"/>
-      <text x="680" y="240" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="40" font-weight="800" text-anchor="middle" fill="#ffffff" xml:space="preserve">
-        <tspan x="820" y="271.6">plate</tspan>
-      </text>
+      <text x="680" y="240" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="40" font-weight="800" text-anchor="middle" fill="#ffffff" xml:space="preserve"><tspan x="820" y="271.6">plate</tspan></text>
     </g>
   </g>
-  <text font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="40" font-weight="800" fill="#ffffff" text-anchor="middle" xml:space="preserve">
-    <textPath href="#curve-5" startOffset="50%">curve</textPath>
-  </text>
+  <text font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="40" font-weight="800" fill="#ffffff" text-anchor="middle" xml:space="preserve"><textPath href="#curve-5" startOffset="50%">curve</textPath></text>
   <g>
     <g filter="url(#fx-6)">
-      <text x="360" y="420" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="40" font-weight="800" text-anchor="middle" fill="#ffffff" xml:space="preserve">
-        <tspan x="500" y="451.6">duotone</tspan>
-      </text>
+      <text x="360" y="420" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="40" font-weight="800" text-anchor="middle" fill="#ffffff" xml:space="preserve"><tspan x="500" y="451.6">duotone</tspan></text>
     </g>
   </g>
   <g>
     <g>
-      <text x="680" y="420" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="40" font-weight="800" text-anchor="middle" fill="#ffffff" xml:space="preserve">
-        <tspan x="820" y="451.6">vignette</tspan>
-      </text>
+      <text x="680" y="420" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="40" font-weight="800" text-anchor="middle" fill="#ffffff" xml:space="preserve"><tspan x="820" y="451.6">vignette</tspan></text>
       <rect x="680" y="420" width="280" height="90" fill="url(#vig-7)" pointer-events="none"/>
     </g>
   </g>
   <g>
     <g filter="url(#fx-8)">
-      <text x="40" y="600" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="40" font-weight="800" text-anchor="middle" fill="#ffffff" xml:space="preserve">
-        <tspan x="180" y="631.6">adjust</tspan>
-      </text>
+      <text x="40" y="600" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="40" font-weight="800" text-anchor="middle" fill="#ffffff" xml:space="preserve"><tspan x="180" y="631.6">adjust</tspan></text>
     </g>
   </g>
   <g style="mix-blend-mode:multiply">

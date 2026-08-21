@@ -53,10 +53,7 @@
       <path d="M2 2 L22 12 L2 22 L8 12 Z" fill="#16a34a"/>
     </g>
   </g>
-  <text x="600" y="50" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="42" font-weight="800" text-anchor="start" fill="url(#grad-7)" xml:space="preserve">
-    <tspan x="600" y="83.18">Gradient</tspan>
-    <tspan x="600" y="131.48">text</tspan>
-  </text>
+  <text x="600" y="50" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="42" font-weight="800" text-anchor="start" fill="url(#grad-7)" xml:space="preserve"><tspan x="600" y="83.18">Gradient</tspan><tspan x="600" y="131.48">text</tspan></text>
   <g>
     <title>A named swatch</title>
     <rect x="720" y="470" width="140" height="60" rx="8" ry="8" fill="#111827"/>

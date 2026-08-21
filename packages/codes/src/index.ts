@@ -77,6 +77,8 @@ export interface CodeTextNode extends NodeBase {
   valign: 'middle';
   color: string;
   uppercase: false;
+  underline: false;
+  strikethrough: false;
 }
 
 export type Node = CodePathNode | CodeRectNode | CodeTextNode;
@@ -357,7 +359,7 @@ export function barcodeNode(opts: BarcodeNodeOptions): Node[] {
         align: 'center',
         valign: 'middle',
         color: dark,
-        uppercase: false,
+        uppercase: false, underline: false, strikethrough: false,
       });
     }
 
@@ -405,7 +407,7 @@ export function barcodeNode(opts: BarcodeNodeOptions): Node[] {
         align: 'center',
         valign: 'middle',
         color: dark,
-        uppercase: false,
+        uppercase: false, underline: false, strikethrough: false,
       });
     }
   }

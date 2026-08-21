@@ -11,17 +11,9 @@
     <ellipse cx="200" cy="200" rx="380" ry="380" fill="#38bdf8" aria-hidden="true"/>
   </g>
   <rect x="88" y="132" width="10" height="64" rx="5" ry="5" fill="#38bdf8" aria-hidden="true"/>
-  <text x="124" y="136" font-family="'Space Grotesk', ui-sans-serif, system-ui, sans-serif" font-size="26" font-weight="600" letter-spacing="4" text-anchor="start" fill="#38bdf8" xml:space="preserve">
-    <tspan x="124" y="156.54">THE BUILD LOG</tspan>
-  </text>
-  <text x="124" y="176" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="22" font-weight="400" letter-spacing="1" text-anchor="start" fill="#94a3b8" xml:space="preserve">
-    <tspan x="124" y="193.38">Episode 42</tspan>
-  </text>
-  <text x="88" y="352" font-family="'Space Grotesk', ui-sans-serif, system-ui, sans-serif" font-size="110" font-weight="700" letter-spacing="-2" text-anchor="start" fill="#f1f5f9" xml:space="preserve">
-    <tspan x="88" y="438.9">Why your tool</tspan>
-    <tspan x="88" y="555.5">should be</tspan>
-    <tspan x="88" y="672.1">boring.</tspan>
-  </text>
+  <text x="124" y="136" font-family="'Space Grotesk', ui-sans-serif, system-ui, sans-serif" font-size="26" font-weight="600" letter-spacing="4" text-anchor="start" fill="#38bdf8" xml:space="preserve"><tspan x="124" y="156.54">THE BUILD LOG</tspan></text>
+  <text x="124" y="176" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="22" font-weight="400" letter-spacing="1" text-anchor="start" fill="#94a3b8" xml:space="preserve"><tspan x="124" y="193.38">Episode 42</tspan></text>
+  <text x="88" y="352" font-family="'Space Grotesk', ui-sans-serif, system-ui, sans-serif" font-size="110" font-weight="700" letter-spacing="-2" text-anchor="start" fill="#f1f5f9" xml:space="preserve"><tspan x="88" y="438.9">Why your tool</tspan><tspan x="88" y="555.5">should be</tspan><tspan x="88" y="672.1">boring.</tspan></text>
   <line x1="88" y1="760" x2="992" y2="760" stroke-linecap="round" stroke="#334155" stroke-width="1" aria-hidden="true"/>
   <g opacity="0.45">
     <rect x="88" y="912" width="14" height="28" rx="7" ry="7" fill="#38bdf8" aria-hidden="true"/>
@@ -50,10 +42,6 @@
   <g opacity="0.85">
     <rect x="328" y="908" width="14" height="32" rx="7" ry="7" fill="#38bdf8" aria-hidden="true"/>
   </g>
-  <text x="520" y="826" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="28" font-weight="500" text-anchor="end" fill="#cbd5e1" xml:space="preserve">
-    <tspan x="992" y="848.12">With Mira Okonkwo</tspan>
-  </text>
-  <text x="520" y="874" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="22" font-weight="400" text-anchor="end" fill="#64748b" xml:space="preserve">
-    <tspan x="992" y="891.38">Head of Design, Northwind</tspan>
-  </text>
+  <text x="520" y="826" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="28" font-weight="500" text-anchor="end" fill="#cbd5e1" xml:space="preserve"><tspan x="992" y="848.12">With Mira Okonkwo</tspan></text>
+  <text x="520" y="874" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="22" font-weight="400" text-anchor="end" fill="#64748b" xml:space="preserve"><tspan x="992" y="891.38">Head of Design, Northwind</tspan></text>
 </svg>

@@ -264,6 +264,10 @@ function renderNode(
           attrs: clean({ href: `#${pid}`, startOffset: anchor === 'start' ? '0%' : anchor === 'end' ? '100%' : '50%' }),
           text: first?.text ?? '',
         }] };
+        if (n.underline || n.strikethrough) {
+          diagnostics.push({ level: 'warn', code: 'CURVE_NO_RULES', nodeId: n.id,
+            message: 'Curved text cannot be underlined or struck through; the rule would not follow the arc.' });
+        }
         break;
       }
 
@@ -282,6 +286,14 @@ function renderNode(
         attrs: { x: round(n.x + ln.x), y: round(n.y + ln.y) },
         text: ln.text,
       })) };
+
+      const rules = (n.underline || n.strikethrough) ? textRules(n, layout.lines, anchor) : '';
+      if (rules) {
+        // After the <text>, so a rule sits over the glyphs the way
+        // text-decoration does. Same paint as the text: a rule in a different
+        // colour from the word it belongs to is not a thing anyone asked for.
+        inner = [inner, { tag: 'path', attrs: { d: rules, fill: textPaint(n, defs) } }];
+      }
       break;
     }
 
@@ -405,11 +417,34 @@ const clean = (o: Record<string, any>): Record<string, string | number> =>
   Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== null)) as any;
 
 /* ── deterministic serialization (the golden-test oracle) ────────────────── */
+
+/**
+ * Elements whose child whitespace is CONTENT, not formatting.
+ *
+ * Inside <text>, the newline and indent a pretty-printer puts before a <tspan>
+ * are real characters. With xml:space="preserve" they are five space glyphs;
+ * without it XML collapses them to one. Either way they join the anchor chunk,
+ * so a text-anchor="middle" run centres on its text PLUS that whitespace and
+ * text-anchor="end" ends that much early -- 55px at font-size 44 and four
+ * levels of indent, and the offset grows with nesting depth.
+ *
+ * The bug was invisible to everything that watched this function. The goldens
+ * diff the STRING, and the string was stable; the editor mounts the same scene
+ * graph through React, which never emits the whitespace, so the editor was
+ * right and only the export was wrong. It took drawing an underline -- a rule
+ * placed at the position the text was SUPPOSED to occupy -- for the gap to
+ * become something you could see.
+ */
+const TEXT_CONTENT = new Set(['text', 'tspan', 'textPath']);
+
 export function serialize(scene: SceneNode, indent = 0): string {
   const pad = '  '.repeat(indent);
   const attrs = Object.entries(scene.attrs).map(([k, v]) => ` ${k}="${escapeAttr(String(v))}"`).join('');
   if (scene.text !== undefined && !scene.children) return `${pad}<${scene.tag}${attrs}>${escapeText(scene.text)}</${scene.tag}>`;
   if (!scene.children || scene.children.length === 0) return `${pad}<${scene.tag}${attrs}/>`;
+  if (TEXT_CONTENT.has(scene.tag)) {
+    return `${pad}<${scene.tag}${attrs}>${scene.children.map(c => serialize(c, 0)).join('')}</${scene.tag}>`;
+  }
   const inner = scene.children.map(c => serialize(c, indent + 1)).join('\n');
   return `${pad}<${scene.tag}${attrs}>\n${inner}\n${pad}</${scene.tag}>`;
 }
@@ -423,3 +458,48 @@ export function renderToString(doc: Document, artboardIndex = 0, opts: RenderOpt
 
 const escapeAttr = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const escapeText = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/* -- text rules (underline, strikethrough) --------------------------------
+ *
+ * Drawn as real geometry rather than `text-decoration="underline"`, because
+ * text-decoration is a browser feature: Chrome draws it, resvg draws it, and
+ * a PDF built from this scene graph draws nothing at all. A document is
+ * supposed to look the same in the editor, the CLI and the export, and an
+ * attribute only two of the three honour breaks that quietly -- the SVG on
+ * screen would be right and the PDF would be missing a line.
+ *
+ * One <path> holds every rule rather than a <line> or a <rect> each. Two
+ * reasons, and the first is not cosmetic: gradients here are in
+ * objectBoundingBox units, so a zero-height <line> has a degenerate box and
+ * does not paint at all, while a per-line <rect> would restart the gradient
+ * inside each rule. A single path's box spans the whole block, close enough
+ * to the <text> element's own box that one gradient reads as continuous
+ * across the words and the lines under them.
+ * ---------------------------------------------------------------------- */
+
+/** post.underlinePosition / OS/2.yStrikeoutPosition, as a fraction of the em.
+ *  These are the conventional defaults, not measured per family: FamilyMetrics
+ *  carries advances and vertical metrics, not the post/OS-2 rule fields. If it
+ *  ever gains them, read them here -- the shape of this code does not change. */
+const RULE_THICKNESS = 0.06;
+const UNDERLINE_DROP = 0.11;   // below the baseline, to the top of the rule
+const STRIKE_RISE = 0.28;      // above the baseline, to the centre of the rule
+
+function textRules(n: any, lines: readonly { text: string; width: number; x: number; y: number }[], anchor: string): string {
+  const size = n.fontSize;
+  const thickness = round(size * RULE_THICKNESS);
+  if (thickness <= 0) return '';
+
+  const parts: string[] = [];
+  for (const ln of lines) {
+    // A blank line has no glyphs to underline. Ruling it draws a floating dash
+    // in the gap between paragraphs, which no word processor does either.
+    if (ln.text === '' || ln.width <= 0) continue;
+    const left = round(n.x + ln.x - (anchor === 'middle' ? ln.width / 2 : anchor === 'end' ? ln.width : 0));
+    const width = round(ln.width);
+    const baseline = n.y + ln.y;
+    if (n.underline) parts.push(`M${left} ${round(baseline + size * UNDERLINE_DROP)}h${width}v${thickness}h${-width}Z`);
+    if (n.strikethrough) parts.push(`M${left} ${round(baseline - size * STRIKE_RISE - thickness / 2)}h${width}v${thickness}h${-width}Z`);
+  }
+  return parts.join('');
+}

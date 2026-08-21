@@ -2,23 +2,11 @@
   <title>Card — Monochrome</title>
   <rect x="0" y="0" width="1050" height="600" fill="#101010"/>
   <rect x="88" y="88" width="2" height="424" fill="#333333" aria-hidden="true"/>
-  <text x="130" y="176" font-family="'Space Grotesk', ui-sans-serif, system-ui, sans-serif" font-size="58" font-weight="700" letter-spacing="-1" text-anchor="start" fill="#fafafa" xml:space="preserve">
-    <tspan x="130" y="221.82">Mira Okonkwo</tspan>
-  </text>
-  <text x="130" y="266" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="26" font-weight="400" letter-spacing="3" text-anchor="start" fill="#a3a3a3" xml:space="preserve">
-    <tspan x="130" y="286.54">HEAD OF DESIGN</tspan>
-  </text>
+  <text x="130" y="176" font-family="'Space Grotesk', ui-sans-serif, system-ui, sans-serif" font-size="58" font-weight="700" letter-spacing="-1" text-anchor="start" fill="#fafafa" xml:space="preserve"><tspan x="130" y="221.82">Mira Okonkwo</tspan></text>
+  <text x="130" y="266" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="26" font-weight="400" letter-spacing="3" text-anchor="start" fill="#a3a3a3" xml:space="preserve"><tspan x="130" y="286.54">HEAD OF DESIGN</tspan></text>
   <line x1="130" y1="344" x2="330" y2="344" stroke-linecap="round" stroke="#525252" stroke-width="2" aria-hidden="true"/>
-  <text x="130" y="386" font-family="'JetBrains Mono', ui-sans-serif, system-ui, sans-serif" font-size="22" font-weight="400" text-anchor="start" fill="#d4d4d4" xml:space="preserve">
-    <tspan x="130" y="403.38">mira@northwind.co</tspan>
-    <tspan x="130" y="440.78">+31 6 1234 5678</tspan>
-    <tspan x="130" y="478.18">northwind.co</tspan>
-  </text>
+  <text x="130" y="386" font-family="'JetBrains Mono', ui-sans-serif, system-ui, sans-serif" font-size="22" font-weight="400" text-anchor="start" fill="#d4d4d4" xml:space="preserve"><tspan x="130" y="403.38">mira@northwind.co</tspan><tspan x="130" y="440.78">+31 6 1234 5678</tspan><tspan x="130" y="478.18">northwind.co</tspan></text>
   <ellipse cx="890" cy="246" rx="70" ry="70" fill="none" stroke="#fafafa" stroke-width="2" aria-hidden="true"/>
-  <text x="820" y="176" font-family="'Space Grotesk', ui-sans-serif, system-ui, sans-serif" font-size="60" font-weight="700" text-anchor="middle" fill="#fafafa" xml:space="preserve">
-    <tspan x="890" y="257.4">N</tspan>
-  </text>
-  <text x="650" y="470" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="20" font-weight="500" letter-spacing="3" text-anchor="end" fill="#737373" xml:space="preserve">
-    <tspan x="960" y="485.8">NORTHWIND STUDIO</tspan>
-  </text>
+  <text x="820" y="176" font-family="'Space Grotesk', ui-sans-serif, system-ui, sans-serif" font-size="60" font-weight="700" text-anchor="middle" fill="#fafafa" xml:space="preserve"><tspan x="890" y="257.4">N</tspan></text>
+  <text x="650" y="470" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="20" font-weight="500" letter-spacing="3" text-anchor="end" fill="#737373" xml:space="preserve"><tspan x="960" y="485.8">NORTHWIND STUDIO</tspan></text>
 </svg>

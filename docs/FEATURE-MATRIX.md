@@ -99,7 +99,7 @@ The schema deltas that unlock the biggest number of rows are collected in
 | Font family picker | ~3,000 fonts, search, recently used, brand fonts pinned | `NATIVE` + `CSS` | M | P0 | Needs `@font-face` with **embedded** WOFF2 for the CLI, otherwise exported SVG renders in a fallback face. See [§ Fonts](#fonts-the-one-hard-dependency). |
 | Font size | Numeric + `Ctrl Shift >` / `<` | `NATIVE` | S | P0 | Shipped. |
 | Bold / italic | Real weights when the family has them, faux otherwise | `NATIVE` | S | P0 | Shipped (`fontWeight`, `italic`). Faux-bold via `stroke-width` = fontSize/25 is the fallback. |
-| Underline / strikethrough | Toggle | `NATIVE` | S | P0 | `text-decoration="underline"` works in browsers; for guaranteed export fidelity draw an explicit `<line>` per text line (safer, deterministic). |
+| Underline / strikethrough | Toggle | `NATIVE` | S | — | **SHIPPED.** `TextNode.underline` / `.strikethrough`, Inspector U / S buttons. Drawn as one `<path>` of real geometry per text node, not `text-decoration`: the attribute is a browser feature, so a PDF built from the same scene graph would draw nothing. One path rather than a `<line>` or a `<rect>` per line because gradients here are objectBoundingBox — a zero-height line does not paint at all and per-line rects restart the gradient. Blank lines are skipped; curved text refuses with `CURVE_NO_RULES`. No keyboard shortcut yet (Ctrl/Cmd+U). |
 | Uppercase toggle | `Aa` button | `NATIVE` | S | P1 | Shipped (`uppercase`) — but must be applied in `layoutText`, not CSS, or measurement drifts. |
 | Letter spacing | Slider, ±% of em | `NATIVE` | S | P0 | Shipped. |
 | Line spacing | Slider, multiple of font size | `NATIVE` | S | P0 | Shipped (`lineHeight`). |

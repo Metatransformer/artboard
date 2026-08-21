@@ -106,6 +106,10 @@ export function Inspector() {
             ))}
             <button className={`seg-btn ${n.italic ? 'on' : ''}`} style={{ fontStyle: 'italic' }} onClick={() => patch({ italic: !n.italic })}>I</button>
             <button className={`seg-btn ${n.uppercase ? 'on' : ''}`} onClick={() => patch({ uppercase: !n.uppercase })}>AA</button>
+            <button className={`seg-btn ${n.underline ? 'on' : ''}`} style={{ textDecoration: 'underline' }}
+              title="Underline" onClick={() => patch({ underline: !n.underline })}>U</button>
+            <button className={`seg-btn ${n.strikethrough ? 'on' : ''}`} style={{ textDecoration: 'line-through' }}
+              title="Strikethrough" onClick={() => patch({ strikethrough: !n.strikethrough })}>S</button>
           </div>
           <Row label="Colour"><ColorField value={n.color} onChange={c => patch({ color: c })} /></Row>
           <div className="swatches">

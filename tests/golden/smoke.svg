@@ -2,7 +2,5 @@
   <title>Smoke</title>
   <rect x="0" y="0" width="400" height="300" fill="#ffffff"/>
   <rect x="40" y="40" width="320" height="140" rx="16" ry="16" fill="#4f46e5" aria-hidden="true"/>
-  <text x="40" y="210" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="28" font-weight="700" text-anchor="middle" fill="#111111" xml:space="preserve">
-    <tspan x="200" y="232.12">Artboard smoke test</tspan>
-  </text>
+  <text x="40" y="210" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="28" font-weight="700" text-anchor="middle" fill="#111111" xml:space="preserve"><tspan x="200" y="232.12">Artboard smoke test</tspan></text>
 </svg>
