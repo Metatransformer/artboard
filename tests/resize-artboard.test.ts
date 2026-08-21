@@ -430,6 +430,35 @@ describe('resizeArtboard: alignment overrides a centred box reading, and only th
    * design that visibly needs it rather than with symmetry a second time.
    */
 
+  it('an isolated text node anchors by its box, not by its valign', () => {
+    /*
+     * The converted pin. The old y rule is gone, and this asserts what replaced
+     * it rather than leaving a comment where a test was -- the lead measured the
+     * case through `apply()` and it is a behaviour change, not a dead-code
+     * deletion, so it deserves a live test.
+     *
+     * Margins of 430 and 350 in a 1000 frame differ by 80, exactly the 8% band,
+     * so the box reads `middle`; nothing is near it, so no stack forms and the
+     * node places itself. That is the one shape in which the removed rule was
+     * ever reachable.
+     */
+    const FROM = { width: 1000, height: 1000 };
+    const TO = { width: 1000, height: 2000 };
+    const lone = doc(FROM, [
+      buildNode({ id: 'note', kind: 'text', x: 300, y: 430, width: 400, height: 220, text: 'A note', fontSize: 28, valign: 'top' }),
+    ]);
+    const before = nodeById(lone, 'note');
+    expect(classifyAnchors(before, FROM).y).toBe('middle');
+
+    const after = nodeById(apply(lone, resize('ab-1', TO.width, TO.height)), 'note');
+    expect(after.y).toBeCloseTo(970, 1);
+
+    // What the removed rule did, on the same box: 110px higher. Computed rather
+    // than quoted, so the gap is checked and not remembered.
+    const byValign = reanchor(before, { x: 'centre', y: 'top' }, FROM, TO);
+    expect(byValign.y).toBeCloseTo(860, 1);
+  });
+
   it('inside a stack, align still places x while nothing places y but the stack', () => {
     /*
      * renderer-wins' point, and the pin the deleted test should have been.
@@ -669,6 +698,45 @@ describe('resizeArtboard: adjacency survives the aspect change', () => {
     expect(body.y - (head.y + head.height)).toBeCloseTo(40 * k, 1);
   });
 
+  /*
+   * WHAT THE BRACKET ABOVE DOES NOT PIN: the FORM of the comparison.
+   *
+   * renderer-wins reconstructed the predicate out of tree and showed the hole.
+   * Membership is classified on the FROM frame, and every case above starts
+   * from the same 1080 square -- so with a tight gap of 36 and a loose one of
+   * 220, an absolute `gapY <= 108` partitions those nodes identically to the
+   * ratio, and so does reading `frame.width` instead of `frame.height`. The
+   * three targets vary only the TO frame, which changes k and changes which gap
+   * absorbs the slack, but membership was already decided before any of that.
+   *
+   * Varying the FROM frame is what separates them, and the geometry below is
+   * the pair that does it. I had measured this and written it in a comment,
+   * which is worth exactly nothing to CI.
+   *
+   *   from 1080x360   gap 36 = 10.00% of height, and 36 <= 108   both agree
+   *   from 1080x340   gap 36 = 10.59% of height, and 36 <= 108   they disagree
+   *
+   * The 340 frame is non-square, so the same pair also kills the width variant:
+   * 10% of 340 is 34 and the gap is 36, while 10% of 1080 is 108.
+   */
+  const twoRows = (H: number) => doc({ width: 1080, height: H }, [
+    buildNode({ id: 'head', kind: 'rect', x: 96, y: Math.round(H * 0.352), width: 888, height: Math.round(H * 0.111) }),
+    buildNode({ id: 'body', kind: 'rect', x: 96, y: Math.round(H * 0.352) + Math.round(H * 0.111) + 36, width: 888, height: Math.round(H * 0.352) }),
+  ]);
+
+  it('reads adjacency as a fraction of the frame, not as a pixel count', () => {
+    // Same 36px gap, same nodes, two from-frames either side of the boundary.
+    // A stacked pair keeps its gap at k; a torn one does not.
+    const k = (H: number) => resizeFactor({ width: 1080, height: H }, { width: 1080, height: H * 2 });
+
+    const stacked = apply(twoRows(360), resize('ab-1', 1080, 720));
+    expect(gapOf(stacked)).toBeCloseTo(36 * k(360), 1);
+
+    const torn = apply(twoRows(340), resize('ab-1', 1080, 680));
+    expect(gapOf(torn)).not.toBeCloseTo(36 * k(340), 1);
+    expect(gapOf(torn)).toBeGreaterThan(36 * k(340) * 2);
+  });
+
   it('leaves a node in no stack exactly as it was', () => {
     // "A stack of one is the old behaviour exactly, so nothing already right
     // changes" is a claim in the commit message. A lone badge, far from
@@ -678,5 +746,70 @@ describe('resizeArtboard: adjacency survives the aspect change', () => {
     const after = nodeById(apply(page, resize('ab-1', STORY.width, STORY.height)), 'badge');
     const own = reanchor(nodeById(page, 'badge'), classifyAnchors(nodeById(page, 'badge'), SQ), SQ, STORY);
     expect({ x: after.x, y: after.y, width: after.width, height: after.height }).toEqual(own);
+  });
+});
+
+
+/* ── a rotated subtree keeps its angle rather than becoming a parallelogram ── */
+
+describe('resizeArtboard: a rotated group scales uniformly', () => {
+  /*
+   * The branch the mutants found next: `rotated && !uniform` collapses both
+   * factors to min(sx, sy), so a group holding a rotated child scales uniformly
+   * and keeps its angle. Stretching it on one axis would shear the child into a
+   * parallelogram -- which `scale` refuses outright, but refusing here would be
+   * wrong, because picking a page preset must never fail. It lands
+   * proportionally placed instead of not at all.
+   *
+   * renderer-wins flagged this as possibly unreachable from the corpus and
+   * therefore not worth reading a survivor as a gap. It is unreachable from the
+   * corpus and it is trivially reachable by construction, so a survivor here
+   * was a hole in my case set rather than a dead line -- the opposite of the
+   * `valign` situation, and worth distinguishing rather than pattern-matching.
+   *
+   * The two rotations police each other: without the unrotated row, "the aspect
+   * is preserved" is equally what a resize that changed nothing would report.
+   */
+  const SQ = { width: 1080, height: 1080 };
+  const LAND = { width: 1920, height: 1080 };
+
+  // The group's own box spans 96% of the width and 19% of the height, so it
+  // stretches horizontally (sx = 1.78) and takes k vertically (sy = 1). That
+  // gap between the two factors is the whole test; a uniform resize cannot see
+  // this branch at all.
+  const page = (rotation: number) => doc(SQ, [
+    buildNode({ id: 'g', kind: 'group', x: 0, y: 0, width: 0, height: 0, children: [
+      buildNode({ id: 'c1', kind: 'rect', x: 20, y: 400, width: 500, height: 200, rotation }),
+      buildNode({ id: 'c2', kind: 'rect', x: 560, y: 400, width: 500, height: 200 }),
+    ] }),
+  ]);
+  const child = (d: Document, id: string) => {
+    const g = (ab(d).nodes as any[]).find(n => n.id === 'g');
+    return g.children.find((c: any) => c.id === id);
+  };
+  const aspect = (n: any) => n.width / n.height;
+
+  it('stretches an axis-aligned group, because there is nothing to shear', () => {
+    const after = apply(page(0), resize('ab-1', LAND.width, LAND.height));
+    expect(aspect(child(after, 'c1'))).toBeCloseTo(4.444, 2);   // 2.5 -> 4.44
+    expect(aspect(child(after, 'c2'))).toBeCloseTo(4.444, 2);
+  });
+
+  it('refuses to shear once any descendant is rotated', () => {
+    const after = apply(page(12), resize('ab-1', LAND.width, LAND.height));
+    // Both children take min(sx, sy) -- not just the rotated one, or the group
+    // would come apart internally.
+    expect(aspect(child(after, 'c1'))).toBeCloseTo(2.5, 2);
+    expect(aspect(child(after, 'c2'))).toBeCloseTo(2.5, 2);
+    expect(child(after, 'c1').rotation).toBe(12);               // and keeps its angle
+  });
+
+  it('still resizes it -- proportionally placed beats not at all', () => {
+    // The guard must not become "leave a rotated group alone". It lands in the
+    // new frame; it just does not shear on the way.
+    const before = child(page(12), 'c1');
+    const after = child(apply(page(12), resize('ab-1', 2480, 3508)), 'c1');
+    expect(after.x).not.toBeCloseTo(before.x, 1);
+    expect(after.width).toBeGreaterThan(before.width);
   });
 });
