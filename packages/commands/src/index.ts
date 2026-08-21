@@ -234,6 +234,7 @@ function shiftSubtree(n: Node, dx: number, dy: number): Node {
  * individual child looked correctly placed.
  */
 function relayoutNode(n: Node, from: Frame, to: Frame): Node {
+  const k = resizeFactor(from, to);
   const box = nodeBox(n);
   const next = reanchor(box, textAware(n, classifyAnchors(box, from)), from, to);
 
@@ -242,12 +243,25 @@ function relayoutNode(n: Node, from: Frame, to: Frame): Node {
 
   if ((n as any).kind !== 'group') {
     const a: any = { ...(n as any), x: next.x, y: next.y, width: next.width, height: next.height };
-    /* The same rule `scale` settled on, not a second one: a font size is a
-       VERTICAL measure and takes the vertical factor. On every node but a
-       vertically-stretched one this equals the uniform factor anyway, so the
-       two rules agree except where having two would show. */
+    /*
+     * The UNIFORM factor, which is also min(sx, sy) for every anchor
+     * combination -- not the vertical factor `scale` uses. The two rules differ
+     * only on a stretch-anchored node, and there the vertical one overflows:
+     * a stretch-y column keeps its height (ry = 1) while its width takes k, so
+     * a font following ry stays put in a box half as wide. Measured at
+     * 1000x1000 -> 500x1000: 9 lines became 19 and the block ran 28px past its
+     * box. Following k keeps the wrap identical instead.
+     *
+     * This is what makes `resizeFactor`'s no-overflow guarantee hold, and that
+     * guarantee is load-bearing -- it is why there is no auto-fit pass here.
+     * `scale` still takes sy, and rightly: there k has no meaning, because the
+     * user is stretching one axis on purpose.
+     */
     if (a.kind === 'text') {
-      a.fontSize = Math.max(1, round(a.fontSize * sy));
+      a.fontSize = Math.max(1, round(a.fontSize * k));
+      /* Tracking is horizontal and takes the horizontal factor. Safe against
+         the same guarantee: on a stretch-x node the box grows by rx >= k while
+         the glyphs grow by k, so the line has more room, not less. */
       a.letterSpacing = round(a.letterSpacing * sx);
     }
     return a as Node;
