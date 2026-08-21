@@ -17,6 +17,14 @@ import { renderToString } from '@artboard/render-svg';
  * That direction matters. Comparing against `qrMatrix()` or `ean13()` would
  * only prove the generator agrees with itself.
  *
+ * REGENERATING the fixture: `node tools/make-insert-fixture.mjs`, then
+ * `artboard golden --update`. That script is the only reproduction path, and it
+ * documents why the node ids are hand-written (`uid()` is `Math.random()`-based,
+ * so the real insert path cannot mint ids for a fixture) and why the three
+ * elements are placed in explicit cells rather than through `InsertData`'s
+ * centring (so a change to the panel's placement math cannot move this
+ * baseline). Never restore this fixture with `git checkout` -- regenerate it.
+ *
  * PROVENANCE of every expected value below -- established 2026-08-20 against
  * the rendered `tests/golden/insert-data.svg`, not against the generators:
  *
@@ -36,6 +44,11 @@ import { renderToString } from '@artboard/render-svg';
  * change makes these fail, the symbol changed meaning -- re-baking the golden
  * is not the fix, and re-deriving the expectation from our own encoder would
  * defeat the purpose. Re-run the external tools.
+ *
+ * Cost of that, honestly: the EAN-13 string is re-derivable by hand from the
+ * spec. The QR grid is not -- it needs `opencv-python` and `cairosvg` present to
+ * rasterize and decode. Neither is a CI dependency; both are only needed if the
+ * payload or the encoder deliberately changes, which is an act, not drift.
  *
  * A note on why the QR is pinned as a grid rather than decoded here: bit
  * equality is the stronger oracle. A decode proves one reader coped; the grid

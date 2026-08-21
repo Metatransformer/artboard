@@ -41,6 +41,13 @@ const { apply } = await import('../packages/commands/src/index.ts');
 const { buildChart } = await import('../packages/charts/src/index.ts');
 const { qrNode, barcodeNode } = await import('../packages/codes/src/index.ts');
 const { writeFileSync } = await import('node:fs');
+const { resolve, dirname } = await import('node:path');
+const { fileURLToPath } = await import('node:url');
+
+// Resolved from this file, not from cwd: a committed tool that only works
+// when you happen to be standing in the repo root writes its output into
+// whatever directory you were in, or fails, depending on where you ran it.
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 // Each element is sized exactly as InsertData sizes it for an artboard of one
 // CELL, then placed in its own cell so the three don't stack.
@@ -93,6 +100,6 @@ for (const b of batches) {
 
 const reloaded = loadDocument(JSON.parse(JSON.stringify(doc)));
 if (reloaded.diagnostics.length) { console.error('diagnostics:', reloaded.diagnostics); process.exit(1); }
-writeFileSync('tests/golden/insert-data.json', JSON.stringify(reloaded.doc, null, 1) + '\n');
+writeFileSync(resolve(root, 'tests/golden/insert-data.json'), JSON.stringify(reloaded.doc, null, 1) + '\n');
 console.log('artboard', reloaded.doc.artboards[0].width, 'x', reloaded.doc.artboards[0].height);
 console.log('top-level nodes:', reloaded.doc.artboards[0].nodes.map((n) => `${n.id}(${n.kind},${n.name})`).join(' '));
