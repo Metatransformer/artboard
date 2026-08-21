@@ -27,7 +27,37 @@ import { qrNode, barcodeNode } from '@artboard/codes';
  *    completeness there would be requiring the wrong thing, so what is checked
  *    is that the document it becomes is complete and stable.
  */
-const parsesToItself = (n: unknown) => expect(Node.parse(n)).toStrictEqual(n);
+/**
+ * The property: a generated node is already schema-complete, so parsing it
+ * changes nothing. Both sides are computed -- there is no frozen literal here,
+ * and this does NOT assert that the schema has some particular set of fields.
+ *
+ * The diff exists because the bare assertion was right about the property and
+ * useless about the diagnosis. `expected {…29 keys} to strictly equal {…27
+ * keys}` names no field, no package and no direction, so the failure reads as
+ * "a schema change broke an unrelated barcode test" when it actually means "a
+ * hand-maintained mirror has fallen behind". That misreading nearly got this
+ * guard deleted as brittle -- by me. A correct check that cannot explain
+ * itself is one bad afternoon away from being removed.
+ */
+const parsesToItself = (n: unknown) => {
+  const parsed = Node.parse(n) as Record<string, unknown>;
+  const input = (n ?? {}) as Record<string, unknown>;
+  const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+  const omitted = Object.keys(parsed).filter(k => !(k in input));
+  const unknown = Object.keys(input).filter(k => !(k in parsed));
+  const differs = Object.keys(parsed).filter(k => k in input && !same(parsed[k], input[k]));
+  const why = [
+    omitted.length && `the generator omitted: ${omitted.join(', ')}`,
+    unknown.length && `the generator emitted fields the schema does not have: ${unknown.join(', ')}`,
+    differs.length && `the schema rewrote: ${differs.join(', ')}`,
+  ].filter(Boolean).join('; ');
+  expect(parsed, why
+    ? `${input.kind} node "${input.id}" is not schema-complete -- ${why}.\n` +
+      `A generator builds its node shape by hand, so it falls behind every time the schema grows. ` +
+      `Fix the generator to emit the field, not this test.`
+    : undefined).toStrictEqual(n);
+};
 
 const walk = (n: any): any[] => [n, ...((n?.children ?? []) as any[]).flatMap(walk)];
 
