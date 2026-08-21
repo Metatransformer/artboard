@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildNode, loadDocument, findNode, type Document, type Node } from '@artboard/schema';
-import { apply, invert, StaleCommandError, InvalidCommandError, type Command } from '@artboard/commands';
+import { apply, invert, isAxisAligned, unscalableDescendant, StaleCommandError, InvalidCommandError, type Command } from '@artboard/commands';
 import { renderToString } from '@artboard/render-svg';
 
 /**
@@ -297,5 +297,157 @@ describe('scale: stored group bounds stay honest', () => {
     expect(Math.abs(g.y - minY)).toBeLessThanOrEqual(0.011);
     expect(Math.abs(g.width - (maxX - minX))).toBeLessThanOrEqual(0.011);
     expect(Math.abs(g.height - (maxY - minY))).toBeLessThanOrEqual(0.011);
+  });
+});
+
+/* ── quarter turns ───────────────────────────────────────────────────────── */
+
+describe('scale: isAxisAligned measures distance to the NEARER quarter turn', () => {
+  it('accepts exact quarter turns, including negative ones', () => {
+    for (const r of [0, 90, 180, 270, 360, -90, -180]) expect(isAxisAligned(r)).toBe(true);
+  });
+
+  it('accepts a rotation a hair BELOW a quarter turn', () => {
+    /*
+     * The whole reason the function is written the way it is, and invisible to
+     * any test that only tries 0/90/180.
+     *
+     * `89.99999999999999 % 90` is `89.99999999999999` -- NOT a near-zero
+     * remainder. A modulo-and-compare test (`r <= tol`) therefore refuses a
+     * rotation one float step below a quarter turn while accepting one a step
+     * above it, which is an asymmetry with no basis in the geometry: both are
+     * the same distance from a right angle and both are perfectly scalable.
+     * Taking `min(r, 90 - r)` is what removes it.
+     */
+    expect(isAxisAligned(89.99999999999999)).toBe(true);
+    expect(isAxisAligned(90.00000000000001)).toBe(true);
+    expect(isAxisAligned(269.99999999999997)).toBe(true);
+    // The naive version, stated explicitly so the difference is on the record.
+    const naive = (r: number) => Math.abs(r) % 90 <= 1e-6;
+    expect(naive(90.00000000000001)).toBe(true);
+    expect(naive(89.99999999999999)).toBe(false);
+  });
+
+  it('refuses a rotation that is genuinely off-axis, at both ends', () => {
+    for (const r of [0.001, 20, 45, 89.9, 90.1, -20]) expect(isAxisAligned(r)).toBe(false);
+  });
+});
+
+describe('scale: the parallelogram refusal', () => {
+  /** outer[ inner[ tilted ] ] -- the rotated node is a GRANDCHILD, so a
+   *  recursion that only checks the root returns null and lets it through. */
+  const withTilt = (deg: number): Document => {
+    let doc = blank();
+    doc = apply(doc, { type: 'addNode', artboardId: AB, node: leaf('flat', 10, 10) });
+    doc = apply(doc, { type: 'addNode', artboardId: AB, node:
+      buildNode({ id: 'tilted', kind: 'rect', x: 80, y: 40, width: 100, height: 50, rotation: deg }) });
+    doc = apply(doc, { type: 'group', artboardId: AB, nodeIds: ['tilted'], groupId: 'inner' });
+    return apply(doc, { type: 'group', artboardId: AB, nodeIds: ['flat', 'inner'], groupId: 'outer' });
+  };
+
+  it('finds a rotated node at depth, not just at the top', () => {
+    const doc = withTilt(20);
+    const found = unscalableDescendant(get(doc, 'outer'));
+    expect(found?.id).toBe('tilted');
+    expect(unscalableDescendant(get(doc, 'flat'))).toBeNull();
+  });
+
+  it('refuses a non-uniform scale over a rotated descendant', () => {
+    // A 100x50 rect at 20deg under scale (2,1) has 115.7deg between adjacent
+    // edges. A node is an axis-aligned box plus an angle, so the result is not
+    // a shape the schema can store -- refusing beats storing something that
+    // renders differently from what the handles showed.
+    const doc = withTilt(20);
+    expect(() => apply(doc, scale(['outer'], { sx: 2, sy: 1, ox: 0, oy: 0 }))).toThrow(InvalidCommandError);
+  });
+
+  it('names the offending node and its angle, not just the selection', () => {
+    // The selection is 'outer'; the problem is 'tilted', two levels down. An
+    // error naming only what the user clicked is unactionable.
+    const doc = withTilt(20);
+    let msg = '';
+    try { apply(doc, scale(['outer'], { sx: 2, sy: 1, ox: 0, oy: 0 })); } catch (e) { msg = (e as Error).message; }
+    expect(msg).toContain('tilted');
+    expect(msg).toContain('20');
+  });
+
+  it('allows a non-uniform scale over a quarter-turned descendant', () => {
+    // A quarter turn only swaps the axes, so the box stays a box.
+    for (const deg of [90, 180, 270]) {
+      const doc = withTilt(deg);
+      expect(() => apply(doc, scale(['outer'], { sx: 2, sy: 1, ox: 0, oy: 0 }))).not.toThrow();
+    }
+  });
+
+  it('allows a UNIFORM scale at any angle', () => {
+    const doc = withTilt(20);
+    const s = { sx: 2, sy: 2, ox: 0, oy: 0 };
+    const after = apply(doc, scale(['outer'], s));
+    expectSubtreeScaled(doc, after, 'outer', s);
+    expect(get(after, 'tilted').rotation).toBe(20);
+  });
+
+  it('treats factors a thousandth apart as non-uniform, and float noise as uniform', () => {
+    /*
+     * The boundary that killed the gesture in the editor: ratio-locking against
+     * a GRID-SNAPPED box produced sx and sy a thousandth apart, the command
+     * called that non-uniform and refused every frame, and the transient
+     * swallowed it. Fixed editor-side by sending one factor when the subtree is
+     * locked -- but the command's own boundary is what a fuzzer will find, so
+     * it is pinned here rather than left implicit.
+     *
+     * A thousandth apart is a real difference and must refuse. A part in 1e12
+     * is a genuinely square drag arriving through division and must not.
+     */
+    const doc = withTilt(20);
+    expect(() => apply(doc, scale(['outer'], { sx: 1.5, sy: 1.501, ox: 0, oy: 0 }))).toThrow(InvalidCommandError);
+    expect(() => apply(doc, scale(['outer'], { sx: 1.5, sy: 1.5 + 1e-12, ox: 0, oy: 0 }))).not.toThrow();
+  });
+});
+
+/* ── the rule that is currently in force ─────────────────────────────────── */
+
+describe('scale: every scalar agrees under a uniform scale', () => {
+  it('multiplies font size, letter spacing, stroke width and radius by the same factor', () => {
+    // Uniform is the case users actually hit, and it is the one with no design
+    // question in it: sy, sx and the geometric mean are all the same number, so
+    // this is exact and must stay exact. If these ever disagree under a uniform
+    // scale, one of them is not reading the factor it thinks it is.
+    let doc = blank();
+    doc = apply(doc, { type: 'addNode', artboardId: AB, node: buildNode({
+      id: 'tx', kind: 'text', x: 0, y: 0, width: 200, height: 60, text: 'Hello',
+      fontSize: 20, letterSpacing: 3 }) });
+    // Stroke and radius live on the shape kinds, not on text.
+    doc = apply(doc, { type: 'addNode', artboardId: AB, node: buildNode({
+      id: 'rc', kind: 'rect', x: 0, y: 0, width: 40, height: 30, radius: 4,
+      stroke: { color: '#000000', width: 6, dash: [2, 8] } }) });
+    const after = apply(doc, scale(['tx', 'rc'], { sx: 2.5, sy: 2.5, ox: 0, oy: 0 }));
+    expect(get(after, 'tx').fontSize).toBe(50);
+    expect(get(after, 'tx').letterSpacing).toBe(7.5);
+    expect(get(after, 'rc').stroke.width).toBe(15);
+    expect(get(after, 'rc').stroke.dash).toEqual([5, 20]);
+    expect(get(after, 'rc').radius).toBe(10);
+  });
+
+  it('takes a font size from sy and letter spacing from sx under a non-uniform scale', () => {
+    /*
+     * The decision, now settled and measured (35efc25). This is the ONE place
+     * it is pinned exactly; the disjunction test above is the permanent guard
+     * that survives the rule changing again, this one is the current answer.
+     *
+     * Why sy and not the geometric mean: under the mean, a horizontal stretch
+     * enlarges the glyphs AND widens the frame, so the reflow the stretch was
+     * meant to cause partly cancels itself. Under sy a horizontal stretch is
+     * purely a reflow, which is what every design tool does. Browser-measured:
+     * an east drag at sx=1.3548 sy=1.0001 leaves the glyphs at x1.0000, where
+     * the geometric mean predicted x1.1640.
+     */
+    let doc = blank();
+    doc = apply(doc, { type: 'addNode', artboardId: AB, node: buildNode({
+      id: 'tx', kind: 'text', x: 0, y: 0, width: 200, height: 60, text: 'Hello',
+      fontSize: 20, letterSpacing: 10 }) });
+    const after = apply(doc, scale(['tx'], { sx: 4, sy: 1.5, ox: 0, oy: 0 }));
+    expect(get(after, 'tx').fontSize).toBe(30);
+    expect(get(after, 'tx').letterSpacing).toBe(40);
   });
 });
