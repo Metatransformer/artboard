@@ -317,7 +317,16 @@ export function barcodeNode(opts: BarcodeNodeOptions): Node[] {
     // Code 128 has no such convention -- one centred line is correct there.
     const groups: Array<{ text: string; from: number; to: number }> = [];
 
-    if (symbology === 'ean13' && guards.length === 3) {
+    // Gate on the symbology itself, never on `guards.length`. A future
+    // symbology that happens to have three guards must not inherit EAN-13's
+    // label rules, and an EAN-13 whose guards changed must not quietly fall
+    // back to a centred line -- a silently wrong label is worse than a loud
+    // stop, and this is the only place that would notice.
+    if (symbology === 'ean13') {
+      if (guards.length !== 3) {
+        throw new CodeError(
+          `EAN-13 expects three guard groups, found ${guards.length}. The human-readable layout is defined in terms of them and must be revisited.`);
+      }
       const [leftGuard, midGuard, rightGuard] = guards as unknown as [
         readonly [number, number], readonly [number, number], readonly [number, number],
       ];
@@ -325,14 +334,14 @@ export function barcodeNode(opts: BarcodeNodeOptions): Node[] {
       // follows the symbol if the guard layout is ever corrected.
       groups.push(
         // Lead digit: the quiet zone is what it is for. One module of air is
-        // left before the guard so the glyph never touches the bars.
+        // left before the guard so the glyph never touches the bars -- the
+        // quiet zone is also what makes the symbol scannable, so the digit
+        // gets 8 of the 9 modules and never encroaches on the guard.
         { text: label.slice(0, 1), from: -quietLeft, to: leftGuard[0] - 1 },
         { text: label.slice(1, 7), from: leftGuard[1], to: midGuard[0] },
         { text: label.slice(7), from: midGuard[1], to: rightGuard[0] },
       );
-    }
-
-    if (groups.length === 0) {
+    } else {
       // Code 128 and anything else: one centred line across the whole node,
       // which is the convention for those symbologies. Unchanged.
       nodes.push({
