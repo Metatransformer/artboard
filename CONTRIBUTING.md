@@ -376,6 +376,34 @@ Two things make a sweep honest:
   of the sweep reproduces the code you replaced, and the whole table has a fixed point you
   did not have to trust.
 
+### Verify what you are about to commit, not what you were editing
+
+`git add <path>` stages the file as of the add, not as of the change you made or
+the tests you ran. In a worktree with more than one agent in it, those are
+different files, and the gap between them is where a stray edit rides into main
+wearing your commit message.
+
+It happened here. A verification pass went green, `git add` ran a moment later,
+and the commit carried `const STACK_GAP = 0.5` — a peer's mutation-testing
+mutant, sitting on disk between the two steps — under a message describing a
+documentation edit. The suite that had just passed had certified a different
+version of the file than the one that shipped.
+
+So: **run `git diff --cached` before every commit and read it.** Not the working
+diff, the staged one. If the staged diff contains a line you cannot explain, stop
+— that is the whole check, it costs seconds, and it needs no coordination with
+anyone else's session.
+
+Two corollaries worth keeping:
+
+- **Order matters.** Verifying and then staging proves less than staging and then
+  verifying. If a run is expensive, at minimum re-read the staged diff after it.
+- **Guards protect the tree from losing work; almost nothing protects a commit
+  from gaining it.** Every rule in this file about shared files — never `git
+  restore` over a peer, assert before you replace, re-read after you write —
+  defends work from being destroyed. The staged-diff read is the only one facing
+  the other direction, and that is the direction this went.
+
 ### Look at the render at the size a person would
 
 A 200px thumbnail is enough to see a layout tear and not enough to see anything else.
