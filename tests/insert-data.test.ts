@@ -7,7 +7,7 @@ import { renderToString } from '@artboard/render-svg';
 /**
  * Correctness of the generated symbols, as opposed to their stability.
  *
- * `artboard golden` proves the fixture's SVG bytes have not changed. It cannot
+ * `npm run golden` proves the fixture's SVG bytes have not changed. It cannot
  * prove they were ever right -- a symbol that was wrong the day it was
  * baselined stays green forever, and `--update` re-bakes the baseline without
  * re-establishing anything. These assertions are the other half: they read the
@@ -17,30 +17,25 @@ import { renderToString } from '@artboard/render-svg';
  * That direction matters. Comparing against `qrMatrix()` or `ean13()` would
  * only prove the generator agrees with itself.
  *
- * REGENERATING the fixture: `node tools/make-insert-fixture.mjs`, then
- * `artboard golden --update`. That script is the only reproduction path, and it
- * documents why the node ids are hand-written (`uid()` is `Math.random()`-based,
- * so the real insert path cannot mint ids for a fixture) and why the three
- * elements are placed in explicit cells rather than through `InsertData`'s
- * centring (so a change to the panel's placement math cannot move this
- * baseline). Never restore this fixture with `git checkout` -- regenerate it.
+ * The fixture itself is generated, not hand-written: `tools/make-insert-fixture.mjs`
+ * emits it through the real insert path, and documents the two constraints that
+ * are not visible in its output -- why the ids are hand-written, and why the
+ * three elements sit in their own cells rather than where the panel would centre
+ * them. Re-run it after changing a payload, then re-bake the SVG with
+ * `npm run golden -- --update`, then regenerate the matching constant below.
+ * Restoring a deliberately mutated fixture is the same command - never
+ * `git checkout`, which discards whatever else is uncommitted in the file.
  *
  * PROVENANCE of every expected value below -- established 2026-08-20 against
  * the rendered `tests/golden/insert-data.svg`, not against the generators:
  *
  *   EAN-13   `python-barcode` 0.16.1, `EAN13('590123412345').build()[0]`.
- *
- * The fixture itself is generated, not hand-written: `tools/make-insert-fixture.mjs`
- * emits it through the real insert path. Re-run that after changing a payload,
- * then re-bake the SVG with `npm run golden -- --update`, then regenerate the
- * constant above. Restoring a deliberately mutated fixture is the same command -
- * never `git checkout`, which discards whatever else is uncommitted in the file.
  *            95 modules, bit-identical.
  *   QR       OpenCV 4.8.1 `QRCodeDetector().detectAndDecode()` on the fixture
  *            rasterized at 4200px wide. Decoded to exactly
  *            'https://artboard.dev'. The grid below is that decoded symbol.
  *
- * Re-running `artboard golden --update` does NOT re-establish either one. If a
+ * Re-running `npm run golden -- --update` does NOT re-establish either one. If a
  * change makes these fail, the symbol changed meaning -- re-baking the golden
  * is not the fix, and re-deriving the expectation from our own encoder would
  * defeat the purpose. Re-run the external tools.
