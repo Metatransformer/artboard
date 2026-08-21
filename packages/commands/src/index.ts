@@ -225,6 +225,157 @@ function shiftSubtree(n: Node, dx: number, dy: number): Node {
 }
 
 /*
+ * VERTICAL STACKS.
+ *
+ * Anchoring each node independently tears designs apart, because a contiguous
+ * column that straddles the frame's midline has some members nearer the top
+ * edge and some nearer the bottom, and they leave in opposite directions. On
+ * `social-gradient-launch` 1:1 -> 9:16 the headline's bottom landed at 1033 and
+ * the body copy started at 1501: a 36px gap became 468px, a void the height of
+ * the headline in the middle of a text column. 18 of 24 fixtures opened a gap
+ * over 100px between two nodes that had been neighbours. It is visible in the
+ * render, not just in the numbers.
+ *
+ * So adjacency is resolved BEFORE anchoring: nodes that read as one stack are
+ * placed as one. Gaps inside a stack then scale by k like everything else, and
+ * the frame's extra height is absorbed BETWEEN stacks -- which is what
+ * "distribute down a taller frame" should mean, and what a designer does by
+ * hand. A stack of one is the old behaviour exactly, so nothing that was
+ * already right changes.
+ *
+ * Y ONLY. The x axis is not clustered, deliberately: a stack is a vertical
+ * relationship, and horizontally each node is bound to its own edge on the
+ * evidence of its own `align` -- evidence a combined box does not have. A
+ * cluster box for the launch template has 96px margins either side and would
+ * classify as centred, undoing exactly the fix `textAware` exists to make.
+ */
+type Stack = { members: number[]; box: { y: number; height: number } };
+
+/*
+ * Close enough to read as one stack, as a fraction of the frame on that axis.
+ *
+ * The corpus does NOT choose this number, and it is worth saying so rather than
+ * implying a measurement settled it: 141 adjacent gaps run smoothly from 0 to
+ * 29% of frame height with no valley to snap to (p50 2.7%, p85 8.0%). What
+ * makes 10% safe is not that it is special but that the answer does not move
+ * around it. Sweeping the whole corpus into a 9:16 frame:
+ *
+ *     gap    designs torn >100px    designs left in one clump
+ *      0%         18 / 26                    2          <- what this replaces
+ *      4%         14 / 26                    4
+ *      6%          8 / 26                    7
+ *      8%          3 / 26                   11
+ *     10%          1 / 26                   13
+ *     12%          1 / 26                   14
+ *     15%          1 / 26                   17
+ *
+ * Tearing collapses up to 8-10% and then stops improving; clumping -- a design
+ * that has stopped adapting and just sits in the frame as one block -- keeps
+ * climbing. 10-12% is the flat spot between the two failure modes, so anywhere
+ * in it gives the same answer and the exact value is not load-bearing. Below
+ * 8% it very much is: at 6% a 42px gap in `business-card-mono` fell just
+ * outside a 36px threshold and split a column that reads as one.
+ *
+ * The zero row is a control, not a data point: STACK_GAP = 0 disables
+ * clustering entirely and reproduces the per-node behaviour this replaces.
+ */
+const STACK_GAP = 0.10;
+
+/*
+ * Bleed is not stack membership. A shape running off the page edge is
+ * decoration behind the content, not a participant in its rhythm -- and it
+ * would otherwise swallow the whole column, since a full-height blob sits
+ * adjacent to everything.
+ *
+ * The tolerance is what makes this a real distinction rather than an equality
+ * test on a float. `text-rules` has a last row overhanging its artboard by 10px
+ * on 800 (1.25%); `social-gradient-launch` has gradient blobs overhanging by
+ * 180px on 1080 (17%). Any tolerance between roughly 2% and 10% separates the
+ * two identically, so the exact figure carries no weight -- the 13x between the
+ * two populations does.
+ */
+const BLEED_TOLERANCE = 0.03;
+
+function bleeds(b: { y: number; height: number }, frame: Frame): boolean {
+  const slack = BLEED_TOLERANCE * frame.height;
+  return b.y < -slack || b.y + b.height > frame.height + slack;
+}
+
+function stacksOf(boxes: readonly { x: number; y: number; width: number; height: number }[], frame: Frame): Stack[] {
+  const eligible = boxes.map((b, i) => ({ i, b })).filter(e => !bleeds(e.b, frame));
+  /* Union-find over every eligible PAIR rather than a sweep down the page. A
+     sweep keeps one open cluster and closes it the moment a node joins nothing,
+     so a design with two interleaved columns partitions by reading order
+     instead of by adjacency -- and which nodes end up together then depends on
+     the order they happen to sit in the array. */
+  const parent = new Map<number, number>(eligible.map(e => [e.i, e.i]));
+  const find = (i: number): number => {
+    let r = i;
+    while (parent.get(r) !== r) r = parent.get(r)!;
+    return r;
+  };
+  const union = (i: number, j: number): void => { parent.set(find(i), find(j)); };
+
+  for (let a = 0; a < eligible.length; a++) {
+    for (let b = a + 1; b < eligible.length; b++) {
+      const p = eligible[a]!.b, q = eligible[b]!.b;
+      /* Proximity on BOTH axes, because the relationships that break are not
+         all vertical. Requiring horizontal OVERLAP instead cost more than it
+         bought: on `business-card-mono` the monogram badge sits 90px to the
+         RIGHT of the name with no overlap, so the name's column moved down the
+         story frame and left the badge behind at the top; `deck-section-mono`
+         did the same to a numeral card and the title beside it. Both are
+         visible in the render.
+         Membership is 2D, placement is still y only -- see the note above. */
+      const gapX = Math.max(p.x, q.x) - Math.min(p.x + p.width, q.x + q.width);
+      const gapY = Math.max(p.y, q.y) - Math.min(p.y + p.height, q.y + q.height);
+      // Negative is overlap, which is adjacency at its most emphatic: a label
+      // sitting on its own button.
+      if (gapX <= STACK_GAP * frame.width && gapY <= STACK_GAP * frame.height)
+        union(eligible[a]!.i, eligible[b]!.i);
+    }
+  }
+
+  const byRoot = new Map<number, number[]>();
+  for (const e of eligible) {
+    const r = find(e.i);
+    (byRoot.get(r) ?? byRoot.set(r, []).get(r)!).push(e.i);
+  }
+  const out: Stack[] = [];
+  for (const members of byRoot.values()) {
+    if (members.length < 2) continue;
+    const bs = members.map(i => boxes[i]!);
+    const top = Math.min(...bs.map(b => b.y));
+    const bottom = Math.max(...bs.map(b => b.y + b.height));
+    out.push({ members, box: { y: top, height: bottom - top } });
+  }
+  return out;
+}
+
+/** Where each stacked node's y and height land, keyed by index. A node in no
+ *  stack is absent and anchors on its own, as before. */
+function stackPlacements(
+  boxes: readonly { x: number; y: number; width: number; height: number }[],
+  from: Frame, to: Frame,
+): Map<number, { y: number; height: number }> {
+  const k = resizeFactor(from, to);
+  const place = new Map<number, { y: number; height: number }>();
+  for (const st of stacksOf(boxes, from)) {
+    const anchors = classifyAnchors({ x: 0, y: st.box.y, width: from.width, height: st.box.height }, from);
+    /* A stack is never stretched. Stretching one distributes the new height
+       through its interior, which is the tear this exists to prevent; a column
+       tall enough to read as full-bleed is still a column. */
+    const y = anchors.y === 'stretch' ? 'middle' : anchors.y;
+    const next = reanchor({ x: 0, y: st.box.y, width: 0, height: st.box.height }, { x: 'left', y }, from, to);
+    for (const i of st.members) {
+      const b = boxes[i]!;
+      place.set(i, { y: round(next.y + (b.y - st.box.y) * k), height: round(b.height * k) });
+    }
+  }
+  return place;
+}
+
+/*
  * One node's share of a Magic Resize.
  *
  * A group resolves against its DERIVED box rather than its stored one. The
@@ -233,10 +384,12 @@ function shiftSubtree(n: Node, dx: number, dy: number): Node {
  * stored bounds were stale would relayout to the wrong edge while every
  * individual child looked correctly placed.
  */
-function relayoutNode(n: Node, from: Frame, to: Frame): Node {
+function relayoutNode(n: Node, from: Frame, to: Frame, place?: { y: number; height: number }): Node {
   const k = resizeFactor(from, to);
   const box = nodeBox(n);
-  const next = reanchor(box, textAware(n, classifyAnchors(box, from)), from, to);
+  const own = reanchor(box, textAware(n, classifyAnchors(box, from)), from, to);
+  /* x from the node's own anchor, y from its stack's when it has one. */
+  const next = place ? { ...own, ...place } : own;
 
   const sx = box.width > 0 ? next.width / box.width : 1;
   const sy = box.height > 0 ? next.height / box.height : 1;
@@ -483,7 +636,11 @@ export function apply(doc: Document, cmd: Command): Document {
       if (from.width === to.width && from.height === to.height) return doc;
       return mapArtboard(doc, cmd.artboardId, a => ({
         ...a, width: to.width, height: to.height,
-        nodes: (a.nodes as Node[]).map(n => relayoutNode(n, from, to)),
+        nodes: (() => {
+          const nodes = a.nodes as Node[];
+          const place = stackPlacements(nodes.map(nodeBox), from, to);
+          return nodes.map((n, i) => relayoutNode(n, from, to, place.get(i)));
+        })(),
       }));
     }
 
