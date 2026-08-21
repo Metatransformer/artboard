@@ -4,9 +4,15 @@
   "license": "MIT",
   "type": "module",
   "description": "Artboard command line: validate, render, info, and the golden-SVG oracle.",
-  "bin": { "artboard": "./bin/artboard.mjs" },
-  "files": ["bin", "src"],
+  "bin": {
+    "artboard": "./bin/artboard.mjs"
+  },
+  "files": [
+    "bin",
+    "src"
+  ],
   "dependencies": {
+    "@artboard/diagnostics": "*",
     "@artboard/engine": "*",
     "@artboard/render-svg": "*",
     "@artboard/schema": "*",

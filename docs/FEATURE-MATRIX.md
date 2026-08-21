@@ -1114,7 +1114,7 @@ E, F and G are mutually parallel once the font work lands. E and the font work a
 | K | Radial gradients | S | `render-svg` `fillToPaint`. |
 | L | Blend modes (`mix-blend-mode`) | M | `schema` + `render-svg` + CLI style emission. |
 | M | QR code node | S | New file; fully disjoint. |
-| N | Colour-contrast + typography diagnostics | S | Uses the existing `Diagnostic` channel; fully disjoint. |
+| N | ~~Colour-contrast + typography diagnostics~~ | S | **DONE.** `packages/diagnostics`, reached from the CLI as `artboard check`. |
 | O | Eyedropper + photo-colour extraction | M | Editor only. |
 | P | Bundled icon/shape library (MIT/CC0) | S | Pure data; fully disjoint. |
 | Q | Full-screen presentation mode | S | Editor shell; fully disjoint. |

@@ -19,6 +19,7 @@ import { fileURLToPath } from 'node:url';
 
 import { parseDocument, walk, type Diagnostic } from '@artboard/schema';
 import { renderToString } from '@artboard/render-svg';
+import { checkDocument } from '@artboard/diagnostics';
 
 import {
   buildVectorExport, fileStem, HEADLESS_FORMATS, isFormat, parsePages,
@@ -53,7 +54,7 @@ export class ArtboardRangeError extends Error {
 }
 
 /* -- argv ----------------------------------------------------------------- */
-const VALUE_FLAGS = new Set(['out', 'artboard', 'dir', 'format', 'scale', 'pages', 'quality', 'data', 'name', 'limit', 'delimiter']);
+const VALUE_FLAGS = new Set(['out', 'artboard', 'dir', 'format', 'scale', 'pages', 'quality', 'data', 'name', 'limit', 'delimiter', 'level']);
 
 interface Argv { command: string; positionals: string[]; flags: Record<string, string | boolean> }
 
@@ -299,6 +300,50 @@ const toBytes = (data: string | Uint8Array): Uint8Array =>
 function writeBytes(path: string, bytes: Uint8Array): void {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, bytes);
+}
+
+/* -- check -----------------------------------------------------------------
+ *
+ * The design review, as opposed to `validate`'s structural one. `validate`
+ * answers "is this a document"; `check` answers "can anyone read it" --
+ * contrast against whatever is actually painted behind the text, type that is
+ * too small to print, lines too long to track.
+ *
+ * Its own command rather than a flag on `validate` because the two have
+ * different failure semantics. A structural error means the file cannot be
+ * opened; a contrast finding means a human should look. Folding advisory
+ * findings into `validate` would either make a readable document exit 1 or
+ * teach everyone to ignore its output.
+ * ------------------------------------------------------------------------ */
+function cmdCheck(argv: Argv): number {
+  const file = argv.positionals[0];
+  if (file === undefined) throw new UsageError('check needs a file: artboard check <file.json>');
+
+  const rawLevel = argv.flags.level === undefined ? 'AA' : String(argv.flags.level).toUpperCase();
+  if (rawLevel !== 'AA' && rawLevel !== 'AAA') throw new UsageError(`--level must be AA or AAA, got "${String(argv.flags.level)}".`);
+
+  const { path, doc } = openDocument(file);
+  const findings = checkDocument(doc, { level: rawLevel, reportUnknown: argv.flags.unknown === true });
+
+  process.stdout.write(`${bold(rel(path))} ${dim(`WCAG ${rawLevel}`)}\n`);
+  printDiagnostics(findings, process.stdout);
+
+  const byCode = new Map<string, number>();
+  for (const f of findings) byCode.set(f.code, (byCode.get(f.code) ?? 0) + 1);
+  for (const code of [...byCode.keys()].sort()) {
+    process.stdout.write(`  ${pad(code, 20)} ${byCode.get(code)}\n`);
+  }
+
+  if (!findings.length) {
+    // Said out loud, because "no output" is also what a broken check looks
+    // like, and the two must not be indistinguishable.
+    process.stdout.write(`${green('CLEAN')} ${rel(path)} -- nothing to report at WCAG ${rawLevel}\n`);
+    return OK;
+  }
+  process.stdout.write(`${yellow('FINDINGS')} ${findings.length} in ${rel(path)}\n`);
+  // Advisory by design: a low-contrast heading is a judgement call, not a
+  // corrupt file, so this exits 0 unless something is genuinely an error.
+  return hasErrors(findings) ? FAILED : OK;
 }
 
 /* -- bulk ------------------------------------------------------------------
@@ -594,6 +639,9 @@ ${bold('COMMANDS')}
       --no-transparent              Force an opaque white behind a page that has none.
       --zip                         Bundle the output into one stored .zip.
       --out <path>                  File to write (single output) or directory (several).
+  check    <file.json>              Design review: text contrast against what is really behind it, type size, line length.
+      --level <AA|AAA>              WCAG conformance level to hold text to. Default AA.
+      --unknown                     Also report text whose backdrop could not be determined.
   bulk     <template.json>          Render one file per data row: mail merge for designs.
       --data <file>                 csv, tsv, or json array of objects. Its columns fill {{placeholders}}.
       --out <dir>                   Directory for the output (default the working directory).
@@ -650,6 +698,7 @@ export async function run(rawArgv: readonly string[]): Promise<number> {
     info: cmdInfo,
     export: cmdExport,
     bulk: cmdBulk,
+    check: cmdCheck,
   };
   const handler = commands[argv.command];
   if (!handler) {
