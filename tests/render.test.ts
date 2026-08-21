@@ -3,6 +3,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { buildNode, findNode, loadDocument, type Document } from '@artboard/schema';
 import { renderToString, renderArtboard, serialize, type SceneNode } from '@artboard/render-svg';
+import { MAX_TEXT_CHARS } from '@artboard/engine';
 import { checkXml } from './helpers';
 
 const docWith = (nodes: unknown[], extra: Record<string, unknown> = {}): Document =>
@@ -679,6 +680,39 @@ describe('render: curved text', () => {
     // The control. Both assertions above are that a code IS present; without
     // this, a renderer that warned unconditionally would satisfy them.
     expect(curved('Short').diagnostics.filter(d => d.code === 'CURVE_NO_RULES')).toEqual([]);
+  });
+});
+
+describe('render: text over the layout budget', () => {
+  // The last renderer/schema diagnostic with no coverage of any kind. Its
+  // siblings all had a unit test; this one was raised by the renderer and
+  // asserted by nobody, which is the state FONT_SUBSTITUTED was in when it
+  // turned out not to be forwarded at all.
+  const withText = (text: string) => renderToString(docWith([
+    { id: 't', kind: 'text', x: 0, y: 0, width: 400, height: 200, text, fontSize: 12 },
+  ]));
+
+  it('warns TEXT_TRUNCATED past the layout budget', () => {
+    const { svg, diagnostics } = withText('a '.repeat(MAX_TEXT_CHARS));
+    const diag = diagnostics.find(d => d.code === 'TEXT_TRUNCATED');
+    expect(diag).toBeDefined();
+    expect(diag!.level).toBe('warn');
+    expect(diag!.nodeId).toBe('t');
+    // Truncating and still emitting well-formed output is the point: the
+    // budget exists so a pathological document renders rather than hangs.
+    expect(checkXml(svg).ok).toBe(true);
+  });
+
+  it('lays out exactly the budget without warning', () => {
+    // The boundary, and the control. `> MAX_TEXT_CHARS` truncates, so a text
+    // of exactly the budget must not -- an off-by-one the other way would
+    // warn on a document that is entirely within its limits.
+    const { diagnostics } = withText('a'.repeat(MAX_TEXT_CHARS));
+    expect(diagnostics.filter(d => d.code === 'TEXT_TRUNCATED')).toEqual([]);
+  });
+
+  it('stays silent on ordinary text', () => {
+    expect(withText('Hello').diagnostics.filter(d => d.code === 'TEXT_TRUNCATED')).toEqual([]);
   });
 });
 
