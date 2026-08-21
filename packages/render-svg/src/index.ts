@@ -130,8 +130,18 @@ function renderNode(
   // the rotation PIVOT, so a group whose child moved rotated around a point
   // that no longer had anything to do with its contents -- wrong in the
   // exported SVG and PDF, not only on screen. Derive the centre from what is
-  // actually there. For an accurate group this is the identical number, which
-  // is why no baseline moves.
+  // actually there.
+  //
+  // For an ACCURATE group this is the identical number. One golden baseline
+  // did move -- groups-and-shadow, whose groups are hand-authored with round
+  // bounds (gr-nested is stored 170 wide; its children span 690..850 = 160),
+  // so its stored boxes were never accurate and its rotated groups pivoted on
+  // centres that were simply made up. That fixture is now the one place the
+  // golden oracle watches this code: do not "correct" its bounds to match its
+  // children, or the only fixture covering derived pivots stops covering
+  // anything. The unit tests in tests/render.test.ts carry the proof
+  // independently of the baseline -- reverting this line to `n` turns both of
+  // them red as well as the golden.
   const box = n.kind === 'group' ? subtreeBounds(n) : n;
   const cx = round(box.x + box.width / 2), cy = round(box.y + box.height / 2);
   const tf: string[] = [];

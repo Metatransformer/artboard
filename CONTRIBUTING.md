@@ -183,6 +183,19 @@ the expected result.
    [determinism contract](docs/ARCHITECTURE.md#7-determinism-contract).
 5. **Adding a fixture is cheap and welcome.** A new feature should arrive with one.
    Keep it minimal: the smallest document that exercises the thing.
+6. **Some fixtures are deliberately wrong, and re-baking one can hide the finding.**
+   `groups-and-shadow.json` holds groups whose stored `x/y/width/height` disagree
+   with their children — `gr-nested` is stored 170 wide where its children span
+   690..850 = 160. That is not sloppiness to tidy up; it is the only fixture
+   covering the derived rotation pivot, and "correcting" it to match its children
+   would leave that code unobserved while the oracle stayed green.
+
+   The general hazard, which cost a review round here: a comment claiming *"no
+   baseline moves"*, a baseline that moved, and the baseline updated to match are
+   each defensible alone and together make the claim unfalsifiable. If you update a
+   baseline, the claim it encodes has to be checkable somewhere the baseline is
+   not — a unit test that goes red when the change is reverted, and a note saying
+   which. Never leave the baseline as the only witness to its own correctness.
 
 ### Finding what the oracle never looks at
 
