@@ -410,19 +410,25 @@ describe('resizeArtboard: alignment overrides a centred box reading, and only th
     expect(centreFraction(after, BANNER)).toBeCloseTo(centreFraction(before, SQ), 4);
   });
 
-  it('applies the same rule vertically, from valign', () => {
-    // `textAware` reads both axes and the y half is easy to leave half-written,
-    // because every fixture that exercises x tends to be middle-anchored on y.
-    const stacked = doc(SQ, [
-      buildNode({ id: 'quote', kind: 'text', x: 400, y: 140, width: 280, height: 800, text: 'A tall quote', fontSize: 32, valign: 'top' }),
-    ]);
-    const before = nodeById(stacked, 'quote');
-    expect(classifyAnchors(before, SQ).y).toBe('middle');
-
-    const TALL = { width: 1080, height: 1920 };
-    const after = nodeById(apply(stacked, resize('ab-1', TALL.width, TALL.height)), 'quote');
-    expect(after.y / TALL.height).toBeCloseTo(before.y / SQ.height, 4);
-  });
+  /*
+   * REMOVED WITH THE RULE IT PINNED: `it('applies the same rule vertically,
+   * from valign')`. The y half of `textAware` is gone -- it was generalised
+   * from x by symmetry with nothing measured, it cost a net 1941px of extra
+   * tearing across the corpus under the per-node model, and under the clustered
+   * model it fires on 0 of the 4 text nodes left to place themselves (the same
+   * probe reports 46 with clustering off, so the 0 is a measurement).
+   *
+   * The case this test built -- a 280x800 quote box, far taller than its two
+   * lines, `valign: top` -- is the one shape where the argument does survive,
+   * and it is written down here rather than deleted so that a future y rule has
+   * to start from it. What that rule needs and this one lacked is a test for
+   * actual vertical SLACK: `align: left` is nearly always meaningful because a
+   * headline box is as wide as its column, while `valign: top` is nearly always
+   * inert because a text box is as tall as its text. Distinguishing the two
+   * means measuring the block against the box, which means `layoutText` inside
+   * the command layer -- a real coupling, and one that should be bought with a
+   * design that visibly needs it rather than with symmetry a second time.
+   */
 });
 
 

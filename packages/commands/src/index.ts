@@ -204,14 +204,35 @@ type Frame = { width: number; height: number };
  * Only the `centre` reading is overridden. A frame whose margins decisively say
  * left or right is bound that way whatever its text does, and `stretch` must
  * survive so a full-bleed block stays full-bleed.
+ *
+ * X ONLY, AND THE MISSING `valign` HALF IS THE POINT. This shipped with a
+ * matching y rule -- `middle` overridden to `top` or `bottom` from `valign` --
+ * generalised from the x case by symmetry, with nothing measured. The symmetry
+ * does not hold. `align: left` means the glyphs start at the frame's left edge
+ * while the slack sits on the right, and a text frame's horizontal slack is
+ * usually large: a headline box is as wide as the column, not as wide as the
+ * words. Vertically the frame is sized to the text, so the slack is small and
+ * the frame's middle really is near the element's middle.
+ *
+ * Priced twice. Against the per-node model it fired on 46 of 442 independently
+ * placed text nodes and cost a net 1941px of extra tearing across the corpus.
+ * Against the clustered model it fires on 0 of 4 -- clustering absorbs almost
+ * every text node, so the rule is not merely unhelpful but unreached. The same
+ * probe reports 46 with clustering switched off, so that 0 is a measurement.
+ *
+ * Unreached is not unreachable, and the shape that would want it is written
+ * down at the foot of tests/resize-artboard.test.ts rather than deleted with
+ * the rule: a box far taller than its text, `valign: top`. What a future y rule
+ * needs and this one lacked is a test for actual vertical SLACK -- `align` is
+ * nearly always meaningful because a headline box is as wide as its column,
+ * while `valign` is nearly always inert because a text box is as tall as its
+ * text. Telling those apart means `layoutText` inside the command layer, which
+ * should be bought with a design that visibly needs it, not with symmetry.
  */
 function textAware(n: Node, a: Anchors): Anchors {
-  if ((n as any).kind !== 'text') return a;
-  const align = (n as any).align, valign = (n as any).valign;
-  return {
-    x: a.x !== 'centre' ? a.x : align === 'left' ? 'left' : align === 'right' ? 'right' : a.x,
-    y: a.y !== 'middle' ? a.y : valign === 'top' ? 'top' : valign === 'bottom' ? 'bottom' : a.y,
-  };
+  if ((n as any).kind !== 'text' || a.x !== 'centre') return a;
+  const align = (n as any).align;
+  return { ...a, x: align === 'left' ? 'left' : align === 'right' ? 'right' : a.x };
 }
 
 /** Move a whole subtree by a delta, children included. */
@@ -243,11 +264,14 @@ function shiftSubtree(n: Node, dx: number, dy: number): Node {
  * hand. A stack of one is the old behaviour exactly, so nothing that was
  * already right changes.
  *
- * Y ONLY. The x axis is not clustered, deliberately: a stack is a vertical
- * relationship, and horizontally each node is bound to its own edge on the
- * evidence of its own `align` -- evidence a combined box does not have. A
- * cluster box for the launch template has 96px margins either side and would
- * classify as centred, undoing exactly the fix `textAware` exists to make.
+ * MEMBERSHIP IS 2D, PLACEMENT IS Y ONLY, and the asymmetry is deliberate
+ * rather than a simplification. Which nodes belong together is a question about
+ * the whole plane -- a badge beside a name belongs with it -- so membership
+ * looks at both axes. Where they go is not: horizontally each node is bound to
+ * its own edge on the evidence of its own `align`, which a combined box does
+ * not have. A cluster box for the launch template has 96px margins either side
+ * and would classify as centred, undoing exactly the fix `textAware` exists to
+ * make.
  */
 type Stack = { members: number[]; box: { y: number; height: number } };
 
