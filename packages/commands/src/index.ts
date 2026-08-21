@@ -1,5 +1,5 @@
 import { buildNode, nodeFields, artboardFields, type Document, type Node } from '@artboard/schema';
-import { aabb } from '@artboard/engine';
+import { aabb, round } from '@artboard/engine';
 
 /** Immutable command layer. apply(doc, cmd) -> newDoc. invert(cmd) -> undo cmd. */
 
@@ -50,7 +50,24 @@ export type Command =
    * each child occupied before it was grouped, which is what lets `group`'s
    * inverse restore a non-contiguous selection to its exact original order.
    */
-  | { type: 'ungroup'; artboardId: string; groupId: string; indices?: number[] };
+  | { type: 'ungroup'; artboardId: string; groupId: string; indices?: number[] }
+  /**
+   * Move each of `nodeIds` by (dx, dy), depth-first over that node's whole
+   * subtree.
+   *
+   * This exists because `updateNode` cannot express a move for a group.
+   * `makeGroup` keeps children in artboard space and render-svg's `case 'group'`
+   * emits no transform of its own, so a group's x/y is bounds metadata that
+   * nothing draws from: patching it moved the selection handles and the
+   * Inspector readout while every child stayed exactly where it was. A move has
+   * to reach the leaves, and only a RELATIVE command can do that without every
+   * caller having to know the shape of the subtree it is moving.
+   *
+   * Relative also makes the editor's revert-then-commit trick simpler rather
+   * than harder: a drag reverts with `-dx` instead of having to remember and
+   * replay an absolute position per node.
+   */
+  | { type: 'translate'; nodeIds: string[]; dx: number; dy: number };
 
 export function apply(doc: Document, cmd: Command): Document {
   switch (cmd.type) {
@@ -98,6 +115,21 @@ export function apply(doc: Document, cmd: Command): Document {
       if (unknown.length) {
         throw new InvalidCommandError(
           `Node "${cmd.nodeId}" (${(target as any).kind}) has no field ${unknown.map(k => `"${k}"`).join(', ')}.`);
+      }
+      // A group's x/y is bounds metadata: `makeGroup` keeps children in
+      // artboard space and render-svg's `case 'group'` emits no transform, so
+      // writing it moves the selection handles and the Inspector readout and
+      // not one drawn child. Refusing is the call `removeNode` and `reorder`
+      // already make -- a command that cannot deliver what was asked has to say
+      // so, or an unattended caller keeps sending it. Only a patch that would
+      // actually CHANGE the position is refused: the drag commit sends x/y
+      // unchanged alongside `rotation`, which a group does honour.
+      if ((target as any).kind === 'group') {
+        const moves = (['x', 'y'] as const).filter(k => k in cmd.patch && cmd.patch[k] !== (target as any)[k]);
+        if (moves.length) {
+          throw new InvalidCommandError(
+            `Node "${cmd.nodeId}" is a group, so patching ${moves.map(k => `"${k}"`).join(' and ')} would move its bounds but none of its children. Use a "translate" command instead.`);
+        }
       }
       return mapNodes(doc, n => (n.id === cmd.nodeId ? patchNode(n, cmd.patch) : n));
     }
@@ -175,6 +207,29 @@ export function apply(doc: Document, cmd: Command): Document {
         }
         return { ...ab, ...cmd.patch };
       });
+
+    case 'translate': {
+      // Every target is checked before anything moves, so a batch naming one
+      // stale id cannot leave the rest half-translated.
+      for (const id of cmd.nodeIds) if (!findAny(doc, id)) throw new StaleCommandError(id);
+      if (cmd.dx === 0 && cmd.dy === 0) return doc;
+
+      const shift = (n: Node): Node => {
+        const next: any = { ...(n as any), x: round((n as any).x + cmd.dx), y: round((n as any).y + cmd.dy) };
+        if (next.kind === 'group') next.children = ((next.children ?? []) as Node[]).map(shift);
+        return next as Node;
+      };
+      // Once a node matches we move its whole subtree and stop looking inside
+      // it: selecting a group AND one of its own children must not move that
+      // child twice. Nesting is handled by `shift` recursing, not by `rec`.
+      const wanted = new Set(cmd.nodeIds);
+      const rec = (nodes: Node[]): Node[] => nodes.map(n => {
+        if (wanted.has(n.id)) return shift(n);
+        if ((n as any).kind === 'group') return { ...(n as any), children: rec(((n as any).children ?? []) as Node[]) };
+        return n;
+      });
+      return { ...doc, artboards: doc.artboards.map(ab => ({ ...ab, nodes: rec(ab.nodes as Node[]) })) };
+    }
 
     case 'addAsset':
       return { ...doc, assets: { ...doc.assets, [cmd.asset.id]: cmd.asset } };
@@ -273,6 +328,14 @@ export function invert(doc: Document, cmd: Command): Command {
       return { type: 'setArtboard', artboardId: cmd.artboardId, patch: before };
     }
 
+    case 'translate': {
+      // Checked here as well as in `apply`, so an undo entry that can no longer
+      // run is dropped by `undo`'s StaleCommandError path rather than throwing
+      // out of the reducer.
+      for (const id of cmd.nodeIds) if (!findAny(doc, id)) throw new StaleCommandError(id);
+      return { type: 'translate', nodeIds: cmd.nodeIds, dx: -cmd.dx, dy: -cmd.dy };
+    }
+
     case 'addAsset':
       return { type: 'batch', label: 'noop', commands: [] };
   }
@@ -329,13 +392,35 @@ export function redo(doc: Document, history: History): { doc: Document; history:
  * did not have an optional field, and `{...n, fill: undefined}` is not the
  * same document as one with no `fill` at all.
  */
+/**
+ * Apply `patch` to `n` and re-validate the result against the schema.
+ *
+ * The validation is the point. `updateNode` already refuses a patch naming a
+ * field the node does not have, which reads like enough checking and is not:
+ * the VALUE went in unexamined, so `radius: -50` or `opacity: 9` was accepted,
+ * written to the document, saved to disk, and only surfaced much later when
+ * something unrelated re-validated -- grouping the node, or reopening the file
+ * -- as `Invalid rect node: Number must be greater than or equal to 0`, with
+ * nothing left pointing at the command that wrote it. A stored value the
+ * schema rejects is corruption whether or not anything has noticed yet, and
+ * the moment to refuse it is the moment it arrives.
+ *
+ * `buildNode` rather than a bare parse, and no `as Node`: the cast is what let
+ * this through, because it silences the compiler precisely when the schema
+ * knows something the local code does not.
+ */
 function patchNode(n: Node, patch: Record<string, unknown>): Node {
   const next: Record<string, unknown> = { ...(n as any) };
   for (const [k, v] of Object.entries(patch)) {
     if (v === undefined) delete next[k];
     else next[k] = v;
   }
-  return next as Node;
+  try {
+    return buildNode(next);
+  } catch (e) {
+    throw new InvalidCommandError(
+      `Patching "${(n as any).id}" with ${JSON.stringify(patch)} would make it invalid: ${(e as Error).message}`);
+  }
 }
 
 function mapArtboard(doc: Document, id: string, fn: (ab: any) => any): Document {

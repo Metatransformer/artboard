@@ -11,7 +11,8 @@ import { useEditor } from '../state/store';
  *  - Geometry comes from the engine. Every measurement is `aabb(node)`, so a
  *    rotated node aligns by the box you can actually see, not by its unrotated
  *    x/y/w/h. Moving x by d moves the aabb by d, which is why a plain
- *    `updateNode` on x/y is enough to hit any alignment target.
+ *    a `translate` by the computed delta is enough to hit any alignment
+ *    target -- and unlike an x/y patch it also moves a group's children.
  *  - Every button is exactly one undo step. Multi-node work goes out as a
  *    `batch`, and the batch shapes here are the ones whose inverse is exact -
  *    see `orderCommands` for the one case where that took some care.
@@ -79,7 +80,7 @@ export function ArrangePanel() {
         : edge === 'right' || edge === 'bottom' ? (target[axis] + target[size]) - (b[axis] + b[size])
         : (target[axis] + target[size] / 2) - (b[axis] + b[size] / 2);
       if (Math.abs(delta) < 1e-6) return;
-      commands.push({ type: 'updateNode', nodeId: n.id, patch: { [axis]: round((n as any)[axis] + delta) } });
+      commands.push({ type: 'translate', nodeIds: [n.id], dx: axis === 'x' ? delta : 0, dy: axis === 'y' ? delta : 0 });
     });
     commit(commands, `align ${edge}`);
   };
@@ -105,7 +106,7 @@ export function ArrangePanel() {
       const delta = cursor - it.b[axis];
       cursor += it.b[size] + gap;
       if (Math.abs(delta) < 1e-6) continue;
-      commands.push({ type: 'updateNode', nodeId: it.n.id, patch: { [axis]: round((it.n as any)[axis] + delta) } });
+      commands.push({ type: 'translate', nodeIds: [it.n.id], dx: axis === 'x' ? delta : 0, dy: axis === 'y' ? delta : 0 });
     }
     commit(commands, `distribute ${axis === 'x' ? 'horizontally' : 'vertically'}`);
   };

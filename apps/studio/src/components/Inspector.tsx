@@ -16,6 +16,25 @@ export function Inspector() {
   };
   const abPatch = (p: Record<string, unknown>) => run({ type: 'setArtboard', artboardId: artboard.id, patch: p });
 
+  /**
+   * X and Y are shown as absolute positions but sent as a RELATIVE move, because
+   * `updateNode` cannot move a group: a group's children carry their own
+   * absolute coordinates, so patching the group's x/y would shift its bounds and
+   * leave the artwork behind. Typing 40 into X means "move the left edge to 40",
+   * and the delta from where it is now expresses that for a group and a plain
+   * node alike.
+   */
+  const moveTo = (axis: 'x' | 'y', value: number) => {
+    const delta = value - (n[axis] as number);
+    if (delta === 0) return;
+    run({
+      type: 'translate',
+      nodeIds: selected.map(s => s.id),
+      dx: axis === 'x' ? delta : 0,
+      dy: axis === 'y' ? delta : 0,
+    });
+  };
+
   if (!n) {
     const bg = artboard.background as any;
     return (
@@ -51,8 +70,8 @@ export function Inspector() {
     <div className="props">
       <Section title={multi ? `${selected.length} selected` : (n.name || n.kind)}>
         <Row label="Position">
-          <Num value={n.x} onChange={v => patch({ x: v })} prefix="X" />
-          <Num value={n.y} onChange={v => patch({ y: v })} prefix="Y" />
+          <Num value={n.x} onChange={v => moveTo('x', v)} prefix="X" />
+          <Num value={n.y} onChange={v => moveTo('y', v)} prefix="Y" />
         </Row>
         <Row label="Size">
           <Num value={n.width} onChange={v => patch({ width: Math.max(1, v) })} prefix="W" />

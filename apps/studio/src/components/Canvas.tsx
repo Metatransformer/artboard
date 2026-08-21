@@ -20,6 +20,12 @@ interface Drag {
   moved: boolean;
   /** Snap lines to test against, captured once when the drag starts. */
   targets?: Targets;
+  /**
+   * How far the selection has already been translated during this drag.
+   * `translate` is relative, so each pointermove sends only the difference
+   * from here, and pointerup reverts by exactly this before committing.
+   */
+  applied: { dx: number; dy: number };
 }
 
 /* ── smart guides ─────────────────────────────────────────────────────────
@@ -42,7 +48,7 @@ const SNAP_TOL = 7;
 const NUDGE_IDLE_MS = 400;
 
 /** One open run of arrow-key nudges: where it started and how far it has gone. */
-interface Nudge { ids: string[]; origin: Record<string, { x: number; y: number }>; dx: number; dy: number }
+interface Nudge { ids: string[]; dx: number; dy: number }
 
 function unionBox(boxes: Box[]): { x: number; y: number; width: number; height: number } | null {
   if (!boxes.length) return null;
@@ -156,12 +162,8 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
     const n = nudgeRef.current;
     nudgeRef.current = null;
     if (!n || (n.dx === 0 && n.dy === 0)) return;
-    const at = (fn: (p: { x: number; y: number }) => { x: number; y: number }): Command => ({
-      type: 'batch', label: 'nudge',
-      commands: Object.entries(n.origin).map(([id, p]) => ({ type: 'updateNode', nodeId: id, patch: fn(p) })),
-    });
-    runTransient(at(p => ({ x: p.x, y: p.y })));
-    run(at(p => ({ x: p.x + n.dx, y: p.y + n.dy })));
+    runTransient({ type: 'translate', nodeIds: n.ids, dx: -n.dx, dy: -n.dy });
+    run({ type: 'translate', nodeIds: n.ids, dx: n.dx, dy: n.dy });
   }, [run, runTransient]);
 
   /* A burst left open when the component goes away would be lost from history. */
@@ -171,14 +173,14 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
   const onPointerDown = (e: React.PointerEvent) => {
     flushNudge();
     if (e.button === 1 || e.altKey || tool === 'hand') {
-      dragRef.current = { mode: 'pan', startX: e.clientX, startY: e.clientY, origin: {}, originPan: state.pan, moved: false };
+      dragRef.current = { mode: 'pan', startX: e.clientX, startY: e.clientY, origin: {}, originPan: state.pan, moved: false, applied: { dx: 0, dy: 0 } };
       (e.target as Element).setPointerCapture?.(e.pointerId);
       return;
     }
     const { x, y } = toArtboard(e.clientX, e.clientY);
 
     if (tool !== 'select') {
-      dragRef.current = { mode: 'draw', startX: x, startY: y, origin: {}, originPan: state.pan, drawKind: tool, moved: false };
+      dragRef.current = { mode: 'draw', startX: x, startY: y, origin: {}, originPan: state.pan, drawKind: tool, moved: false, applied: { dx: 0, dy: 0 } };
       setDraft({ x, y, w: 0, h: 0 });
       (e.currentTarget as Element).setPointerCapture(e.pointerId);
       return;
@@ -188,7 +190,7 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
     if (handle && selected.length) {
       dragRef.current = {
         mode: handle === 'rot' ? 'rotate' : 'resize', handle,
-        startX: x, startY: y, originPan: state.pan, moved: false,
+        startX: x, startY: y, originPan: state.pan, moved: false, applied: { dx: 0, dy: 0 },
         origin: Object.fromEntries(selected.map(n => [n.id, boxOf(n)])),
       };
       (e.currentTarget as Element).setPointerCapture(e.pointerId);
@@ -198,7 +200,7 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
     const hit = pickAt(x, y);
     if (!hit) {
       dispatch({ type: 'select', ids: [] });
-      dragRef.current = { mode: 'marquee', startX: x, startY: y, origin: {}, originPan: state.pan, moved: false };
+      dragRef.current = { mode: 'marquee', startX: x, startY: y, origin: {}, originPan: state.pan, moved: false, applied: { dx: 0, dy: 0 } };
       setMarquee({ x, y, w: 0, h: 0 });
       (e.currentTarget as Element).setPointerCapture(e.pointerId);
       return;
@@ -210,7 +212,7 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
     dispatch({ type: 'select', ids });
     const picked = nodes.filter(n => ids.includes(n.id));
     dragRef.current = {
-      mode: 'move', startX: x, startY: y, originPan: state.pan, moved: false,
+      mode: 'move', startX: x, startY: y, originPan: state.pan, moved: false, applied: { dx: 0, dy: 0 },
       origin: Object.fromEntries(picked.map(n => [n.id, boxOf(n)])),
       targets: collectTargets(nodes.filter(n => !ids.includes(n.id)), artboard),
     };
@@ -244,11 +246,19 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
         : solveSnap(union, d.targets ?? EMPTY_TARGETS, SNAP_TOL / state.zoom);
       setGuides(fit.guides);
 
-      const cmds: Command[] = Object.entries(d.origin).map(([id, b]) => ({
-        type: 'updateNode', nodeId: id,
-        patch: { x: snap(b.x + dx + fit.dx, grid), y: snap(b.y + dy + fit.dy, grid) },
-      }));
-      runTransient({ type: 'batch', label: 'move', commands: cmds });
+      // Where the selection should sit, as a delta from where the drag began.
+      // Snapping is solved on the union rather than per node, so a multi-node
+      // selection keeps its internal spacing instead of each member rounding to
+      // the grid on its own and quietly deforming the arrangement.
+      const base = unionBox(boxes);
+      const want = base
+        ? { dx: snap(base.x + dx + fit.dx, grid) - base.x, dy: snap(base.y + dy + fit.dy, grid) - base.y }
+        : { dx: 0, dy: 0 };
+      const stepX = want.dx - d.applied.dx, stepY = want.dy - d.applied.dy;
+      if (stepX !== 0 || stepY !== 0) {
+        runTransient({ type: 'translate', nodeIds: Object.keys(d.origin), dx: stepX, dy: stepY });
+        d.applied = want;
+      }
       return;
     }
 
@@ -309,8 +319,20 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
       return;
     }
 
-    // commit the transient drag as ONE history entry
-    if (d.moved && (d.mode === 'move' || d.mode === 'resize' || d.mode === 'rotate')) {
+    // Commit the transient drag as ONE history entry: rewind what the drag
+    // applied, then run the whole thing again through `run` so `invert` sees
+    // exactly one before/after pair.
+    if (d.moved && d.mode === 'move') {
+      const ids = Object.keys(d.origin);
+      const { dx: adx, dy: ady } = d.applied;
+      if (adx !== 0 || ady !== 0) {
+        runTransient({ type: 'translate', nodeIds: ids, dx: -adx, dy: -ady });
+        run({ type: 'translate', nodeIds: ids, dx: adx, dy: ady });
+      }
+      return;
+    }
+
+    if (d.moved && (d.mode === 'resize' || d.mode === 'rotate')) {
       const cmds: Command[] = Object.entries(d.origin).map(([id, b]) => {
         const now = nodes.find(n => n.id === id) as any;
         if (!now) return { type: 'batch', label: 'noop', commands: [] } as Command;
@@ -448,18 +470,12 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
           flushNudge();
           nudgeRef.current = {
             ids, dx: 0, dy: 0,
-            origin: Object.fromEntries(selected.map(n => [n.id, { x: (n as any).x, y: (n as any).y }])),
           };
         }
         const burst = nudgeRef.current!;
         burst.dx += dir[0] * step;
         burst.dy += dir[1] * step;
-        runTransient({
-          type: 'batch', label: 'nudge',
-          commands: Object.entries(burst.origin).map(([id, p]) => ({
-            type: 'updateNode', nodeId: id, patch: { x: p.x + burst.dx, y: p.y + burst.dy },
-          })),
-        });
+        runTransient({ type: 'translate', nodeIds: burst.ids, dx: dir[0] * step, dy: dir[1] * step });
         if (nudgeTimer.current !== null) window.clearTimeout(nudgeTimer.current);
         nudgeTimer.current = window.setTimeout(flushNudge, NUDGE_IDLE_MS);
       }
@@ -508,7 +524,11 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
 
           <svg className="ab-overlay" viewBox={`0 0 ${artboard.width} ${artboard.height}`}
                style={{ width: artboard.width * state.zoom, height: artboard.height * state.zoom }}>
-            {selected.map(n => <SelectionBox key={n.id} box={boxOf(n)} zoom={state.zoom} single={selected.length === 1} />)}
+            {selected.map(n => (
+              <SelectionBox key={n.id} box={boxOf(n)} zoom={state.zoom}
+                            single={selected.length === 1}
+                            resizable={(n as any).kind !== 'group'} />
+            ))}
             {guides.map((g, i) => (
               <line key={i}
                 x1={g.axis === 'x' ? g.at : 0} x2={g.axis === 'x' ? g.at : artboard.width}
@@ -552,7 +572,18 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
   );
 }
 
-function SelectionBox({ box, zoom, single }: { box: Box; zoom: number; single: boolean }) {
+/**
+ * `resizable` is false for a group, and the eight resize handles are hidden.
+ *
+ * Resizing a group would have to scale its whole subtree -- positions, sizes,
+ * font sizes, stroke widths -- because `makeGroup` keeps children in artboard
+ * space. Nothing does that yet, so the handles used to move the bounds box and
+ * leave the artwork untouched: the same silent no-op as the drag bug, wearing
+ * the other gesture. Showing a control that cannot do what it advertises is
+ * worse than not showing it. The rotate handle stays, because rotation IS
+ * emitted on the group's wrapper and does work.
+ */
+function SelectionBox({ box, zoom, single, resizable }: { box: Box; zoom: number; single: boolean; resizable: boolean }) {
   const s = 1 / zoom;
   const hs = 7 * s;
   const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
@@ -568,7 +599,7 @@ function SelectionBox({ box, zoom, single }: { box: Box; zoom: number; single: b
       {single && <>
         <line x1={cx} y1={box.y} x2={cx} y2={box.y - 26 * s} stroke="#4f46e5" strokeWidth={1.5 * s} pointerEvents="none" />
         <circle data-handle="rot" cx={cx} cy={box.y - 26 * s} r={hs} fill="#fff" stroke="#4f46e5" strokeWidth={1.5 * s} style={{ cursor: 'grab' }} />
-        {handles.map(([h, x, y]) => (
+        {resizable && handles.map(([h, x, y]) => (
           <rect key={h} data-handle={h} x={x - hs} y={y - hs} width={hs * 2} height={hs * 2}
                 rx={1.5 * s} fill="#fff" stroke="#4f46e5" strokeWidth={1.5 * s}
                 style={{ cursor: `${h}-resize` }} />
