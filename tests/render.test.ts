@@ -644,6 +644,37 @@ describe('render: curved text', () => {
   it('stays silent when the curved text already fits on one line', () => {
     expect(curved('Short').diagnostics.filter(d => d.code === 'CURVE_SINGLE_LINE')).toEqual([]);
   });
+
+  it('warns CURVE_NO_RULES rather than drawing a rule that ignores the arc', () => {
+    // The golden oracle is structurally blind to this one: a diagnostic is not
+    // in the SVG, so no baseline can hold it and no re-bake can notice it going
+    // missing. `effects.json` does carry curved text, but with neither rule
+    // set, so the branch had no coverage of any kind.
+    const doc = docWith([{ id: 't', kind: 'text', x: 0, y: 0, width: 400, height: 100,
+      text: 'Arched', fontSize: 20, underline: true,
+      effects: [{ kind: 'curve', amount: 60 }] }]);
+    const { svg, diagnostics } = renderToString(doc);
+    const diag = diagnostics.find(d => d.code === 'CURVE_NO_RULES');
+    expect(diag).toBeDefined();
+    expect(diag!.level).toBe('warn');
+    expect(diag!.nodeId).toBe('t');
+    // Warning and then drawing it anyway would be worse than either alone.
+    expect(svg).not.toContain('<path d="M');
+    expect(checkXml(svg).ok).toBe(true);
+  });
+
+  it('warns for a strikethrough on curved text too, not only an underline', () => {
+    const strike = docWith([{ id: 't', kind: 'text', x: 0, y: 0, width: 400, height: 100,
+      text: 'Arched', fontSize: 20, strikethrough: true,
+      effects: [{ kind: 'curve', amount: 60 }] }]);
+    expect(renderToString(strike).diagnostics.some(d => d.code === 'CURVE_NO_RULES')).toBe(true);
+  });
+
+  it('stays silent when curved text asks for no rules', () => {
+    // The control. Both assertions above are that a code IS present; without
+    // this, a renderer that warned unconditionally would satisfy them.
+    expect(curved('Short').diagnostics.filter(d => d.code === 'CURVE_NO_RULES')).toEqual([]);
+  });
 });
 
 describe('render: paint', () => {
