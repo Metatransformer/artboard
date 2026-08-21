@@ -52,6 +52,17 @@
  *    three tests, none golden" as evidence; the second half was guaranteed
  *    before the run started.
  *
+ *    But the cut is NOT "goldens run / don't run", and reading it that way
+ *    understates the tool. The fixtures are partly inside: `insert-data:92`,
+ *    `render:875` and `translate:169` load `tests/golden/*.json` as INPUT, and
+ *    a rendering mutant really is caught here -- `objectFit`'s contain branch
+ *    to `Math.max` gives 4 assertion failures in `render.test.ts`. What is
+ *    entirely outside is the BASELINE as oracle: no vitest test reads an
+ *    `.svg`, and `render:875` walks the corpus to assert coverage properties
+ *    of the fixtures without rendering any of them. So: fixtures-as-input,
+ *    partly covered; baselines-as-oracle, not at all. A clean run here is
+ *    worth something about rendering, just never about the baselines.
+ *
  * 2. It substitutes a PACKAGE ENTRY POINT through `resolve.alias`. Anything not
  *    reached that way -- a mutant in `vitest.config.ts` itself, in `tools/`, or
  *    in a module imported by relative path rather than through the alias map --
