@@ -76,6 +76,13 @@ export function Toolbar({ tool, setTool, onPresent, onShortcuts }:
         {open === 'resize' && (
           <div className="pop-menu">
             <h4>Resize this page</h4>
+            {/* Deliberately still `setArtboard`: these fire on every keystroke,
+                so typing 1080 into a field reading 1 sends four commands --
+                1, 10, 108, 1080. A dimension patch is last-write-wins and the
+                intermediates vanish. A relayout is not: the pass at width=1
+                collapses the design into a 1px column and the next pass reads
+                THAT as its input, so one typed number would be data loss.
+                Verified in the browser: four undo steps, width=1 among them. */}
             <div className="customsize">
               <input className="field" type="number" min={1} value={artboard.width} aria-label="Width"
                      onChange={e => run({ type: 'setArtboard', artboardId: artboard.id, patch: { width: Math.max(1, Number(e.target.value) || 1) } })} />
@@ -84,10 +91,13 @@ export function Toolbar({ tool, setTool, onPresent, onShortcuts }:
                      onChange={e => run({ type: 'setArtboard', artboardId: artboard.id, patch: { height: Math.max(1, Number(e.target.value) || 1) } })} />
             </div>
             <h4>Presets</h4>
+            {/* Said out loud because the two controls above and below it now
+                behave differently, and nothing else in the panel says so. */}
+            <p className="meta">Keeps your layout and adapts it to the new size.</p>
             <div className="sizelist">
               {(PRESET_SIZES as any[]).map(p => (
                 <button key={p.name} className="sizerow"
-                        onClick={() => { run({ type: 'setArtboard', artboardId: artboard.id, patch: { width: p.width, height: p.height } }); setOpen(null); }}>
+                        onClick={() => { run({ type: 'resizeArtboard', artboardId: artboard.id, width: p.width, height: p.height }); setOpen(null); }}>
                   <span>{p.name}</span><small>{p.width} &times; {p.height}</small>
                 </button>
               ))}

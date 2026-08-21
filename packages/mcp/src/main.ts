@@ -77,7 +77,7 @@ const fail = (e: unknown) => {
 const COMMAND_TYPES = {
   addNode: true, removeNode: true, updateNode: true, reorder: true,
   group: true, ungroup: true, setArtboard: true, translate: true,
-  scale: true, addAsset: true, batch: true,
+  scale: true, addAsset: true, batch: true, resizeArtboard: true,
   // Undo capture: replaces whole subtrees with no validation of what goes back,
   // because what goes back is what was already there. An agent that wants to
   // change a node has updateNode, translate and scale, all of which check.
@@ -93,6 +93,8 @@ const CommandInput = z.object({
   nodeId: z.string().optional(),
   nodeIds: z.array(z.string()).optional(),
   groupId: z.string().optional(),
+  width: z.number().optional(),
+  height: z.number().optional(),
   node: z.record(z.unknown()).optional(),
   patch: z.record(z.unknown()).optional(),
   index: z.number().optional(),
@@ -116,6 +118,7 @@ export function main(argv: readonly string[]): Promise<void> {
       'Artboard documents are declarative JSON: every node has an id, a kind, and an x/y/width/height box in artboard coordinates.',
       'Read with open_document (an outline) or get_node (one node in full); change with edit_document, which takes the same commands the editor uses.',
       'Coordinates are absolute within an artboard, including for a group\'s children. Move things with the "translate" command (dx/dy), which shifts a whole subtree; patching x/y with updateNode moves a group\'s bounds without its children and is refused.',
+      'Change a page\'s size with "resizeArtboard", which sets the dimensions AND reflows the design into them -- each node keeps the edge it was laid out against, and sizes scale by the smaller of the two ratios. Use "setArtboard" with a width/height patch only when you want the page resized and everything left exactly where it was.',
       'Resize a group with the "scale" command, which multiplies a whole subtree -- positions, sizes, font sizes, stroke widths -- about the fixed point (ox, oy). Patching a group\'s width/height with updateNode is still refused: it would resize the bounds and none of the children. A group CAN be rotated, renamed, hidden and restyled.',
       `Paths are relative to the workspace root: ${ws.root}`,
       readOnly ? 'This server is READ-ONLY: edit_document will refuse.' : '',
@@ -197,6 +200,7 @@ export function main(argv: readonly string[]): Promise<void> {
       'move                : {"type":"translate","nodeIds":["t1"],"dx":40,"dy":80}',
       'resize/restyle      : {"type":"updateNode","nodeId":"t1","patch":{"width":200}}',
       'scale a group       : {"type":"scale","nodeIds":["g1"],"sx":1.5,"sy":1.5,"ox":0,"oy":0}',
+      'reflow to a new size: {"type":"resizeArtboard","artboardId":"a1","width":1080,"height":1920}',
       'add                 : {"type":"addNode","artboardId":"ab","node":{"kind":"rect","x":0,"y":0,"width":80,"height":40}}',
       'delete              : {"type":"removeNode","artboardId":"ab","nodeId":"r2"}',
       'restack             : {"type":"reorder","artboardId":"ab","nodeId":"r2","to":0}',
@@ -298,7 +302,7 @@ export function main(argv: readonly string[]): Promise<void> {
  */
 const NEEDS_ARTBOARD = {
   addNode: true, removeNode: true, reorder: true,
-  setArtboard: true, group: true, ungroup: true,
+  setArtboard: true, group: true, ungroup: true, resizeArtboard: true,
 } satisfies Record<Extract<Command, { artboardId: string }>['type'], true>;
 
 function normalize(raw: z.infer<typeof CommandInput>, doc: Document): Command {
@@ -348,6 +352,7 @@ function describeCommand(cmd: any): string {
     case 'scale': return `⤢ scaled ${cmd.nodeIds.join(', ')} by (${cmd.sx}, ${cmd.sy}) about (${cmd.ox}, ${cmd.oy})`;
     case 'replaceNodes': return `↺ restored ${cmd.nodes.map((n: { id: string }) => n.id).join(', ')}`;
     case 'setArtboard': return `⬚ artboard ${cmd.artboardId}: ${Object.entries(cmd.patch ?? {}).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(' ')}`;
+    case 'resizeArtboard': return `⇲ resized artboard ${cmd.artboardId} to ${cmd.width}x${cmd.height}, relayout out`;
     case 'batch': return `[${cmd.label}] ${(cmd.commands ?? []).map(describeCommand).join('; ')}`;
     case 'addAsset': return `+ asset ${cmd.asset.id} (${cmd.asset.mime} ${cmd.asset.width}x${cmd.asset.height})`;
     default: return cmd.type;

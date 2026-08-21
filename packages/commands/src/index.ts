@@ -1,5 +1,5 @@
 import { buildNode, nodeFields, artboardFields, type Document, type Node } from '@artboard/schema';
-import { aabb, round } from '@artboard/engine';
+import { aabb, classifyAnchors, nodeBox, reanchor, resizeFactor, round, type Anchors } from '@artboard/engine';
 
 /** Immutable command layer. apply(doc, cmd) -> newDoc. invert(cmd) -> undo cmd. */
 
@@ -87,6 +87,14 @@ export type Command =
    * captures the subtree instead. See `replaceNodes`.
    */
   | { type: 'scale'; nodeIds: string[]; sx: number; sy: number; ox: number; oy: number }
+  /*
+   * Magic Resize. Deliberately NOT a `setArtboard` patch: it needs both
+   * dimensions to compute a ratio, and a partial patch would let a caller send
+   * half of what the command requires and discover it at runtime. `setArtboard`
+   * still exists and still only sets fields -- resizing the page without
+   * relayout is a different, valid gesture.
+   */
+  | { type: 'resizeArtboard'; artboardId: string; width: number; height: number }
 
   /**
    * Put these exact subtrees back, matched by id at any depth.
@@ -176,6 +184,89 @@ function scaleEffect(e: any, sx: number, sy: number, k: number): any {
     // effect with a size in it has to make a decision.
     default: return e;
   }
+}
+
+type Frame = { width: number; height: number };
+
+/*
+ * A text node's box is a FRAME, not its visible extent, and the two disagree
+ * exactly where it matters. A left-aligned headline inset 96px in a 1080 frame
+ * has symmetric margins, so the box classifier reads it as centred -- correctly,
+ * about the box. But the glyphs start at the left edge and the slack is all on
+ * the right, so on a widening frame the "centred" frame slides right and the
+ * headline detaches from the rule and button that stayed at the margin.
+ *
+ * Found by resizing a real design 1080x1080 -> 1584x396 and watching a left
+ * column come apart: two of six left-margin nodes jumped 8.9% -> 39.7% while
+ * the rest held. `align` states which edge the content is bound to, which is
+ * better evidence than the symmetry of a box the user never sees.
+ *
+ * Only the `centre` reading is overridden. A frame whose margins decisively say
+ * left or right is bound that way whatever its text does, and `stretch` must
+ * survive so a full-bleed block stays full-bleed.
+ */
+function textAware(n: Node, a: Anchors): Anchors {
+  if ((n as any).kind !== 'text') return a;
+  const align = (n as any).align, valign = (n as any).valign;
+  return {
+    x: a.x !== 'centre' ? a.x : align === 'left' ? 'left' : align === 'right' ? 'right' : a.x,
+    y: a.y !== 'middle' ? a.y : valign === 'top' ? 'top' : valign === 'bottom' ? 'bottom' : a.y,
+  };
+}
+
+/** Move a whole subtree by a delta, children included. */
+function shiftSubtree(n: Node, dx: number, dy: number): Node {
+  if (dx === 0 && dy === 0) return n;
+  const a: any = { ...(n as any) };
+  a.x = round(a.x + dx);
+  a.y = round(a.y + dy);
+  if (a.kind === 'group') a.children = ((a.children ?? []) as Node[]).map(c => shiftSubtree(c, dx, dy));
+  return a as Node;
+}
+
+/*
+ * One node's share of a Magic Resize.
+ *
+ * A group resolves against its DERIVED box rather than its stored one. The
+ * stored box is metadata nothing draws from, so classifying against it would
+ * anchor the group by a rectangle the user cannot see -- and a group whose
+ * stored bounds were stale would relayout to the wrong edge while every
+ * individual child looked correctly placed.
+ */
+function relayoutNode(n: Node, from: Frame, to: Frame): Node {
+  const box = nodeBox(n);
+  const next = reanchor(box, textAware(n, classifyAnchors(box, from)), from, to);
+
+  const sx = box.width > 0 ? next.width / box.width : 1;
+  const sy = box.height > 0 ? next.height / box.height : 1;
+
+  if ((n as any).kind !== 'group') {
+    const a: any = { ...(n as any), x: next.x, y: next.y, width: next.width, height: next.height };
+    /* The same rule `scale` settled on, not a second one: a font size is a
+       VERTICAL measure and takes the vertical factor. On every node but a
+       vertically-stretched one this equals the uniform factor anyway, so the
+       two rules agree except where having two would show. */
+    if (a.kind === 'text') {
+      a.fontSize = Math.max(1, round(a.fontSize * sy));
+      a.letterSpacing = round(a.letterSpacing * sx);
+    }
+    return a as Node;
+  }
+
+  /* A rotated subtree stretched unevenly is the parallelogram `scale` refuses.
+     Refusing here would be wrong -- picking a page preset must never fail --
+     so it takes one factor and keeps its angle, landing proportionally placed
+     rather than not at all. */
+  const rotated = !!unscalableDescendant(n);
+  const uniform = Math.abs(sx - sy) <= 1e-9 * Math.max(1, sx, sy);
+  const [fx, fy] = rotated && !uniform ? [Math.min(sx, sy), Math.min(sx, sy)] : [sx, sy];
+
+  /* Scaled about the box's own top-left, which leaves that corner fixed, then
+     shifted onto the target. Solving for a fixed origin instead would divide
+     by (1 - s) and blow up on the pure-move case, which a preset of the same
+     aspect ratio produces constantly. */
+  const scaled = scaleSubtree(n, fx, fy, box.x, box.y, Math.sqrt(fx * fy));
+  return shiftSubtree(scaled, round(next.x - box.x), round(next.y - box.y));
 }
 
 function scaleSubtree(n: Node, sx: number, sy: number, ox: number, oy: number, k: number): Node {
@@ -366,6 +457,22 @@ export function apply(doc: Document, cmd: Command): Document {
         return { ...ab, ...cmd.patch };
       });
 
+    case 'resizeArtboard': {
+      const ab: any = doc.artboards.find(a => a.id === cmd.artboardId);
+      if (!ab) throw new StaleArtboardError(cmd.artboardId);
+      if (!Number.isFinite(cmd.width) || !Number.isFinite(cmd.height) || cmd.width <= 0 || cmd.height <= 0) {
+        throw new InvalidCommandError(
+          `resizeArtboard needs finite positive dimensions; got ${cmd.width}x${cmd.height}.`);
+      }
+      const from: Frame = { width: ab.width, height: ab.height };
+      const to: Frame = { width: cmd.width, height: cmd.height };
+      if (from.width === to.width && from.height === to.height) return doc;
+      return mapArtboard(doc, cmd.artboardId, a => ({
+        ...a, width: to.width, height: to.height,
+        nodes: (a.nodes as Node[]).map(n => relayoutNode(n, from, to)),
+      }));
+    }
+
     case 'translate': {
       // Every target is checked before anything moves, so a batch naming one
       // stale id cannot leave the rest half-translated.
@@ -537,6 +644,29 @@ export function invert(doc: Document, cmd: Command): Command {
       const before: Record<string, unknown> = {};
       for (const k of Object.keys(cmd.patch)) before[k] = (ab as any)[k];
       return { type: 'setArtboard', artboardId: cmd.artboardId, patch: before };
+    }
+
+    case 'resizeArtboard': {
+      /*
+       * Captured, not recomputed, for the reason `scale` captures: every node
+       * lands through `round` at 2dp, so resizing back by the reciprocal ratio
+       * does not return the original numbers. It returns numbers a hundredth
+       * out, which reads as noise rather than as a broken undo -- the worst
+       * shape a bug can take.
+       *
+       * Both halves are needed and neither is sufficient: the dimensions
+       * without the nodes leaves a relayout applied to the old frame, and the
+       * nodes without the dimensions leaves the page the wrong size.
+       */
+      const ab = doc.artboards.find(a => a.id === cmd.artboardId);
+      if (!ab) throw new StaleArtboardError(cmd.artboardId);
+      return {
+        type: 'batch', label: 'resize page',
+        commands: [
+          { type: 'setArtboard', artboardId: cmd.artboardId, patch: { width: (ab as any).width, height: (ab as any).height } },
+          { type: 'replaceNodes', nodes: (ab as any).nodes as Node[] },
+        ],
+      };
     }
 
     case 'translate': {
