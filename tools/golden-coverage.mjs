@@ -144,6 +144,12 @@ function union(path, schema, read) {
 
 dim('node kind', (n) => n.kind, unlazy(S.Node).options.map((o) => o.shape.kind._def.value));
 for (const opt of unlazy(S.Node).options) descend('', opt);
+
+/** A container is any node kind whose schema has `children` -- derived, so a
+ *  second container kind reports itself below without this line changing. */
+const CONTAINERS = new Set(
+  unlazy(S.Node).options.filter((o) => 'children' in o.shape).map((o) => o.shape.kind._def.value),
+);
 union('artboard background', S.Fill, (ab) => ab.background ?? { kind: 'solid' });
 
 /* -- walk the fixtures ----------------------------------------------------- */
@@ -170,9 +176,26 @@ function record(subject, file, backgrounds) {
 // this report while group rendering rode on one fixture and a rotation-pivot
 // bug sat inside it.
 const kinds = new Map();
+
+/** "<kind> <property>" -> fixtures exhibiting it. Keys are created whether or
+ *  not they are hit, so a structural path nothing reaches prints as 0 rather
+ *  than as an absent row -- the same polarity as UNCLASSIFIED above. */
+const structure = new Map();
+const note = (kind, prop, hit, f) => {
+  const k = `${kind} ${prop}`;
+  if (!structure.has(k)) structure.set(k, new Set());
+  if (hit) structure.get(k).add(f);
+};
+
 const visit = (n, f) => {
   if (n.kind) { if (!kinds.has(n.kind)) kinds.set(n.kind, new Set()); kinds.get(n.kind).add(f); }
   record(n, f, false);
+  if (CONTAINERS.has(n.kind)) {
+    const kids = n.children ?? [];
+    note(n.kind, 'non-empty', kids.length > 0, f);
+    note(n.kind, 'holds another container', kids.some((c) => CONTAINERS.has(c.kind)), f);
+    note(n.kind, 'rotated (pivot is derived)', !!n.rotation, f);
+  }
   for (const c of n.children ?? []) visit(c, f);
 };
 for (const f of files) {
@@ -240,6 +263,33 @@ console.log('\nFIXTURES PER NODE KIND  (each kind is its own renderNode arm)');
     // `text` buries the two lines that matter under three lines that do not.
     const thinEnough = set.size <= 2;
     console.log(`  ${thinEnough ? '!' : ' '} ${k.padEnd(w)}  ${String(set.size).padStart(2)}${thinEnough ? '  ' + [...set].join(', ') : ''}`);
+  }
+}
+
+/* -- CONTAINER STRUCTURE ---------------------------------------------------
+ *
+ * The section above counts fixtures per KIND, and for a container that count
+ * over-claims in the one direction that matters. A group's count is the number
+ * of files CONTAINING a group -- not the number exercising what makes a group
+ * different from a layer of loose nodes, which is that its box is DERIVED from
+ * its children rather than stored. `nodeBox` is that derivation, and it only
+ * reaches the SVG when something depends on the box: rotation, whose pivot is
+ * the box centre. A flat, unrotated group renders exactly as its children do,
+ * so a fixture full of them proves the container arm runs and proves nothing
+ * about the derivation.
+ *
+ * Not hypothetical. groups-and-shadow is the fixture whose baseline moved when
+ * the pivot moved to `nodeBox`, because its groups are hand-authored with
+ * round-number boxes that never matched their children -- so until then the
+ * golden was BAKING IN the wrong pivot and reading green throughout. It is
+ * still the only fixture that can catch it.
+ * ------------------------------------------------------------------------ */
+if (structure.size) {
+  console.log('\nCONTAINER STRUCTURE  (what a container fixture exercises beyond containing one)');
+  const w = Math.max(...[...structure.keys()].map((k) => k.length));
+  for (const [k, set] of structure) {
+    const n = set.size;
+    console.log(`  ${n <= 1 ? '!' : ' '} ${k.padEnd(w)}  ${String(n).padStart(2)} fixture${n === 1 ? ' ' : 's'}${n && n <= 2 ? '  ' + [...set].join(', ') : ''}`);
   }
 }
 
