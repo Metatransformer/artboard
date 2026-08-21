@@ -30,12 +30,12 @@
       <ellipse cx="500" cy="180" rx="60" ry="60" fill="#c026d3" aria-hidden="true"/>
     </g>
   </g>
-  <g transform="rotate(-12 740 140)">
+  <g transform="rotate(-12 734.63 144.04)">
     <g>
       <g transform="rotate(8 695 105)">
         <rect x="620" y="60" width="150" height="90" rx="6" ry="6" fill="#0f766e" aria-hidden="true"/>
       </g>
-      <g transform="rotate(6 775 180)">
+      <g transform="rotate(6 770 180)">
         <g>
           <rect x="690" y="130" width="90" height="60" fill="#ef4444" aria-hidden="true"/>
           <g transform="translate(805 200) scale(-1 1) translate(-805 -200)">

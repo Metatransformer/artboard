@@ -1,5 +1,5 @@
 import type { Document, Artboard, Node, Diagnostic, Effect } from '@artboard/schema';
-import { layoutText, metricMeasurer, objectFit, round, type Measurer } from '@artboard/engine';
+import { aabb, layoutText, metricMeasurer, objectFit, round, type Measurer } from '@artboard/engine';
 
 /**
  * THE renderer. Emits an SVG scene graph as DATA.
@@ -83,6 +83,34 @@ export function renderArtboard(doc: Document, artboard: Artboard, opts: RenderOp
   return { scene, diagnostics };
 }
 
+/**
+ * The box a group's children actually occupy, in artboard space.
+ *
+ * Deliberately recomputed rather than read from the group: `makeGroup` sets
+ * those fields once, at creation, and no writer refreshes them afterwards.
+ * Rotation is honoured per child, so a rotated child widens the box exactly as
+ * it does on screen. An empty group falls back to its stored box -- there is
+ * nothing to derive from, and the stored value is at least what the editor
+ * shows.
+ */
+function subtreeBounds(g: any): { x: number; y: number; width: number; height: number } {
+  const boxes: { x: number; y: number; width: number; height: number }[] = [];
+  const walk = (nodes: any[]) => {
+    for (const c of nodes) {
+      // A nested group contributes its DERIVED box widened by its OWN
+      // rotation -- the rotation the wrapper will emit for it. Pushing the
+      // derived box unrotated is the easy mistake and it is silently close:
+      // it only shows up once something several levels down is turned.
+      const b = c.kind === 'group' ? subtreeBounds(c) : c;
+      boxes.push(aabb({ x: b.x, y: b.y, width: b.width, height: b.height, rotation: c.rotation ?? 0 }));
+    }
+  };
+  walk(g.children ?? []);
+  if (!boxes.length) return { x: g.x, y: g.y, width: g.width, height: g.height };
+  const x = Math.min(...boxes.map(b => b.x)), y = Math.min(...boxes.map(b => b.y));
+  return { x, y, width: Math.max(...boxes.map(b => b.x + b.width)) - x, height: Math.max(...boxes.map(b => b.y + b.height)) - y };
+}
+
 function renderNode(
   node: Node, doc: Document, defs: SceneNode[], diagnostics: Diagnostic[],
   measure: Measurer, inlineAssets: boolean, a11y = true,
@@ -96,7 +124,16 @@ function renderNode(
   // inside its own frame and leaves the rotation reading the same, which is
   // what every design tool does — and what flipping after the rotation would
   // not do (that mirrors the rotation itself).
-  const cx = round(n.x + n.width / 2), cy = round(n.y + n.height / 2);
+  // A group's stored x/y/width/height is a cached bound that nothing
+  // invalidates: edit a child and the group still reports the box it had when
+  // it was created. Everywhere else that is a display problem, but here it is
+  // the rotation PIVOT, so a group whose child moved rotated around a point
+  // that no longer had anything to do with its contents -- wrong in the
+  // exported SVG and PDF, not only on screen. Derive the centre from what is
+  // actually there. For an accurate group this is the identical number, which
+  // is why no baseline moves.
+  const box = n.kind === 'group' ? subtreeBounds(n) : n;
+  const cx = round(box.x + box.width / 2), cy = round(box.y + box.height / 2);
   const tf: string[] = [];
   if (n.rotation) tf.push(`rotate(${round(n.rotation)} ${cx} ${cy})`);
   if (n.flipX || n.flipY) {

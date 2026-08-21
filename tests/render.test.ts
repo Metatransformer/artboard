@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { loadDocument, type Document } from '@artboard/schema';
+import { buildNode, findNode, loadDocument, type Document } from '@artboard/schema';
 import { renderToString, renderArtboard, serialize, type SceneNode } from '@artboard/render-svg';
 import { checkXml } from './helpers';
 
@@ -821,5 +821,80 @@ describe('render: the golden oracle covers images at all', () => {
 
   it('baselines a non-rectangular frame', () => {
     expect(images.some(n => n.frame === 'ellipse' || n.frame === 'path')).toBe(true);
+  });
+});
+
+describe('render: a group rotates around its artwork, not its stored bounds', () => {
+  // A group's x/y/width/height is written once by `makeGroup` and refreshed by
+  // nothing, so it goes stale the moment a child is edited. That is a display
+  // problem everywhere else in the app and a CORRECTNESS problem here: the
+  // wrapper's `rotate()` took its pivot from those fields, so a group whose
+  // child had moved spun around a point that no longer had anything to do with
+  // what was drawn -- wrong in the exported SVG and PDF, not only on screen.
+  const doc = (childX: number) => loadDocument({
+    id: 'd', name: 'd', artboards: [{
+      id: 'ab', name: 'a', width: 400, height: 400,
+      background: { kind: 'solid', color: '#ffffff' },
+      nodes: [buildNode({
+        id: 'g1', kind: 'group', x: 10, y: 10, width: 110, height: 60, rotation: 30,
+        children: [
+          buildNode({ id: 'c1', kind: 'rect', x: childX, y: 10, width: 50, height: 50 }),
+          buildNode({ id: 'c2', kind: 'rect', x: 70, y: 20, width: 50, height: 50 }),
+        ],
+      })],
+    }],
+  }).doc;
+  const pivot = (d: Document) => /rotate\(30 ([-\d.]+) ([-\d.]+)\)/.exec(renderToString(d, 0).svg)!.slice(1).map(Number);
+
+  it('pivots on the true centre of the subtree', () => {
+    // children span x 10..120, y 10..70 -> centre 65,40, which is also what the
+    // stored bounds say while they are still accurate.
+    expect(pivot(doc(10))).toEqual([65, 40]);
+  });
+
+  it('follows the artwork when a child moves and the stored bounds go stale', () => {
+    // c1 to x=-40: the subtree now spans -40..120, centre 40. The stored box is
+    // untouched and still claims 65 -- the number this used to emit.
+    const d = doc(-40);
+    expect((findNode(d, 'g1') as any).x).toBe(10);       // stored bounds ARE stale
+    expect(pivot(d)).toEqual([40, 40]);                  // and the pivot ignores them
+  });
+
+  it('widens a nested group by that group\'s own rotation', () => {
+    // The easy mistake is to push a nested group's derived box WITHOUT the
+    // rotation that group's own wrapper will apply.
+    //
+    // A second child is what makes this detectable. With `inner` alone, turning
+    // it widens its box symmetrically about its own centre, so the union's
+    // centre does not move and both implementations agree -- the first version
+    // of this test asserted exactly that, passed, and went on passing when the
+    // bug was reintroduced. `anchor` sits off to one corner, so a wider `inner`
+    // drags the union's centre measurably.
+    const nested = (rot: number) => loadDocument({
+      id: 'd', name: 'd', artboards: [{
+        id: 'ab', name: 'a', width: 600, height: 600,
+        background: { kind: 'solid', color: '#ffffff' },
+        nodes: [buildNode({
+          id: 'outer', kind: 'group', x: 0, y: 0, width: 10, height: 10, rotation: 20,
+          children: [
+            buildNode({ id: 'anchor', kind: 'rect', x: 0, y: 0, width: 20, height: 20 }),
+            buildNode({
+              id: 'inner', kind: 'group', x: 100, y: 100, width: 200, height: 100, rotation: rot,
+              children: [buildNode({ id: 'k', kind: 'rect', x: 100, y: 100, width: 200, height: 100 })],
+            }),
+          ],
+        })],
+      }],
+    }).doc;
+    const p = (rot: number) =>
+      /rotate\(20 ([-\d.]+) ([-\d.]+)\)/.exec(renderToString(nested(rot), 0).svg)!.slice(1).map(Number);
+
+    // Square on: inner occupies 100..300 x 100..200. With anchor at 0..20, the
+    // union is 0..300 x 0..200 -> centre 150,100.
+    expect(p(0)).toEqual([150, 100]);
+    // Turned 90 degrees, inner's 200x100 footprint becomes 100x200 about its own
+    // centre 200,150: it occupies 150..250 x 50..250. Union 0..250 x 0..250 ->
+    // centre 125,125. Ignoring the nested rotation would still report 150,100.
+    expect(p(90)).toEqual([125, 125]);
   });
 });
