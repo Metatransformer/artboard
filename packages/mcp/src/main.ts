@@ -103,6 +103,7 @@ export function main(argv: readonly string[]): Promise<void> {
       'Artboard documents are declarative JSON: every node has an id, a kind, and an x/y/width/height box in artboard coordinates.',
       'Read with open_document (an outline) or get_node (one node in full); change with edit_document, which takes the same commands the editor uses.',
       'Coordinates are absolute within an artboard, including for a group\'s children. Move things with the "translate" command (dx/dy), which shifts a whole subtree; patching x/y with updateNode moves a group\'s bounds without its children and is refused.',
+      'A group cannot be resized: patching its width/height is refused too, and nothing scales a subtree yet. To make grouped artwork bigger, resize each child. A group CAN be rotated, renamed, hidden and restyled.',
       `Paths are relative to the workspace root: ${ws.root}`,
       readOnly ? 'This server is READ-ONLY: edit_document will refuse.' : '',
     ].filter(Boolean).join('\n') },
