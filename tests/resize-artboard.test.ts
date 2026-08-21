@@ -429,6 +429,48 @@ describe('resizeArtboard: alignment overrides a centred box reading, and only th
    * the command layer -- a real coupling, and one that should be bought with a
    * design that visibly needs it rather than with symmetry a second time.
    */
+
+  it('inside a stack, align still places x while nothing places y but the stack', () => {
+    /*
+     * renderer-wins' point, and the pin the deleted test should have been.
+     * Measuring whether the y rule HELPED was impossible from the corpus: every
+     * text node in all 30 fixtures lands in a stack of two or more, and
+     * `stackPlacements` overwrites y for all of them, so the y branch is
+     * unreachable there. Disabling the override and forcing `y: 'top'`
+     * unconditionally both moved 0 of 120 placements -- two rules that should
+     * disagree violently, agreeing perfectly, which is a blind instrument
+     * rather than a correct one.
+     *
+     * What IS reachable, and is now the design, is the split: `stackPlacements`
+     * writes y and height and leaves x alone, so a stacked text node takes its
+     * column's vertical placement while `align` still decides where it sits
+     * horizontally.
+     *
+     * The two halves police each other. The align row moving through three
+     * distinct x values is what makes the valign row's stillness a measurement
+     * instead of a silence -- without it, "valign changes nothing" is equally
+     * what a broken harness reports. And should a future y rule arrive (the
+     * comment above invites one), this fails unless it is written to lose to
+     * stack placement.
+     */
+    const stacked = (align: string, valign: string) => doc(SQ, [
+      buildNode({ id: 'head', kind: 'text', x: 96, y: 380, width: 888, height: 120, text: 'Launch day', fontSize: 48, align, valign }),
+      buildNode({ id: 'body', kind: 'text', x: 96, y: 536, width: 888, height: 380, text: 'Everything you need.', fontSize: 28, align: 'left', valign: 'top' }),
+    ]);
+    const placed = (align: string, valign: string) => {
+      const n = nodeById(apply(stacked(align, valign), resize('ab-1', BANNER.width, BANNER.height)), 'head');
+      return { x: n.x, y: n.y };
+    };
+
+    const xs = ['left', 'center', 'right'].map(a => placed(a, 'top').x);
+    expect(new Set(xs).size).toBe(3);                       // align is live
+
+    const ys = ['left', 'center', 'right'].map(a => placed(a, 'top').y);
+    expect(new Set(ys).size).toBe(1);                       // and touches y not at all
+
+    const byValign = ['top', 'middle', 'bottom'].map(v => placed('left', v));
+    expect(new Set(byValign.map(p => `${p.x},${p.y}`)).size).toBe(1);
+  });
 });
 
 
