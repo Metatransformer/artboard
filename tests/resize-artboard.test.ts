@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildNode, loadDocument, type Document, type Node } from '@artboard/schema';
 import { apply, invert, StaleArtboardError, InvalidCommandError, type Command } from '@artboard/commands';
-import { layoutText } from '@artboard/engine';
+import { layoutText, classifyAnchors, reanchor } from '@artboard/engine';
 
 /**
  * Magic Resize's command half: `resizeArtboard`.
@@ -296,5 +296,131 @@ describe('resizeArtboard: undo restores, a second resize does not', () => {
     const cmd = resize('ab-1', STORY.width, STORY.height);
     const restored = apply(apply(before, cmd), invert(before, cmd));
     expect(nodeById(restored, 'g1').children).toStrictEqual(nodeById(before, 'g1').children);
+  });
+});
+
+
+/* ── a text box is a frame, not the visible extent ────────────────────────── */
+
+describe('resizeArtboard: alignment overrides a centred box reading, and only that', () => {
+  /*
+   * The bug this pins, in renderer-wins' words: a text box is a FRAME, not the
+   * visible extent. A left-aligned headline at x=96 with width=888 in a 1080
+   * frame has margins of 96 and 96, so the box classifies `centre` -- correct
+   * about the box, wrong about the element, because the glyphs start hard left
+   * and every pixel of slack is on the right. Re-centring that box on a wider
+   * frame walks the visible text away from the edge it was aligned to.
+   *
+   * So `textAware` overrides the anchor from the node's own `align`/`valign` --
+   * but ONLY where the box said `centre`/`middle`. The tests below are as much
+   * about that "only" as about the override: an override that fires on a
+   * decisive box reading, or that eats a stretch, trades one wrong answer for
+   * another.
+   *
+   * Each case below was checked against the three plausible ways to get
+   * `textAware` wrong, by running them on the same boxes rather than reasoning
+   * about them -- which was worth doing, because the reasoning was wrong about
+   * the fourth row. The number is the metric the test asserts; * marks a value
+   * the shipped rule does not produce, i.e. the case discriminates.
+   *
+   *   case                  shipped   no override   always fires   no fall-through
+   *   headline left          0.0889     0.3972*        0.0889          0.0889
+   *   tag right-bound        0.0370     0.0370         0.1343*         0.0370
+   *   band stretch           0.9907     0.9907         0.2477*         0.9907
+   *   headline center        0.5000     0.5000         0.5000          0.1917*
+   *   quote valign top       0.1296     0.2917*        0.1296          0.1296
+   *
+   * Every mutant is killed by some case and every case kills some mutant, so
+   * none of the five is padding. `headline center` looked like the padding --
+   * an override that never fires cannot break a case it does not touch -- and
+   * it is the only thing standing between us and a fall-through that treats
+   * every align as `left`, which is an ordinary way to write this slightly
+   * wrong.
+   */
+  const SQ = { width: 1080, height: 1080 };
+  const BANNER = { width: 1584, height: 396 };          // the aspect inversion
+
+  const page = (over: Record<string, unknown>) => doc(SQ, [
+    buildNode({
+      id: 'head', kind: 'text', x: 96, y: 480, width: 888, height: 120,
+      text: 'Launch day', fontSize: 48, ...over,
+    }),
+  ]);
+
+  const leftFraction = (n: any, frame: { width: number }) => n.x / frame.width;
+
+  it('keeps a left-aligned headline left-bound when its BOX reads centred', () => {
+    const before = nodeById(page({ align: 'left' }), 'head');
+    // The premise: the box really does classify as centred. If a threshold
+    // change ever makes this `left` on its own, this test stops exercising the
+    // override and silently becomes a much weaker test -- so it is asserted.
+    expect(classifyAnchors(before, SQ).x).toBe('centre');
+
+    const after = nodeById(apply(page({ align: 'left' }), resize('ab-1', BANNER.width, BANNER.height)), 'head');
+    expect(leftFraction(after, BANNER)).toBeCloseTo(leftFraction(before, SQ), 4);
+  });
+
+  it('CONTROL: without the override the same headline walks to the middle', () => {
+    // Not a hypothetical drift. `reanchor` is asked for the un-overridden
+    // answer on the identical box, and it reproduces the number renderer-wins
+    // measured on social-gradient-launch: 8.9% of the frame becomes 39.7%.
+    const before = nodeById(page({ align: 'left' }), 'head');
+    const centred = reanchor(before, { x: 'centre', y: 'middle' }, SQ, BANNER);
+
+    expect(leftFraction(before, SQ)).toBeCloseTo(0.089, 3);
+    expect(leftFraction(centred, BANNER)).toBeCloseTo(0.397, 3);
+  });
+
+  it('does not fight a box reading that is decisive', () => {
+    // Hard against the right edge, and left-aligned. The box knows where this
+    // node lives; `align` describes where the glyphs sit INSIDE it and has no
+    // business moving it. An override applied unconditionally would drag a
+    // right-bound element back across the page.
+    const hardRight = doc(SQ, [
+      buildNode({ id: 'tag', kind: 'text', x: 900, y: 40, width: 140, height: 48, text: 'New', fontSize: 24, align: 'left' }),
+    ]);
+    const before = nodeById(hardRight, 'tag');
+    expect(classifyAnchors(before, SQ).x).toBe('right');
+
+    const after = nodeById(apply(hardRight, resize('ab-1', BANNER.width, BANNER.height)), 'tag');
+    const rightFraction = (n: any, f: { width: number }) => (f.width - (n.x + n.width)) / f.width;
+    expect(rightFraction(after, BANNER)).toBeCloseTo(rightFraction(before, SQ), 4);
+  });
+
+  it('does not eat a stretch: a full-bleed band stays full-bleed', () => {
+    // `stretch` is not `centre`, so the override must not reach it. A band that
+    // spans the page and comes back inset is the outcome nobody reads as
+    // correct, and it is the failure an over-eager override produces.
+    const bleed = doc(SQ, [
+      buildNode({ id: 'band', kind: 'text', x: 5, y: 500, width: 1070, height: 90, text: 'Across the page', fontSize: 36, align: 'left' }),
+    ]);
+    const before = nodeById(bleed, 'band');
+    expect(classifyAnchors(before, SQ).x).toBe('stretch');
+
+    const after = nodeById(apply(bleed, resize('ab-1', BANNER.width, BANNER.height)), 'band');
+    expect(after.width / BANNER.width).toBeCloseTo(before.width / SQ.width, 4);
+  });
+
+  it('leaves a genuinely centred element centred', () => {
+    // The case the override exists to leave alone. If `align: 'center'` came
+    // back left-bound, the override would have swallowed its own exception.
+    const before = nodeById(page({ align: 'center' }), 'head');
+    const after = nodeById(apply(page({ align: 'center' }), resize('ab-1', BANNER.width, BANNER.height)), 'head');
+    const centreFraction = (n: any, f: { width: number }) => (n.x + n.width / 2) / f.width;
+    expect(centreFraction(after, BANNER)).toBeCloseTo(centreFraction(before, SQ), 4);
+  });
+
+  it('applies the same rule vertically, from valign', () => {
+    // `textAware` reads both axes and the y half is easy to leave half-written,
+    // because every fixture that exercises x tends to be middle-anchored on y.
+    const stacked = doc(SQ, [
+      buildNode({ id: 'quote', kind: 'text', x: 400, y: 140, width: 280, height: 800, text: 'A tall quote', fontSize: 32, valign: 'top' }),
+    ]);
+    const before = nodeById(stacked, 'quote');
+    expect(classifyAnchors(before, SQ).y).toBe('middle');
+
+    const TALL = { width: 1080, height: 1920 };
+    const after = nodeById(apply(stacked, resize('ab-1', TALL.width, TALL.height)), 'quote');
+    expect(after.y / TALL.height).toBeCloseTo(before.y / SQ.height, 4);
   });
 });
