@@ -120,6 +120,49 @@ export type Command =
  * and an image's `frameD`/`frameBox` live in their own coordinate space that
  * the node's width/height already maps onto the artboard.
  */
+/**
+ * Is this rotation a multiple of a quarter turn?
+ *
+ * The tolerance is not decoration. `89.99999999999999 % 90` is `89.99999999999999`,
+ * not a near-zero remainder, so a rotation a hair BELOW a quarter turn fails an
+ * exact test while one a hair above passes -- the two ends of the interval
+ * behave completely differently. Hence the distance to the nearer end.
+ *
+ * 1e-6 degrees is roughly 2e-5 px of deviation across a 1000px object: below
+ * any pixel, and far above the float noise an interactive drag produces.
+ */
+const QUARTER_TURN_TOLERANCE = 1e-6;
+export function isAxisAligned(rotation: number): boolean {
+  const r = Math.abs(rotation ?? 0) % 90;
+  return Math.min(r, 90 - r) <= QUARTER_TURN_TOLERANCE;
+}
+
+/**
+ * The first node in this subtree that a non-uniform scale could not express,
+ * or null if there is none. Exported so the editor can constrain the gesture
+ * rather than let it fail: the command refusing and the handles allowing it
+ * would be the same disagreement between what a control advertises and what it
+ * can do that hiding the group resize handles was there to avoid.
+ *
+ * WHY it cannot be expressed: a node is stored as an axis-aligned box plus a
+ * rotation angle. Rotating a rectangle and then scaling it by different x and y
+ * factors produces a PARALLELOGRAM, and no (x, y, width, height, rotation)
+ * describes one. Measured: a 100x50 rect at 20 degrees under scale (2, 1) comes
+ * out with 115.7 degrees between adjacent edges instead of 90. That is not
+ * precision loss to round away -- the shape has left the set the schema can
+ * store. Quarter turns survive, because they only swap the axes.
+ */
+export function unscalableDescendant(n: Node): Node | null {
+  if (!isAxisAligned((n as any).rotation ?? 0)) return n;
+  if ((n as any).kind === 'group') {
+    for (const c of (((n as any).children ?? []) as Node[])) {
+      const found = unscalableDescendant(c);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 function scaleEffect(e: any, sx: number, sy: number, k: number): any {
   switch (e?.kind) {
     case 'shadow': return { ...e, x: round(e.x * sx), y: round(e.y * sy), blur: round(e.blur * k), spread: round(e.spread * k) };
@@ -145,10 +188,17 @@ function scaleSubtree(n: Node, sx: number, sy: number, ox: number, oy: number, k
   if (a.stroke) a.stroke = { ...a.stroke, width: round(a.stroke.width * k), dash: (a.stroke.dash ?? []).map((d: number) => round(d * k)) };
   if (typeof a.radius === 'number') a.radius = round(a.radius * k);
   if (a.kind === 'text') {
+    // A font size is a VERTICAL measure, so it takes the vertical factor -- not
+    // the geometric mean. Stretching a group sideways should widen the text
+    // frame and let the text reflow, not enlarge the glyphs because half of a
+    // horizontal stretch leaked into them. Letter spacing is the horizontal
+    // counterpart and takes sx. Under a uniform scale all three agree, which is
+    // the case that has to stay exact.
+    //
     // The schema floors fontSize at 1, so an aggressive shrink would otherwise
     // produce a node that cannot be re-read from disk.
-    a.fontSize = Math.max(1, round(a.fontSize * k));
-    a.letterSpacing = round(a.letterSpacing * k);
+    a.fontSize = Math.max(1, round(a.fontSize * sy));
+    a.letterSpacing = round(a.letterSpacing * sx);
   }
   if (a.effects?.length) a.effects = a.effects.map((e: any) => scaleEffect(e, sx, sy, k));
   if (a.kind === 'group') a.children = ((a.children ?? []) as Node[]).map(c => scaleSubtree(c, sx, sy, ox, oy, k));
@@ -211,7 +261,15 @@ export function apply(doc: Document, cmd: Command): Document {
       // actually CHANGE the position is refused: the drag commit sends x/y
       // unchanged alongside `rotation`, which a group does honour.
       if ((target as any).kind === 'group') {
-        const changes = (k: 'x' | 'y' | 'width' | 'height') => k in cmd.patch && cmd.patch[k] !== (target as any)[k];
+        // Compared at the precision the document stores rather than with
+        // `!==`: a caller that round-trips a group's width through a float
+        // computation before restating it would otherwise be told it was
+        // resizing when it was not, and the message would talk about resizing
+        // on a gesture that only rotated. Reported by the `tests` session; no
+        // caller does this today, and comparing rounded removes the class
+        // rather than the instance.
+        const changes = (k: 'x' | 'y' | 'width' | 'height') =>
+          k in cmd.patch && round(Number(cmd.patch[k])) !== round(Number((target as any)[k]));
         const moves = (['x', 'y'] as const).filter(changes);
         const sizes = (['width', 'height'] as const).filter(changes);
         // Size is refused for the same reason as position and with no
@@ -336,6 +394,20 @@ export function apply(doc: Document, cmd: Command): Document {
           `scale needs finite positive factors about a finite origin; got sx=${cmd.sx}, sy=${cmd.sy}, origin=(${cmd.ox}, ${cmd.oy}). Mirroring is flipX/flipY, not a negative scale.`);
       }
       if (cmd.sx === 1 && cmd.sy === 1) return doc;
+      // Compared with a tolerance rather than `!==`: sx and sy arrive from
+      // dividing one measured box by another, so a genuinely square drag can
+      // produce factors differing in the last bits, and an exact test would
+      // refuse it while claiming the shape cannot be represented.
+      const uniform = Math.abs(cmd.sx - cmd.sy) <= 1e-9 * Math.max(1, cmd.sx, cmd.sy);
+      if (!uniform) {
+        for (const id of cmd.nodeIds) {
+          const blocked = unscalableDescendant(findAny(doc, id) as Node);
+          if (blocked) {
+            throw new InvalidCommandError(
+              `Cannot scale "${id}" by different x and y factors: "${blocked.id}" is rotated ${(blocked as any).rotation}deg, and a rotated box stretched unevenly becomes a parallelogram, which a node cannot represent. Scale it uniformly instead.`);
+          }
+        }
+      }
       const k = Math.sqrt(cmd.sx * cmd.sy);
       // Same subtree-stop walk as `translate`, and for the same reason:
       // selecting a group AND one of its children must not scale that child

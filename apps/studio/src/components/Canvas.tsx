@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { renderArtboard } from '@artboard/render-svg';
 import { hitTest, snap, type Box } from '@artboard/engine';
 import type { Node } from '@artboard/schema';
-import { uid, type Command } from '@artboard/commands';
+import { uid, unscalableDescendant, type Command } from '@artboard/commands';
 import { Scene } from '../lib/scene';
 import {
   PASTE_OFFSET, cloneNodes, nextPasteOffset, readClipboard, textNodeFromText, writeNodes,
@@ -291,7 +291,19 @@ export function Canvas({ tool, onToolDone }: { tool: string; onToolDone: () => v
         if (h.includes('s')) nh = b.height + dy;
         if (h.includes('w')) { nx = b.x + dx; nw = b.width - dx; }
         if (h.includes('n')) { ny = b.y + dy; nh = b.height - dy; }
-        if (e.shiftKey && b.width > 0 && b.height > 0 && h.length === 2) {
+        // Ratio-locked on request (shift), and ALSO when the target contains a
+        // rotated node -- a rotated box scaled by different x and y factors is
+        // a parallelogram, which `scale` refuses because no node can store one.
+        // Constraining the drag is better than letting it fail: the refusal
+        // would be swallowed frame by frame (runTransient discards throws) and
+        // then surface as a toast at pointerup, so the gesture would look
+        // simply dead. Locked, the user sees the box grow squarely and gets a
+        // correct result. Unlike shift, this applies to the side handles too --
+        // a side handle IS a non-uniform scale, so it is the case that has to
+        // be constrained rather than the one that can be left alone.
+        const target = nodes.find(v => v.id === id) as Node | undefined;
+        const mustLock = !!target && !!unscalableDescendant(target);
+        if (((e.shiftKey && h.length === 2) || mustLock) && b.width > 0 && b.height > 0) {
           const ratio = b.width / b.height;
           if (Math.abs(nw - b.width) > Math.abs(nh - b.height)) nh = nw / ratio; else nw = nh * ratio;
           if (h.includes('n')) ny = b.y + b.height - nh;
@@ -627,7 +639,17 @@ function resizeCommands(node: Node | undefined, from: Box, box: { x: number; y: 
     return [{ type: 'updateNode', nodeId: node.id, patch: { ...box } }];
   }
   if (from.width <= 0 || from.height <= 0) return [];
-  const sx = box.width / from.width, sy = box.height / from.height;
+  let sx = box.width / from.width, sy = box.height / from.height;
+  // A subtree that cannot be stretched unevenly gets ONE factor, not two that
+  // happen to be close. The drag already ratio-locks, but the box it produces
+  // is snapped to the grid first, so the two ratios come out a thousandth
+  // apart -- enough for `scale` to call it non-uniform and refuse, every frame,
+  // which `runTransient` discards and the user sees as a dead handle. Sending
+  // a single factor is what "locked" actually means.
+  if (unscalableDescendant(node)) {
+    const s = Math.abs(sx - 1) >= Math.abs(sy - 1) ? sx : sy;
+    sx = s; sy = s;
+  }
   const fixed = (nFrom: number, nTo: number, s: number) => (s === 1 ? nFrom : (nTo - nFrom * s) / (1 - s));
   const pristine = (originNodes ?? []).filter(n => n.id === node.id);
   return [
