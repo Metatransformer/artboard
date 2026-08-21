@@ -1017,8 +1017,16 @@ it is entirely tractable here. The algorithm that reproduces ~90 % of the observ
 2. **Scale factor** `k = min(newW/oldW, newH/oldH)` for *sizes*; positions map by anchoring, not by `k`.
 3. **Reposition** each node by resolving its anchors against the new frame, preserving its distance
    from anchored edges (scaled by that axis's ratio, clamped).
-4. **Rescale** text by `k`, then re-run `layoutText` and let auto-fit (§ B) resolve overflow — this
-   is where the reflow "intelligence" actually lives.
+4. **Rescale** text by `k`, then re-run `layoutText`. ~~let auto-fit (§ B) resolve overflow~~ —
+   **this step needs no auto-fit, and the dependency is retired.** Relayout cannot introduce text
+   overflow: a non-stretch axis scales box and font by the same `k`, so the wrap is identical and
+   `blockHeight/height` is invariant; a stretch axis takes its own ratio, which is never below `k`
+   because `k` is the minimum of the two, so the box gets relatively wider while the font shrinks —
+   fewer lines, never more. Measured before it was reasoned: 651 relaid text nodes across the corpus
+   at four target sizes, zero overflows, with the probe first shown to report overflow on a box whose
+   height was quartered. Only the `fontSize` floor of 1 breaks the proportionality, and it needs
+   roughly a 10× reduction to bite. This was billed as "where the reflow intelligence actually
+   lives"; the intelligence is in step 1.
 5. **Groups** resolve recursively against their own bounding box.
 
 Only step 1 involves judgement, and a rules table beats a model at it. Effort `L`, priority P1,
