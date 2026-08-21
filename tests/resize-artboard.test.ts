@@ -621,6 +621,54 @@ describe('resizeArtboard: adjacency survives the aspect change', () => {
     expect(gapOf(after)).toBeCloseTo(gapOf(page) * k, 1);
   });
 
+  it('centres a full-height column instead of stretching it', () => {
+    /*
+     * The one branch the mutants found unguarded: a stack whose own box spans
+     * 90% of the frame classifies `stretch`, and `stackPlacements` overrides
+     * that to `middle`.
+     *
+     * Worth pinning because the branch is real, and worth reading carefully
+     * because the mechanism is not the one the source comment describes. That
+     * comment says stretching a stack "distributes the new height through its
+     * interior, which is the tear this exists to prevent". Measured, the
+     * interior is immune either way -- members land at `next.y + offset * k`
+     * and the stretched `next.height` (1760 here) is computed and never read,
+     * so the gap between these two nodes is 40 under both rules.
+     *
+     * What the override actually decides is where the column LANDS: centred at
+     * 456.11, or pinned proportionally to its old top at 71.11. Centring is the
+     * better answer -- a column that filled a square should sit in the middle
+     * of a taller frame, not ride up against its top edge -- so the guard is
+     * right and only its stated reason is wrong.
+     */
+    const tall = doc(SQ, [
+      buildNode({ id: 'head', kind: 'rect', x: 96, y: 40, width: 888, height: 120 }),
+      buildNode({ id: 'body', kind: 'rect', x: 96, y: 200, width: 888, height: 830 }),
+    ]);
+    // The premise: the stack's combined box really does read as stretch.
+    expect(classifyAnchors({ x: 0, y: 40, width: 1080, height: 990 }, SQ).y).toBe('stretch');
+
+    const after = apply(tall, resize('ab-1', STORY.width, STORY.height));
+    const head = nodeById(after, 'head'), body = nodeById(after, 'body');
+    const k = resizeFactor(SQ, STORY);
+
+    // Centred, not pinned to the top. The stretched alternative puts the head
+    // at 40 * ry = 71.11, so this discriminates rather than merely describing.
+    const stretched = reanchor({ x: 0, y: 40, width: 0, height: 990 }, { x: 'left', y: 'stretch' }, SQ, STORY);
+    expect(head.y).toBeGreaterThan(stretched.y * 2);
+    // Centred means the stack's centre keeps its FRACTION of the frame, not
+    // that it lands on the frame's midpoint -- this column sat a hair above
+    // centre (0.4954) and lands a hair above centre, at 951.11 of 1920. The
+    // midpoint version of this assertion failed by 8.89px on correct code.
+    const centreFraction = (top: number, bottom: number, f: number) => (top + (bottom - top) / 2) / f;
+    expect(centreFraction(head.y, body.y + body.height, STORY.height))
+      .toBeCloseTo(centreFraction(40, 1030, SQ.height), 4);
+
+    // And the interior is untouched by the choice, which is why the gap cannot
+    // be the thing asserted here.
+    expect(body.y - (head.y + head.height)).toBeCloseTo(40 * k, 1);
+  });
+
   it('leaves a node in no stack exactly as it was', () => {
     // "A stack of one is the old behaviour exactly, so nothing already right
     // changes" is a claim in the commit message. A lone badge, far from
