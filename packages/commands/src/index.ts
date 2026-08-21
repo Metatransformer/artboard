@@ -318,7 +318,7 @@ type Stack = { members: number[]; box: { y: number; height: number } };
  * The zero row is a control, not a data point: STACK_GAP = 0 disables
  * clustering entirely and reproduces the per-node behaviour this replaces.
  */
-const STACK_GAP = 0.5;
+const STACK_GAP = 0.10;
 
 /*
  * Bleed is not stack membership. A shape running off the page edge is
