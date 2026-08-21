@@ -2,7 +2,7 @@
  * Run the real test suite against a MUTATED copy of one package, without ever
  * writing to the working tree.
  *
- *   node tools/mutation-run.mjs --copy commands            # -> prints a scratch path
+ *   node tools/mutation-run.mjs --copy commands            # -> prints a scratch index.ts
  *   $EDITOR <that path>                                    # break something
  *   node tools/mutation-run.mjs --pkg commands --at <path> # run the suite against it
  *
@@ -64,7 +64,7 @@
  *    a pipe. Redirect to a file if you need to check it.
  */
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -83,9 +83,17 @@ const arg = (flag) => {
 const copy = arg('--copy');
 if (copy) {
   if (!PKGS.includes(copy)) die(`unknown package '${copy}'. one of: ${PKGS.join(', ')}`);
-  const dest = join(mkdtempSync(join(tmpdir(), 'artboard-mutant-')), `${copy}.ts`);
-  copyFileSync(join(ROOT, 'packages', copy, 'src', 'index.ts'), dest);
-  console.log(dest);
+  // The WHOLE src directory, not just the entry point. Five of the nine
+  // packages -- engine, render-svg, codes, icons, diagnostics -- import
+  // relative siblings from `index.ts`, and a lone copy cannot resolve them
+  // from a temp dir. That failure is worth spelling out because it does not
+  // look like a failure: vitest reports it as failed SUITES, so `render-svg`
+  // came back "6 failed | 8 passed" with 148 tests never collected and not one
+  // assertion evaluated -- a bigger number than the 1 a real catch produces,
+  // from a mutant that never ran. Read `Tests` as well as `Test Files`.
+  const dir = mkdtempSync(join(tmpdir(), 'artboard-mutant-'));
+  cpSync(join(ROOT, 'packages', copy, 'src'), dir, { recursive: true });
+  console.log(join(dir, 'index.ts'));
   process.exit(0);
 }
 
